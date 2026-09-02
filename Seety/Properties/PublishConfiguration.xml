@@ -77,6 +77,8 @@ Nothing here writes city state, changes a rule, adds a system, or puts a single 
 ## Before you install
 
 English only for now. Free and open source under the MIT licence: [source on GitHub](https://github.com/merrinaf-tech/Seety).
+
+If it saves you a few trips through the menus, you can [buy me a coffee](https://ko-fi.com/fabiozsche). Entirely optional - the mod is the same either way.
 	</LongDescription>
 
 	<Thumbnail Value="Properties/Thumbnail.png" />
@@ -91,6 +93,7 @@ English only for now. Free and open source under the MIT licence: [source on Git
 	<Screenshot Value="Properties/Screenshots/seety-5.jpg" />
 	<Tag Value="Code Mod" />
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
+	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
 	<ModVersion Value="1.0.0" />
 	<GameVersion Value="1.6.*" />
