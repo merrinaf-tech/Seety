@@ -1,0 +1,12 @@
+﻿<Publish>
+	<!-- Not published yet. Fill in before the first upload. -->
+	<DisplayName Value="Seety" />
+	<ShortDescription Value="One strip showing the state of your city, where every entry opens the matching in-game info view." />
+	<LongDescription>Work in progress.</LongDescription>
+	<Thumbnail Value="Properties/Thumbnail.png" />
+	<Tag Value="Code Mod" />
+	<ModVersion Value="0.2.0" />
+	<GameVersion Value="1.6.*" />
+	<AccessLevel Value="Private" />
+	<ChangeLog>Initial development build.</ChangeLog>
+</Publish>

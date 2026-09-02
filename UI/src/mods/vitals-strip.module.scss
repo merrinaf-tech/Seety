@@ -1,0 +1,437 @@
+// Deliberately restrained: this sits on top of the player's city, so it reads as part of the
+// game rather than as an add-on. No icons in v0.1 - shipping our own icon set is a separate
+// job, and borrowing another mod's is out of the question.
+
+// Positioned rather than laid out: the strip is mounted on the full-screen "Game" anchor and
+// placed by the coordinates the player dragged it to, so it is not wedged into the flow of the
+// top-left button row alongside every other mod's button.
+.strip {
+  position: fixed;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  // NO `gap` anywhere in this file. The game renders through Cohtml/Gameface, which ignores
+  // flexbox gap - the game's own stylesheet uses it exactly once, which is the tell. Every
+  // increase looked right in the source and changed nothing on screen. Spacing is done with
+  // margins, which Gameface does honour.
+  padding: 6rem 4rem;
+
+  background-color: rgba(0, 0, 0, 0.55);
+  border-radius: 4rem;
+
+  font-size: 15rem;
+  color: rgba(255, 255, 255, 0.92);
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
+}
+
+.dragging {
+  cursor: grabbing;
+  background-color: rgba(0, 0, 0, 0.72);
+}
+
+// Every cell is the same box, whatever it holds. A row of boxes of different widths reads as a
+// crowd; a row of equal ones reads as a set, and the eye can scan it.
+.entry {
+  position: relative;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+  min-width: 32rem;
+  height: 34rem;
+  // Margin, not gap - see the note on .strip. 6rem a side gives 12rem between neighbours.
+  margin: 0 6rem;
+  padding: 0;
+  border-radius: 3rem;
+
+  background-color: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+// A percentage row: just the icon, over a bar that grows from the bottom. Height and colour say
+// the same thing twice, so it reads at a glance and still survives being looked at sideways.
+.barEntry {
+  // Same box as everything else; only the bar behind it differs.
+  padding: 0;
+}
+
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  // Green when nothing is wrong: it reads as "fine" without having to be decoded. Warning and
+  // critical override it below, so a high pollution bar is never green.
+  background-color: rgba(126, 214, 148, 0.45);
+}
+
+// The icon has to sit above the bar, and stay legible against it.
+.barEntry .icon {
+  position: relative;
+  z-index: 1;
+}
+
+.warning .bar {
+  background-color: rgba(255, 190, 92, 0.55);
+}
+
+.critical .bar {
+  background-color: rgba(255, 118, 105, 0.62);
+}
+
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+  }
+
+  &:active {
+    background-color: rgba(255, 255, 255, 0.22);
+  }
+}
+
+// Vanilla icons are monochrome SVGs on a transparent ground, so they inherit the strip's
+// restraint without any tinting of our own.
+.icon {
+  width: 22rem;
+  height: 22rem;
+  flex-shrink: 0;
+}
+
+// The fallback when an icon does not load, and the reason the row is still readable if it does not.
+.label {
+  font-size: 12rem;
+  letter-spacing: 0.5rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.value {
+  margin-left: 4rem;
+  font-weight: 600;
+}
+
+// A vital that crossed its threshold. Colour is carried by the value and a faint tint behind the
+// entry, never by a border or a blinking icon: this bar sits over the player's city, and an alert
+// that shouts is an alert that gets switched off.
+//
+// The label keeps its own muted colour so the row still reads as one thing.
+
+.warning .value {
+  color: rgb(255, 190, 92);
+}
+
+.warning {
+  background-color: rgba(255, 190, 92, 0.14);
+}
+
+.critical .value {
+  color: rgb(255, 118, 105);
+}
+
+.critical {
+  background-color: rgba(255, 118, 105, 0.18);
+}
+
+// The grouped problem list. It hangs below the strip rather than replacing it, so the total
+// stays visible while you work through what makes it up.
+//
+// Absolute, because the strip is a row: in the flow the panel would stretch it sideways.
+.panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4rem;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 190rem;
+  max-height: 340rem;
+  overflow-y: auto;
+
+  padding: 4rem;
+
+  background-color: rgba(10, 14, 20, 0.98);
+  border-radius: 4rem;
+}
+
+.panelEmpty {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4rem;
+
+  padding: 6rem 10rem;
+  white-space: nowrap;
+
+  background-color: rgba(10, 14, 20, 0.98);
+  border-radius: 4rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.panelRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  padding: 4rem 6rem;
+  border-radius: 3rem;
+
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+  }
+}
+
+// Takes the middle, so the counts line up on the right edge whatever the name's length.
+.panelName {
+  margin-left: 6rem;
+  flex-grow: 1;
+  white-space: nowrap;
+}
+
+// The recorded series. Sits above the breakdown rows when a row has both.
+.chart {
+  padding: 4rem 6rem 6rem;
+}
+
+.chartLabel {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+
+  margin-bottom: 4rem;
+
+  font-size: 11rem;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.chartSvg {
+  display: block;
+  width: 100%;
+  height: 150rem;
+}
+
+// A window: its own furniture, its own position, not tied to the strip that opened it.
+.window {
+  position: fixed;
+  z-index: 10;
+
+  min-width: 380rem;
+  max-width: 860rem;
+
+  // Nearly solid. At 0.94 the city showed through a table of numbers and both became
+  // hard to read; a window that is being read should stop being scenery.
+  background-color: rgba(10, 14, 20, 0.98);
+  border-radius: 5rem;
+  color: rgba(255, 255, 255, 0.92);
+  pointer-events: auto;
+}
+
+.windowBar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 6rem 8rem 6rem 10rem;
+  border-radius: 5rem 5rem 0 0;
+
+  background-color: rgba(255, 255, 255, 0.08);
+  cursor: grab;
+  user-select: none;
+}
+
+.windowTitle {
+  font-size: 13rem;
+  white-space: nowrap;
+}
+
+.windowClose {
+  padding: 0 4rem;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.55);
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.95);
+  }
+}
+
+.windowBody {
+  max-height: 520rem;
+  overflow-y: auto;
+  padding: 8rem;
+}
+
+// The workforce table. Columns are fixed so the numbers line up down the page.
+.table {
+  display: flex;
+  flex-direction: column;
+  font-size: 12rem;
+}
+
+.tableRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  padding: 3rem 4rem;
+  border-radius: 2rem;
+}
+
+.tableHead {
+  color: rgba(255, 255, 255, 0.55);
+  border-bottom: 1rem solid rgba(255, 255, 255, 0.14);
+}
+
+.tableLevel {
+  flex-grow: 1;
+  min-width: 96rem;
+  white-space: nowrap;
+}
+
+.tableCell {
+  // Wide enough for the longest column head. At 46 "Educated" ran into "Well" and the header
+  // read as one word.
+  width: 58rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+// Open jobs at a level outnumbering every citizen who has it: the city was built for people who
+// are not there. This is the comparison the whole table exists for, so it is the one thing marked.
+.tableShort {
+  color: rgb(255, 190, 92);
+  font-weight: 600;
+}
+
+.tableTotal {
+  margin-top: 2rem;
+  border-top: 1rem solid rgba(255, 255, 255, 0.14);
+  font-weight: 600;
+}
+
+.tableNote {
+  // The game's stylesheet makes a bare div a flex column, so each text fragment became its own
+  // line. Explicitly block, or the sentence comes out stacked one word per row.
+  display: block;
+
+  margin-top: 6rem;
+  padding: 0 4rem;
+
+  font-size: 11rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: normal;
+}
+
+// The icon plus its optional rank, stacked so the numeral sits over the corner of the picture.
+.glyph {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge {
+  position: absolute;
+  right: -2rem;
+  bottom: -2rem;
+
+  font-size: 10rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+
+  // A dark rim so the numeral stays readable over any part of the icon beneath it.
+  text-shadow: 0 0 3rem rgba(0, 0, 0, 0.95), 0 0 2rem rgba(0, 0, 0, 0.95);
+}
+
+// The close glyph, drawn as a path. See the note in the component.
+.windowCloseIcon {
+  display: block;
+  width: 12rem;
+  height: 12rem;
+}
+
+// The line that separates people from posts in the workforce table: everything left of it counts
+// citizens, everything right of it counts jobs.
+.tableDivider {
+  border-left: 1rem solid rgba(255, 255, 255, 0.22);
+  padding-left: 6rem;
+}
+
+// A control in a window title bar, such as the notification-icon switch.
+.windowAction {
+  margin-left: auto;
+  margin-right: 8rem;
+  padding: 2rem 8rem;
+  border-radius: 3rem;
+
+  font-size: 11rem;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.75);
+  background-color: rgba(255, 255, 255, 0.10);
+  cursor: pointer;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.95);
+    background-color: rgba(255, 255, 255, 0.20);
+  }
+}
+
+// Configuration mode: a row the player has switched off, shown only while choosing.
+.disabled {
+  opacity: 0.35;
+}
+
+// The gear, while configuration mode is on.
+.configOn {
+  background-color: rgba(130, 190, 255, 0.30);
+}
+
+// Configuration mode has to be unmistakable: it changes what a click means, and a player who
+// leaves it on by accident would find the whole strip inert for the rest of the session.
+.stripConfig {
+  background-color: rgba(24, 60, 96, 0.92);
+  border: 2rem solid rgb(130, 190, 255);
+}
+
+.configBanner {
+  // Above the strip rather than inside it: in the row it pushed every cell sideways, so the
+  // things being chosen moved the moment the mode came on.
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4rem;
+
+  padding: 2rem 8rem;
+  border-radius: 3rem;
+
+  font-size: 12rem;
+  white-space: nowrap;
+  color: rgb(16, 26, 38);
+  background-color: rgb(130, 190, 255);
+}
+
+// The share of the population an age band holds, drawn under its name. A shape is faster to read
+// than four numbers, and the numbers are right there when the shape raises a question.
+.ageBar {
+  display: block;
+  height: 3rem;
+  margin-top: 2rem;
+  border-radius: 2rem;
+  background-color: rgba(130, 190, 255, 0.55);
+}

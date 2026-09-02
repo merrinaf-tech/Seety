@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+*.user
+
+# UI build
+UI/node_modules/
+UI/dist/
+
+# Source art: the exported PNG is versioned, the layered original is not
+Pic/*.psd
