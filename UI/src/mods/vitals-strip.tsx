@@ -52,7 +52,34 @@ const enum VanillaKind {
   FlowArray = 4,
   Fraction = 5,
   DemandGroup = 6,
+  PollutionGroup = 7,
 }
+
+/** The four pollution readings behind the Environment row, with the panel each one opens. */
+const POLLUTIONS: { binding: string; label: string; icon: string; infoview: string }[] = [
+  { binding: "averageAirPollution",    label: "Air",   icon: "Media/Game/Icons/AirPollution.svg",    infoview: "AirPollution" },
+  { binding: "averageGroundPollution", label: "Soil",  icon: "Media/Game/Icons/GroundPollution.svg", infoview: "GroundPollution" },
+  { binding: "averageNoisePollution",  label: "Noise", icon: "Media/Game/Icons/NoisePollution.svg",  infoview: "NoisePollution" },
+  { binding: "averageWaterPollution",  label: "Water", icon: "Media/Game/Icons/WaterPollution.svg",  infoview: "WaterPollution" },
+];
+
+const pollution$ = POLLUTIONS.map((x) =>
+  bindValue<IndicatorValue | null>("pollutionInfo", x.binding, null)
+);
+
+/** An indicator on its own 0..max scale, as a percentage. */
+function levelOf(v: IndicatorValue | null): number {
+  return v && v.max > 0 ? (v.current / v.max) * 100 : 0;
+}
+
+/** The average of the four, which is what the strip shows before inversion. */
+function usePollutionAverage(): number {
+  const values = pollution$.map((b) => levelOf(useValue(b)));
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+/** The row whose window splits the environment into its four readings. */
+const POLLUTION_ID = "pollution";
 
 /** The six zone demands, and the factor list behind each. Matches VanillaKind.DemandGroup. */
 const DEMANDS: { id: string; label: string; icon: string; factors: string }[] = [
@@ -102,7 +129,9 @@ interface BreakdownRow {
   count: number;
   level: VitalLevel;
   clickable: boolean;
-  /** "jump", "passenger", "cargo", or empty. See SeetyUISystem.WriteRow. */
+  /** Appended to the count. "%" for the school list, empty for a plain tally. */
+  suffix: string;
+  /** "jump", "passenger", "cargo", "school:N", or empty. See SeetyUISystem.WriteRow. */
   action: string;
 }
 
@@ -314,6 +343,25 @@ function activateRow(row: BreakdownRow) {
   }
 }
 
+/**
+ * A school's colour, sliding from green to red as it fills.
+ *
+ * Three fixed steps put a school at 79% and one at 94% in the same bucket, when the second is the
+ * one to act on. A continuous ramp from halfway shows the order of urgency at a glance, which is
+ * what a list sorted by fullness is for.
+ */
+function fillStyle(row: BreakdownRow): React.CSSProperties | undefined {
+  if (!row.action.startsWith("school:")) {
+    return undefined;
+  }
+
+  const t = Math.min(1, Math.max(0, (row.count - 50) / 50));
+  const r = Math.round(126 + (255 - 126) * t);
+  const g = Math.round(214 + (118 - 214) * t);
+  const b = Math.round(148 + (105 - 148) * t);
+  return { color: `rgb(${r}, ${g}, ${b})` };
+}
+
 const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
   if (rows.length === 0) {
     return <div className={styles.panelEmpty}>Nothing to report</div>;
@@ -351,7 +399,10 @@ const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
             >
               <RowIcon src={row.icon} />
               <span className={styles.panelName}>{row.id}</span>
-              <span className={styles.value}>{row.count}</span>
+              <span className={styles.value} style={fillStyle(row)}>
+                {row.count}
+                {row.action.startsWith("school:") ? "%" : row.suffix}
+              </span>
             </div>
           </Tooltip>
         );
@@ -462,6 +513,10 @@ function useVanillaValue(vital: Vital): number {
   switch (vital.bindKind) {
     case VanillaKind.Scalar:
       return typeof raw === "number" ? raw : 0;
+
+    case VanillaKind.PollutionGroup:
+      // Handled by its own component; this branch keeps the switch total.
+      return 0;
 
     case VanillaKind.DemandGroup:
       // Handled by its own component; this branch keeps the switch total.
@@ -872,7 +927,10 @@ const ParkingList = () => {
 
   return (
     <div className={styles.table}>
-      <div className={styles.panelRow}>
+      <div
+        className={`${styles.panelRow} ${styles.clickable}`}
+        onClick={() => trigger("seety", "openInfoview", "Roads")}
+      >
         <img className={styles.icon} src="Media/Game/Icons/Parking.svg" />
         <span className={styles.panelName}>
           Cars {capacity > 0 ? `- ${parked.toLocaleString()} of ${Math.round(capacity).toLocaleString()}` : ""}
@@ -880,7 +938,10 @@ const ParkingList = () => {
         <span className={styles.value}>{Math.round(carsFree)}%</span>
       </div>
 
-      <div className={styles.panelRow}>
+      <div
+        className={`${styles.panelRow} ${styles.clickable}`}
+        onClick={() => trigger("seety", "openInfoview", "Bicycles")}
+      >
         <img className={styles.icon} src="Media/Game/Icons/Bicycles.svg" />
         <span className={styles.panelName}>Bikes</span>
         <span className={styles.value}>{Math.round(bikesFree)}%</span>
@@ -888,7 +949,49 @@ const ParkingList = () => {
 
       <div className={styles.tableNote}>
         Room left, not spaces taken. Cars come from the game&apos;s Roads panel with the raw counts;
-        bikes come from the Bikes panel, which reports only a level.
+        bikes come from the Bikes panel, which reports only a level. Click either to open its map
+        view.
+      </div>
+    </div>
+  );
+};
+
+/**
+ * The four pollutions, each opening its own map view.
+ *
+ * Shown as quality rather than pollution, matching the row above: more is better everywhere on
+ * the strip, and a row that flipped the rule inside its own window would undo the point of it.
+ */
+const PollutionList = () => {
+  const values = pollution$.map((b) => levelOf(useValue(b)));
+
+  return (
+    <div className={styles.table}>
+      {POLLUTIONS.map((x, i) => {
+        const quality = Math.max(0, 100 - values[i]);
+        const classes = [styles.panelRow, styles.clickable];
+        if (quality <= 35) {
+          classes.push(styles.critical);
+        } else if (quality <= 60) {
+          classes.push(styles.warning);
+        }
+
+        return (
+          <Tooltip key={x.binding} tooltip={`${x.label} quality - click to open the map view`}>
+            <div
+              className={classes.join(" ")}
+              onClick={() => trigger("seety", "openInfoview", x.infoview)}
+            >
+              <img className={styles.icon} src={x.icon} />
+              <span className={styles.panelName}>{x.label}</span>
+              <span className={styles.value}>{Math.round(quality)}%</span>
+            </div>
+          </Tooltip>
+        );
+      })}
+      <div className={styles.tableNote}>
+        Quality, not pollution: a higher number is a cleaner city, the same direction as every
+        other reading on the strip. Click one to open its map view.
       </div>
     </div>
   );
@@ -903,8 +1006,15 @@ const VanillaEntry = ({
   render: (value: number, level: VitalLevel) => JSX.Element;
 }) => {
   const peak = useDemandPeak();
+  const dirt = usePollutionAverage();
   const measured = useVanillaValue(vital);
-  const raw = vital.bindKind === VanillaKind.DemandGroup ? peak : measured;
+
+  const raw =
+    vital.bindKind === VanillaKind.DemandGroup
+      ? peak
+      : vital.bindKind === VanillaKind.PollutionGroup
+      ? dirt
+      : measured;
   // Inverted rows report the good half of the figure, so that across the whole strip a taller,
   // greener bar always means better. See Vital.Invert.
   const value = vital.invert ? Math.max(0, 100 - raw) : raw;
@@ -1045,6 +1155,7 @@ export const VitalsStrip = () => {
             vital.bindKind === VanillaKind.DemandGroup ||
             vital.id === DEMOGRAPHICS_ID ||
             vital.id === PARKING_ID ||
+            vital.id === POLLUTION_ID ||
             SCHOOL_IDS.indexOf(vital.id) >= 0 ||
             vital.id === WORKFORCE_ID);
 
@@ -1167,6 +1278,7 @@ export const VitalsStrip = () => {
             <DemographicsTable rows={demographics} />
           ) : null}
           {openVital.id === PARKING_ID ? <ParkingList /> : null}
+          {openVital.id === POLLUTION_ID ? <PollutionList /> : null}
           {openVital.bindKind === VanillaKind.DemandGroup ? <DemandList /> : null}
           {openVital.factors ? <FactorList binding={openVital.factors} /> : null}
           {openVital.hasHistory && history ? <HistoryChart history={history} /> : null}

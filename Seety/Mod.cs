@@ -20,7 +20,7 @@ namespace Seety
     {
         public const string Id = "Seety";
         public const string Name = "Seety";
-        public const string Version = "0.2.0";
+        public const string Version = "1.0.0";
 
         private const string LocaleId = "en-US";
 

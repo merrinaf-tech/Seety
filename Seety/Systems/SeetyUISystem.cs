@@ -182,6 +182,7 @@ namespace Seety.Systems
 
             AddBinding(new TriggerBinding<string>(Group, "jumpToProblem", OnJumpToProblem));
             AddBinding(new TriggerBinding<int>(Group, "jumpToSchool", OnJumpToSchool));
+            AddBinding(new TriggerBinding<string>(Group, "openInfoview", OnOpenInfoview));
 
             _configModeBinding = new ValueBinding<bool>(Group, "configMode", false);
             AddBinding(_configModeBinding);
@@ -617,6 +618,8 @@ namespace Seety.Systems
                 writer.Write("Media/Game/Icons/Education.svg");
                 writer.PropertyName("count");
                 writer.Write((int)school.Fullness);
+                writer.PropertyName("suffix");
+                writer.Write("%");
                 writer.PropertyName("level");
                 writer.Write((int)level);
                 writer.PropertyName("clickable");
@@ -706,6 +709,8 @@ namespace Seety.Systems
             writer.Write((int)level);
             writer.PropertyName("clickable");
             writer.Write(clickable);
+            writer.PropertyName("suffix");
+            writer.Write(string.Empty);
             writer.PropertyName("action");
             writer.Write(action);
             writer.TypeEnd();
@@ -738,6 +743,31 @@ namespace Seety.Systems
             var level = Vitals.SchoolBreakdown.LevelFor(_expandedId);
             _schools.Refresh(EntityManager, _schoolQuery, _names, level);
             _notificationsBinding.Update();
+        }
+
+        /// <summary>
+        /// Opens a vanilla infoview by name. Rows inside a window - a pollution kind, a parking
+        /// mode - are not vitals of their own, so they cannot go through OnVitalActivated.
+        /// </summary>
+        private void OnOpenInfoview(string name)
+        {
+            try
+            {
+                ResolveInfoviews();
+
+                Entity entity;
+                if (!_infoviewEntities.TryGetValue(name, out entity))
+                {
+                    Mod.Log.Info("No infoview named '" + name + "'.");
+                    return;
+                }
+
+                _infoviews.SetActiveInfoview(entity);
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Error(e, "Could not open the infoview '" + name + "'.");
+            }
         }
 
         /// <summary>Take me to that school. The index is its position in the list on screen.</summary>

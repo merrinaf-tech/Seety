@@ -131,6 +131,8 @@ namespace Seety.Systems
                 m_WorkerType = GetComponentTypeHandle<Worker>(true),
                 m_HealthProblemType = GetComponentTypeHandle<HealthProblem>(true),
                 m_OutsideConnections = GetComponentLookup<Game.Objects.OutsideConnection>(true),
+                m_HouseholdMemberType = GetComponentTypeHandle<HouseholdMember>(true),
+                m_CommuterHouseholds = GetComponentLookup<CommuterHousehold>(true),
                 m_Results = _results
             };
 
@@ -276,12 +278,34 @@ namespace Seety.Systems
             [ReadOnly] public ComponentTypeHandle<HealthProblem> m_HealthProblemType;
             [ReadOnly] public ComponentLookup<Game.Objects.OutsideConnection> m_OutsideConnections;
 
+            /// <summary>
+            /// Commuters are recognised by their household, not by a flag on the citizen.
+            /// CitizenFlags.Commuter exists and reads false for them, which is why the column sat
+            /// at zero while the game's own panels found hundreds.
+            /// </summary>
+            [ReadOnly] public ComponentTypeHandle<HouseholdMember> m_HouseholdMemberType;
+            [ReadOnly] public ComponentLookup<CommuterHousehold> m_CommuterHouseholds;
+
             public NativeArray<int> m_Results;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in Unity.Burst.Intrinsics.v128 chunkEnabledMask)
             {
                 var citizens = chunk.GetNativeArray(ref m_CitizenType);
+
+                // Commuters are a property of the household, so the flag has to be resolved per
+                // citizen before the loop rather than read off the citizen itself.
+                var members = chunk.Has<HouseholdMember>()
+                    ? chunk.GetNativeArray(ref m_HouseholdMemberType)
+                    : default(NativeArray<HouseholdMember>);
+                var isCommuter = new NativeArray<bool>(citizens.Length, Allocator.Temp);
+                if (members.IsCreated)
+                {
+                    for (var c = 0; c < citizens.Length; c++)
+                    {
+                        isCommuter[c] = m_CommuterHouseholds.HasComponent(members[c].m_Household);
+                    }
+                }
 
                 var hasWorker = chunk.Has<Worker>();
                 var isStudentChunk = chunk.Has<Game.Citizens.Student>();
@@ -293,6 +317,21 @@ namespace Seety.Systems
                 for (var i = 0; i < citizens.Length; i++)
                 {
                     var citizen = citizens[i];
+
+                    var level = citizen.GetEducationLevel();
+                    if (level < 0 || level >= Levels)
+                    {
+                        continue;
+                    }
+
+                    // Commuters first, before any other filter. They do not carry ValidCitizen -
+                    // they do not live here - so testing that flag first threw every one of them
+                    // away and left the column reading zero while the game found hundreds.
+                    if (isCommuter[i])
+                    {
+                        Add(level, Field.Commuters);
+                        continue;
+                    }
 
                     if ((citizen.m_State & CitizenFlags.ValidCitizen) == 0)
                     {
@@ -307,17 +346,6 @@ namespace Seety.Systems
                         continue;
                     }
 
-                    var level = citizen.GetEducationLevel();
-                    if (level < 0 || level >= Levels)
-                    {
-                        continue;
-                    }
-
-                    if ((citizen.m_State & CitizenFlags.Commuter) != 0)
-                    {
-                        Add(level, Field.Commuters);
-                        continue;
-                    }
 
                     if (hasHealth && CitizenUtils.IsDead(health[i]))
                     {

@@ -1,12 +1,100 @@
 ﻿<Publish>
-	<!-- Not published yet. Fill in before the first upload. -->
+	<!--
+	  WARNING: this file is destructive.
+
+	  PrepareMetadata calls WithForumLinks, WithExternalLinks, WithDependencies and WithTags
+	  UNCONDITIONALLY. Anything not declared here is sent as an empty set and WIPED from the live
+	  listing - including values added through the website. Screenshots are the only exception
+	  (WithScreenshots is skipped on an empty set), so website-uploaded screenshots survive.
+
+	  So: this file is the single source of truth. If you add a link, a tag or a dependency on the
+	  website, copy it back in here before the next publish, or the next publish deletes it.
+	-->
+
+	<!-- Set at the first publish. With it present the Publish command is refused, which is
+	     correct: use Update for metadata only, NewVersion to ship a new build. -->
+	<ModId Value="157700" />
+
 	<DisplayName Value="Seety" />
-	<ShortDescription Value="One strip showing the state of your city, where every entry opens the matching in-game info view." />
-	<LongDescription>Work in progress.</LongDescription>
+	<ShortDescription Value="One bar showing the state of your city, where every reading opens what it is about." />
+
+	<LongDescription>
+# Seety
+
+Maybe the real city was the stats we saw along the way.
+
+## Setup
+
+1. Enable the mod.
+2. Click the **gear** at the end of the bar.
+3. Click the readings you want to keep. Click the gear again.
+
+That is the whole configuration. You pick by clicking the thing itself, not by hunting a name in a list of checkboxes.
+
+Drag the bar anywhere. It stays where you put it.
+
+## The bar
+
+**Twenty-nine readings**, all off or on as you like: happiness, health, unemployment, homelessness, workers, tourists, active problems, electricity, water, sewage, hospital and crematorium capacity, cemetery space, four school levels, parking, garbage processing, landfill space, safety, cells, fire safety, environment quality, post, traffic flow, land value, zone demand and public transport.
+
+Two rules decide what is on that list:
+
+- **It is not already on the vanilla HUD.** Population, money and income are on screen permanently, so repeating them buys you nothing and costs width.
+- **It mirrors the exact source the game uses for the same figure.** A number that disagrees with the game's own panels is worse than no number at all.
+
+**More is always better.** Half of what a city reports is naturally negative - pollution, crime, cells occupied, schools filling up. Those are turned around and renamed, so a fuller, greener bar always means better. There is no direction to remember per icon.
+
+Cross a sensible limit and a reading turns amber, then red. Thresholds stay quiet in an empty city, because nobody living there yet is not a crisis.
+
+## Everything opens something
+
+This is the part that matters. **Click a reading and it takes you to what it is about.**
+
+Most open the matching in-game info view. The rest open a window - draggable, closeable, with its own place on screen:
+
+&gt; **Active problems** - every notification grouped by type and counted, worst first. Click a type and the camera goes to one of them; click again and it goes to the next, so you can work through them instead of hunting. A switch in the title bar hides the notification icons floating over the city.
+
+&gt; **Workers** - your workforce and the jobs that exist, on the same rows. Twelve columns: people by education, who is a child, a student, retired or of working age; who is employed, idle, working below their qualification, working outside the city or commuting in; and beside them the jobs at each level and how many nobody is doing. Every citizen counted one by one.
+
+&gt; **Happiness and demographics** - who actually lives here, age against education, with each band's share of the population drawn under it. A wide band of seniors is a wave of retirements coming; a wide band of teenagers is a school problem arriving in a few years.
+
+&gt; **Zone demand** - all six demands, and behind each one the five biggest reasons it is where it is. If residential demand is flat, this tells you whether it is the taxes, the services or the land value.
+
+&gt; **Schools** - every school of that level, fullest first, with its roll against its capacity. Click one to fly there.
+
+&gt; **Transport** - passengers and freight by mode. Click a mode and the game's own line panel opens, already showing it.
+
+&gt; **Parking** and **Environment** - split into their parts, each opening its own map view.
+
+Some readings also carry a chart of how they got here.
+
+## What it never does
+
+Seety reads. It does not govern.
+
+Nothing here writes city state, changes a rule, adds a system, or puts a single byte into your savegame. The only things it changes are which info view is showing and where the camera is pointing - both because you clicked.
+
+## Before you install
+
+English only for now. Free and open source under the MIT licence: [source on GitHub](https://github.com/merrinaf-tech/Seety).
+	</LongDescription>
+
 	<Thumbnail Value="Properties/Thumbnail.png" />
+
+	<!-- Screenshots are the one field the publisher does NOT wipe when absent, but once
+	     they are declared here this file governs them: remove a line and the next publish
+	     removes the picture. They live in the repository so that cannot happen by accident. -->
+	<Screenshot Value="Properties/Screenshots/seety-1.jpg" />
+	<Screenshot Value="Properties/Screenshots/seety-2.jpg" />
+	<Screenshot Value="Properties/Screenshots/seety-3.jpg" />
+	<Screenshot Value="Properties/Screenshots/seety-4.jpg" />
+	<Screenshot Value="Properties/Screenshots/seety-5.jpg" />
 	<Tag Value="Code Mod" />
-	<ModVersion Value="0.2.0" />
+	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
+
+	<ModVersion Value="1.0.0" />
 	<GameVersion Value="1.6.*" />
-	<AccessLevel Value="Private" />
-	<ChangeLog>Initial development build.</ChangeLog>
+	<AccessLevel Value="Public" />
+
+	<ChangeLog>First release.</ChangeLog>
 </Publish>

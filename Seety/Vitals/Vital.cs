@@ -99,7 +99,13 @@ namespace Seety.Vitals
         /// Six separate rows was the honest first cut but it ate a third of the strip for figures
         /// that are usually all low at once.
         /// </summary>
-        DemandGroup
+        DemandGroup,
+
+        /// <summary>
+        /// The four pollution indicators behind one row, averaged. Air, soil, noise and water
+        /// usually move together, so four cells spent four times the width on one idea.
+        /// </summary>
+        PollutionGroup
     }
 
     /// <summary>

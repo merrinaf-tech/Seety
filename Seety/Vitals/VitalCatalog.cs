@@ -62,6 +62,7 @@ namespace Seety.Vitals
                 new Vital("problems",     VitalSource.Problems,     "Active problems",    "Problem",  "Media/Game/Icons/Notifications.svg",       Names(),              VitalFormat.Number),
                 new Vital("happiness",    VitalSource.Happiness,    "Happiness and demographics", "Happy",    "Media/Game/Icons/Happy.svg",              Names("Happiness"),   VitalFormat.Percentage, LowHappiness),
                 new Vital("health",       VitalSource.Health,       "Average health",     "Health",   "Media/Game/Icons/Healthcare.svg",         Names("Healthcare"),  VitalFormat.Percentage, LowHealth),
+                Service("healthcare",  "Hospital capacity",    "Beds",    "Icons/Healthcare.svg",     "Healthcare",  "healthcareInfo",  "patientCapacity",       "sickCount"),
                 new Vital("unemployment", VitalSource.Unemployment, "Unemployment",       "Jobless",  "Media/Game/Notifications/Unemployed.svg", Names("Workplaces"),  VitalFormat.Percentage, HighUnemployment, null, true, Game.City.StatisticType.Unemployed,    "Unemployed citizens"),
                 new Vital("homelessness", VitalSource.Homelessness, "Homelessness",       "Homeless", "Media/Game/Icons/ConditionHomeless.svg",  Names("Residential"), VitalFormat.Percentage, HighHomelessness, null, true, Game.City.StatisticType.HomelessCount, "Homeless citizens"),
                 new Vital("workers",      VitalSource.Workers,      "Workers",            "Work",     "Media/Game/Icons/Workers.svg",            Names("Workplaces"),  VitalFormat.Number, null, null, true, Game.City.StatisticType.WorkerCount,   "Workers"),
@@ -69,11 +70,17 @@ namespace Seety.Vitals
 
                 // Services, read as coverage: how much of the demand is actually met. A city with
                 // no water pump reads 0%, not 100%.
-                Service("electricity", "Electricity coverage", "Power",   "Icons/Electricity.svg",    "Electricity", "electricityInfo", "electricityProduction", "electricityConsumption"),
+                // Not production against consumption: that is a city-wide sum, so cutting the cable
+                // to half the city leaves it reading 100% while those buildings sit dark. The
+                // transmission indicator is demand actually delivered, which is the question.
+                new Vital("electricity", VitalSource.Vanilla, "Electricity delivered", "Power",
+                    "Media/Game/Icons/Electricity.svg", Names("Electricity"),
+                    VitalFormat.Percentage, LowCoverage,
+                    new VanillaBinding("electricityInfo", string.Empty, "electricityTransmission",
+                        VanillaKind.Indicator), false),
                 Service("water",       "Water coverage",       "Water",   "Icons/Water.svg",          "WaterPipes",  "waterInfo",       "waterCapacity",         "waterConsumption"),
                 Service("sewage",      "Sewage coverage",      "Sewage",  "Icons/Sewage.svg",         "WaterPipes",  "waterInfo",       "sewageCapacity",        "sewageConsumption"),
 
-                Service("healthcare",  "Hospital capacity",    "Beds",    "Icons/Healthcare.svg",     "Healthcare",  "healthcareInfo",  "patientCapacity",       "sickCount"),
                 // Deathcare, which the city notices only when it stops working.
                 Service("deathcare",   "Crematorium capacity", "Cremate", "Icons/Deathcare.svg",      "Healthcare",  "healthcareInfo",  "processingRate",        "deathRate"),
                 Container("cemetery",  "Cemetery space",       "Graves",  "Media/Game/Notifications/HearseServiceNeeded.svg", "Healthcare", "healthcareInfo", "cemeteryCapacity",   "cemeteryUse"),
@@ -116,13 +123,15 @@ namespace Seety.Vitals
                     new VanillaBinding("policeInfo", "jailCapacity", "inJail", VanillaKind.Ratio,
                         "prisonCapacity", "inPrison"), false, null, null, null, true),
 
-                Hazard("fire",      "Fire safety",       "Fire",  "Icons/FireSafety.svg",         "FireRescue", "fireAndRescueInfo", "averageFireHazard"),
+                // The four pollutions as one row, averaged, with the detail behind it. Four cells
+                // that usually move together was four times the width for one idea.
+                new Vital("pollution", VitalSource.Vanilla, "Environment quality", "Clean",
+                    "Media/Game/Icons/Pollution.svg", Names("AirPollution"),
+                    VitalFormat.Percentage, LowSafety,
+                    new VanillaBinding("pollutionInfo", string.Empty, "averageAirPollution",
+                        VanillaKind.PollutionGroup), false, null, null, null, true),
 
-                // Pollution: all four are levels on the game's own 0..max scale.
-                Hazard("airpollution",    "Air quality",      "Air",   "Icons/AirPollution.svg",    "AirPollution",    "pollutionInfo", "averageAirPollution"),
-                Hazard("groundpollution", "Soil quality",     "Soil",  "Icons/GroundPollution.svg", "GroundPollution", "pollutionInfo", "averageGroundPollution"),
-                Hazard("noisepollution",  "Quiet",            "Quiet", "Icons/NoisePollution.svg",  "NoisePollution",  "pollutionInfo", "averageNoisePollution"),
-                Hazard("waterpollution",  "Water quality",    "Water", "Icons/WaterPollution.svg",  "WaterPollution",  "pollutionInfo", "averageWaterPollution"),
+                Hazard("fire",      "Fire safety",       "Fire",  "Icons/FireSafety.svg",         "FireRescue", "fireAndRescueInfo", "averageFireHazard"),
 
                 // Reported by vanilla as headroom rather than as two numbers.
                 // Post as a proper coverage row. Vanilla derives postServiceAvailability from

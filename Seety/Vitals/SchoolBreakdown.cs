@@ -89,6 +89,24 @@ namespace Seety.Vitals
 
                         var data = entities.GetComponentData<SchoolData>(prefab);
 
+                        // The prefab carries only the BASE capacity. Expansions are separate
+                        // entities in an InstalledUpgrade buffer, and their capacity has to be
+                        // combined in - which is what the game's own education panel does.
+                        // Without this a school with two wings reported 448 students in 250
+                        // places, and the list happily showed 179% full.
+                        if (entities.HasBuffer<InstalledUpgrade>(school))
+                        {
+                            var upgrades = entities.GetBuffer<InstalledUpgrade>(school, true);
+                            UpgradeUtils.CombineStats(entities, ref data, upgrades);
+                        }
+
+                        // A building with no efficiency is not running, and vanilla leaves it out
+                        // of the totals. Counting it would promise places that do not exist.
+                        if (IsShutDown(entities, school))
+                        {
+                            continue;
+                        }
+
                         // m_EducationLevel is 1-based on the prefab - elementary is 1 - while the
                         // strip counts its four school rows from zero.
                         if (data.m_EducationLevel - 1 != level)
@@ -139,6 +157,33 @@ namespace Seety.Vitals
             var target = _entries[index].Position;
             camera.activeCameraController.pivot = new UnityEngine.Vector3(target.x, target.y, target.z);
             return true;
+        }
+
+        /// <summary>
+        /// Whether a building is producing nothing at all.
+        ///
+        /// Efficiency is a buffer of factors that multiply together; a single zero shuts the
+        /// building down. BuildingUtils.GetEfficiency does exactly this, but its DynamicBuffer
+        /// overload will not compile against net48 - it resolves through Span - so the same
+        /// multiplication is done here.
+        /// </summary>
+        private static bool IsShutDown(EntityManager entities, Entity building)
+        {
+            if (!entities.HasBuffer<Efficiency>(building))
+            {
+                return false;
+            }
+
+            var factors = entities.GetBuffer<Efficiency>(building, true);
+            for (var i = 0; i < factors.Length; i++)
+            {
+                if (factors[i].m_Efficiency <= 0f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static string SafeName(NameSystem names, Entity entity)
