@@ -3,9 +3,17 @@ bin/
 obj/
 *.user
 
+# Unity ILPP cache
+Seety/Library/
+
 # UI build
 UI/node_modules/
 UI/dist/
 
 # Source art: the exported PNG is versioned, the layered original is not
 Pic/*.psd
+
+# Development notes for continuity between coding sessions - not documentation for mod users,
+# and read as an obvious AI-collaboration log by anyone browsing the repo. Kept locally only.
+AGENTS.md
+DESIGN.md
