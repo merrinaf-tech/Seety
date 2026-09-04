@@ -77,19 +77,11 @@ namespace Seety.Notifications
 
         public void Refresh(EntityQuery query, PrefabSystem prefabs)
         {
-            // Cursors are what make repeat clicks tour a group rather than sit on one building,
-            // so they are carried across a refresh instead of being rebuilt with the list.
-            var cursors = new Dictionary<string, int>();
-            foreach (var group in _groups)
-            {
-                cursors[group.Id] = group.Cursor;
-            }
-
-            _groups.Clear();
-            _byId.Clear();
+            var cursors = Begin();
 
             if (query.IsEmptyIgnoreFilter)
             {
+                Finish();
                 return;
             }
 
@@ -101,47 +93,78 @@ namespace Seety.Notifications
 
                 for (var i = 0; i < count; i++)
                 {
-                    var priority = icons[i].m_Priority;
-                    if (priority < IconPriority.Problem)
-                    {
-                        continue;
-                    }
-
-                    var name = ResolveName(refs[i].m_Prefab, prefabs);
-                    if (string.IsNullOrEmpty(name))
-                    {
-                        continue;
-                    }
-
-                    NotificationGroup group;
-                    if (!_byId.TryGetValue(name, out group))
-                    {
-                        group = new NotificationGroup
-                        {
-                            Id = name,
-                            Icon = IconFor(name),
-                            Level = VitalLevel.Warning
-                        };
-
-                        int cursor;
-                        if (cursors.TryGetValue(name, out cursor))
-                        {
-                            group.Cursor = cursor;
-                        }
-
-                        _byId.Add(name, group);
-                        _groups.Add(group);
-                    }
-
-                    group.Count++;
-                    group.Locations.Add(icons[i].m_Location);
-
-                    if (priority >= IconPriority.MajorProblem)
-                    {
-                        group.Level = VitalLevel.Critical;
-                    }
+                    Accumulate(icons[i].m_Priority, refs[i].m_Prefab, icons[i].m_Location, prefabs, cursors);
                 }
             }
+
+            Finish();
+        }
+
+        /// <summary>
+        /// Remembers the cursors and clears the list. Cursors are what make repeat clicks tour a
+        /// group rather than sit on one building, so they survive a refresh.
+        /// </summary>
+        private Dictionary<string, int> Begin()
+        {
+            var cursors = new Dictionary<string, int>();
+            foreach (var group in _groups)
+            {
+                cursors[group.Id] = group.Cursor;
+            }
+
+            _groups.Clear();
+            _byId.Clear();
+
+            return cursors;
+        }
+
+        /// <summary>Files one notification under its type, creating the group on first sight.</summary>
+        private void Accumulate(IconPriority priority, Entity prefab, float3 location,
+            PrefabSystem prefabs, Dictionary<string, int> cursors)
+        {
+            if (priority < IconPriority.Problem)
+            {
+                return;
+            }
+
+            var name = ResolveName(prefab, prefabs);
+            if (string.IsNullOrEmpty(name))
+            {
+                return;
+            }
+
+            NotificationGroup group;
+            if (!_byId.TryGetValue(name, out group))
+            {
+                group = new NotificationGroup
+                {
+                    Id = name,
+                    Icon = IconFor(name),
+                    Level = VitalLevel.Warning
+                };
+
+                int cursor;
+                if (cursors.TryGetValue(name, out cursor))
+                {
+                    group.Cursor = cursor;
+                }
+
+                _byId.Add(name, group);
+                _groups.Add(group);
+            }
+
+            group.Count++;
+            group.Locations.Add(location);
+
+            if (priority >= IconPriority.MajorProblem)
+            {
+                group.Level = VitalLevel.Critical;
+            }
+        }
+
+        /// <summary>Orders the finished list.</summary>
+        private void Finish()
+        {
 
             // Largest first, full stop. Sorting by severity first read strangely in game: two
             // hearse notifications sat above twenty-four disconnected tracks purely because the

@@ -14,7 +14,9 @@ namespace Seety
     /// the game rather than a readout.
     ///
     /// Read-only towards the simulation: it reports city statistics and, when the player clicks,
-    /// switches the active infoview. It writes no city state and nothing into a save.
+    /// switches the active infoview. The one exception is SeetySettings.AddFunds, an explicit,
+    /// confirmed action on the options page - not something the bar itself ever does. See the
+    /// note on that property, and in DESIGN.md, for why it exists despite the rule above.
     /// </summary>
     public class Mod : IMod
     {
@@ -118,6 +120,16 @@ namespace Seety
             }
 
             _uiSystem.RebuildActiveVitals();
+        }
+
+        internal static void OnAddFunds(int amount)
+        {
+            if (!_ready || _uiSystem == null)
+            {
+                return;
+            }
+
+            _uiSystem.AddFunds(amount);
         }
     }
 }

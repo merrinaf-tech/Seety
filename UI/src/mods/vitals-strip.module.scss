@@ -17,7 +17,13 @@
   // margins, which Gameface does honour.
   padding: 6rem 4rem;
 
-  background-color: rgba(0, 0, 0, 0.55);
+  // Was a guessed rgba(20, 24, 33, 0.94) - close in darkness but missing the blue the vanilla
+  // panels actually carry. #223141 is --commonDarkBlue, a real root-level custom property in the
+  // game's own stylesheet (Cities2_Data/Content/Game/UI/index.css) defined for exactly this - not
+  // a colour picked by eye a second time. Not read through var() itself: combining a var() with a
+  // separate alpha needs color-mix(), which this renderer's other CSS gaps (see the note on gap
+  // above) make too risky to trust without testing in game.
+  background-color: rgba(34, 49, 65, 0.94);
   border-radius: 4rem;
 
   font-size: 15rem;
@@ -34,23 +40,39 @@
 
 // Every cell is the same box, whatever it holds. A row of boxes of different widths reads as a
 // crowd; a row of equal ones reads as a set, and the eye can scan it.
+// Every cell used to be a row - icon beside its number when it had one - so a cell's width
+// depended on how many digits its number happened to have, and the whole bar's length shifted
+// as those numbers changed. Column instead, number under the icon: every cell is now the same
+// fixed box whatever it holds, matching the vanilla toolbar's own row of identical squares.
 .entry {
   position: relative;
 
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 
   box-sizing: border-box;
-  min-width: 32rem;
-  height: 34rem;
-  // Margin, not gap - see the note on .strip. 6rem a side gives 12rem between neighbours.
-  margin: 0 6rem;
-  padding: 0;
-  border-radius: 3rem;
+  width: 35rem;
+  // Taller than the +1rem request alone - see the note on .entry .value below. Icon and number
+  // both stacked in the flow need real room for two things, not one thing with the other
+  // overlaid on top of it.
+  height: 38rem;
+  // Margin, not gap - see the note on .strip. 4rem a side gives 8rem between neighbours,
+  // a third less than the original 12rem.
+  margin: 0 4rem;
+  // Keeps a wide number off the edge of its own box - see .barEntry below, which zeroes this
+  // back out for the bar-format rows that need their fill flush to the edges instead.
+  padding: 1rem 3rem;
+  // Round test, on request and confirmed good: a fixed radius reads as a rounded capsule rather
+  // than a sharp square, without going to 50% - a true circle/ellipse cuts into the icon and
+  // number corners on a box this content-heavy instead of just softening them.
+  border-radius: 16rem;
 
-  background-color: rgba(255, 255, 255, 0.05);
+  // No per-entry background or border any more. Framing every cell on top of the strip's own
+  // panel double-framed everything and read busier than the vanilla toolbar it sits next to -
+  // one dark panel with icons on it, not a row of separately outlined chips. Contrast now comes
+  // entirely from .strip's own background.
   overflow: hidden;
   white-space: nowrap;
 }
@@ -115,9 +137,40 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+// The number at the end of a row. Shared by every window panel's rows as well as the strip's own
+// entries, which is exactly the trap: a rule written for one context here silently reaches every
+// other list in the mod. This is the row-layout version - icon, name, value, left to right -
+// which is what every panel row still wants. The strip overrides it below, scoped to .entry.
 .value {
   margin-left: 4rem;
   font-weight: 600;
+}
+
+// The strip's own entries only - see the note on .entry. Under the icon now, not beside it, and
+// smaller: at the row version's font-size a number like "38.1K" was part of why a cell's width
+// used to depend on its digits.
+//
+// This went through two failed layouts before landing here. First, pulled up over the icon's
+// own lower edge with a negative margin: still in the column's normal flow, a negative margin
+// still counts toward the flex container's own content height even though it is negative, so
+// centering that tall a stack inside a fixed box pushed the icon's own top edge past the box and
+// overflow:hidden clipped it. Fixed by going absolute - but a dark pill big enough to read
+// clearly then had nowhere to go but straight over the icon, hiding which icon a number even
+// belonged to, which is a worse problem than the clipping was. Both were really the same
+// mistake: asking icon and number to share one footprint instead of giving each its own.
+// Normal flow again, stacked under the icon with a real gap between them - .entry is sized in
+// the first place to hold icon + gap + this pill without crowding, so nothing needs pulling out
+// of flow to fit.
+.entry .value {
+  margin: 1rem 0 0;
+  padding: 0.8rem 4rem;
+  border-radius: 6rem;
+  text-align: center;
+  font-size: 12rem;
+  line-height: 1;
+  font-weight: 700;
+  white-space: nowrap;
+  background-color: rgba(0, 0, 0, 0.6);
 }
 
 // A vital that crossed its threshold. Colour is carried by the value and a faint tint behind the
@@ -199,6 +252,18 @@
   margin-left: 6rem;
   flex-grow: 1;
   white-space: nowrap;
+}
+
+// A label splitting one breakdown into groups - passengers from cargo, so far. Margin only on
+// top: the first one should not add space before the window's own padding already gives it.
+.panelSection {
+  margin: 8rem 4rem 2rem;
+
+  font-size: 11rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5rem;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 // The recorded series. Sits above the breakdown rows when a row has both.
@@ -297,6 +362,7 @@
 }
 
 .tableLevel {
+  position: relative;
   flex-grow: 1;
   min-width: 96rem;
   white-space: nowrap;
@@ -331,6 +397,12 @@
   margin-top: 6rem;
   padding: 0 4rem;
 
+  // Capped, or the note decides how wide the window is. It already wraps, but a window sizes
+  // itself to its widest child, so one long sentence on one line dragged panels out to the
+  // 860rem maximum for no reason. Narrower than the window's minimum, so it wraps to two or
+  // three lines and the rows above are what set the width.
+  max-width: 360rem;
+
   font-size: 11rem;
   line-height: 1.4;
   color: rgba(255, 255, 255, 0.45);
@@ -343,6 +415,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+
+  // Was 25rem, a little larger than the shared 22rem .icon. Sized back down to make room for
+  // .entry .value under it without the two overlapping - see the note there. Scoped to the
+  // strip's own entries only either way - the gear, the parking list and the rest keep their size.
+  .icon {
+    width: 20rem;
+    height: 20rem;
+  }
 }
 
 .badge {
@@ -428,10 +508,17 @@
 
 // The share of the population an age band holds, drawn under its name. A shape is faster to read
 // than four numbers, and the numbers are right there when the shape raises a question.
+// Was display:block with no positioning - a block still starts where the preceding text left
+// off unless it is taken out of flow, so a longer age label ("Children") pushed its bar further
+// right than a shorter one ("Adults") did, and the bars never lined up. Absolute against
+// .tableLevel's own left edge instead, so every row's bar starts from the same point regardless
+// of its label's width - only their length still differs, which is the comparison that matters.
 .ageBar {
-  display: block;
-  height: 3rem;
+  position: absolute;
+  left: 0;
+  top: 100%;
   margin-top: 2rem;
+  height: 3rem;
   border-radius: 2rem;
   background-color: rgba(130, 190, 255, 0.55);
 }

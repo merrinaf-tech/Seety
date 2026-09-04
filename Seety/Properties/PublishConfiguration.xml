@@ -35,7 +35,9 @@ Drag the bar anywhere. It stays where you put it.
 
 ## The bar
 
-**Twenty-nine readings**, all off or on as you like: happiness, health, unemployment, homelessness, workers, tourists, active problems, electricity, water, sewage, hospital and crematorium capacity, cemetery space, four school levels, parking, garbage processing, landfill space, safety, cells, fire safety, environment quality, post, traffic flow, land value, zone demand and public transport.
+**Twenty-six readings**, all off or on as you like: happiness, health, unemployment, homelessness, workers, tourists, active problems, electricity, water delivered, sewage taken away, crematorium capacity, cemetery space, four school levels, parking, garbage processing, safety, fire safety, environment quality, post, traffic flow, land value, zone demand and public transport.
+
+Three of those carry a second figure rather than a square of their own, because they are one question asked twice: health also holds hospital capacity, garbage also holds landfill space, and safety also holds free jail and prison cells. Open the reading and both are there, each still opening its own info view.
 
 Two rules decide what is on that list:
 
@@ -58,13 +60,9 @@ Most open the matching in-game info view. The rest open a window - draggable, cl
 
 &gt; **Happiness and demographics** - who actually lives here, age against education, with each band's share of the population drawn under it. A wide band of seniors is a wave of retirements coming; a wide band of teenagers is a school problem arriving in a few years.
 
-&gt; **Zone demand** - all six demands, and behind each one the five biggest reasons it is where it is. If residential demand is flat, this tells you whether it is the taxes, the services or the land value.
+&gt; **Zone demand** - all six demands, and behind each one the five biggest reasons it sits where it does. Open the commercial, industrial or office one and the bar comes apart per resource: what the city actually wants, how many businesses trade in it, how stocked their shelves are and how staffed they are. The game tracks all of it and never draws it, so a flat commercial bar stops being a mystery. Where a resource has a company behind it, the row is clickable - it names the one losing the most ground and flies you to it.
 
-&gt; **Schools** - every school of that level, fullest first, with its roll against its capacity. Click one to fly there.
-
-&gt; **Transport** - passengers and freight by mode. Click a mode and the game's own line panel opens, already showing it.
-
-&gt; **Parking** and **Environment** - split into their parts, each opening its own map view.
+&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** each open a list of their own: the fullest schools first, passengers and freight by mode, the worst jams by vehicle kind - click one to fly there - and the parts behind the combined readings. Where the game has its own panel for one of them, clicking goes there.
 
 Some readings also carry a chart of how they got here.
 
@@ -72,7 +70,9 @@ Some readings also carry a chart of how they got here.
 
 Seety reads. It does not govern.
 
-Nothing here writes city state, changes a rule, adds a system, or puts a single byte into your savegame. The only things it changes are which info view is showing and where the camera is pointing - both because you clicked.
+The bar itself writes nothing: the only things clicking a reading changes are which info view is showing and where the camera is pointing.
+
+There is exactly one exception, and it is nowhere near the bar. The options page has a field to add (or remove) money from your treasury, City Watchdog style - off to the side, typed in on purpose. Everything described above this line still reads and only reads; this is the one deliberate control that does not, and it never fires on its own.
 
 ## Before you install
 
@@ -96,9 +96,19 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.0.0" />
+	<ModVersion Value="1.0.2" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
-	<ChangeLog>First release.</ChangeLog>
+	<ChangeLog>
+New: the traffic row opens a list of the worst jams by vehicle kind - click one to fly the camera to that jam. Built from the game's own stuck-vehicle marker, filtered to real road vehicles so stray pedestrians and animals no longer show up as "traffic", and aimed at wherever those vehicles are actually clustered rather than an arbitrary one of them.
+
+Two real bugs, fixed: vacant workplaces in the Workers window could read negative (it now reads the game's own running vacancy counter, the one behind its Workplace Availability panel, instead of a separate subtraction that could disagree with the jobs total); a school or a resource table's priority jump could land on open water when its target had no building of its own - both now show as not clickable instead of promising a destination that does not exist.
+
+Bikes now show a real parked-of-capacity count instead of a bare percentage, and both parking rows say "parked" rather than an ambiguous "of". Demographics bars now start from the same point regardless of label length. The resource priority tooltip can now name what a struggling business pays per unit for its own materials, when the game tracks that price. A resource's extra "homeless" companies moved out of the row text and into its tooltip, so a long list of them doesn't clutter every row.
+
+Renamed two readings that were confusing at a glance: "Hospital capacity" and "Crematorium capacity" are now "coverage", matching what they actually measure - plenty of room reads as good, same as every other service row.
+
+The strip's background now matches the game's own interface colour instead of a guess, corners are rounder, and the icon-and-number layout was redone so a large number no longer covers the icon above it. Dragging the strip now snaps to a grid.
+	</ChangeLog>
 </Publish>

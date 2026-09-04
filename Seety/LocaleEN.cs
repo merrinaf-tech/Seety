@@ -23,7 +23,8 @@ namespace Seety
                 { _settings.GetOptionTabLocaleID(SeetySettings.MainSection), "Main" },
 
                 { _settings.GetOptionGroupLocaleID(SeetySettings.DisplayGroup), "Display" },
-                                { _settings.GetOptionGroupLocaleID(SeetySettings.AboutGroup), "About" },
+                { _settings.GetOptionGroupLocaleID(SeetySettings.FundsGroup), "Funds" },
+                { _settings.GetOptionGroupLocaleID(SeetySettings.AboutGroup), "About" },
 
                 {
                     _settings.GetOptionLabelLocaleID(nameof(SeetySettings.ShowStrip)),
@@ -41,6 +42,24 @@ namespace Seety
                 {
                     _settings.GetOptionDescLocaleID(nameof(SeetySettings.HighlightProblems)),
                     "Colour an entry amber or red when it crosses a sensible limit. The numbers themselves never change."
+                },
+
+                {
+                    _settings.GetOptionLabelLocaleID(nameof(SeetySettings.FundsAmount)),
+                    "Amount"
+                },
+                {
+                    _settings.GetOptionDescLocaleID(nameof(SeetySettings.FundsAmount)),
+                    "How much to add to the city treasury. A negative number takes money away instead."
+                },
+
+                {
+                    _settings.GetOptionLabelLocaleID(nameof(SeetySettings.AddFunds)),
+                    "Apply to treasury"
+                },
+                {
+                    _settings.GetOptionDescLocaleID(nameof(SeetySettings.AddFunds)),
+                    "This is the one control in Seety that changes your city rather than reporting on it."
                 }
             };
         }

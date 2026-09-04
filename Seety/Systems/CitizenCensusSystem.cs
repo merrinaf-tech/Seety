@@ -81,15 +81,24 @@ namespace Seety.Systems
                 None = new[] { ComponentType.ReadOnly<Deleted>(), ComponentType.ReadOnly<Temp>() }
             });
 
+            // Same shape as Game.Simulation.CountWorkplacesSystem's own query - the system behind
+            // vanilla's Workplace Availability panel. Matching it here is what Jobs and Vacant
+            // need to agree with that panel; see WorkplaceJob for what else that meant fixing.
             _workplaceQuery = GetEntityQuery(new EntityQueryDesc
             {
-                All = new[]
+                All = new[] { ComponentType.ReadOnly<WorkProvider>() },
+                Any = new[]
                 {
-                    ComponentType.ReadOnly<WorkProvider>(),
-                    ComponentType.ReadOnly<Employee>(),
-                    ComponentType.ReadOnly<PrefabRef>()
+                    ComponentType.ReadOnly<PropertyRenter>(),
+                    ComponentType.ReadOnly<Building>()
                 },
-                None = new[] { ComponentType.ReadOnly<Deleted>(), ComponentType.ReadOnly<Temp>() }
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Game.Objects.OutsideConnection>(),
+                    ComponentType.ReadOnly<Destroyed>(),
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>()
+                }
             });
 
             _results = new NativeArray<int>(Levels * Fields, Allocator.Persistent);
@@ -142,13 +151,15 @@ namespace Seety.Systems
 
             var workplaces = new WorkplaceJob
             {
+                m_EntityType = GetEntityTypeHandle(),
                 m_WorkProviderType = GetComponentTypeHandle<WorkProvider>(true),
                 m_PrefabRefType = GetComponentTypeHandle<PrefabRef>(true),
-                m_EmployeeType = GetBufferTypeHandle<Employee>(true),
+                m_FreeWorkplacesType = GetComponentTypeHandle<FreeWorkplaces>(true),
                 m_PropertyRenterType = GetComponentTypeHandle<PropertyRenter>(true),
                 m_PrefabRefs = GetComponentLookup<PrefabRef>(true),
                 m_WorkplaceData = GetComponentLookup<WorkplaceData>(true),
                 m_SpawnableBuildings = GetComponentLookup<SpawnableBuildingData>(true),
+                m_Buildings = GetComponentLookup<Building>(true),
                 m_Results = _results
             };
 
@@ -166,64 +177,97 @@ namespace Seety.Systems
         /// So the jobs are counted the way the game counts them, through the same public helper:
         /// each employer's WorkProvider.m_MaxWorkers and its prefab's WorkplaceComplexity, run
         /// through EconomyUtils.CalculateNumberOfWorkplaces with the building level, which splits
-        /// the total across the five education levels exactly as the game does. Filled positions
-        /// come from the Employee buffer, which already records each worker's level.
+        /// the total across the five education levels exactly as the game does.
+        ///
+        /// Vacant used to be Jobs with each employee's level subtracted - which produced
+        /// impossible negative vacancies at some levels, because Jobs and "who counts as staff at
+        /// this level" were not computed the same way the game computes them. Vacant now reads
+        /// Game.Companies.FreeWorkplaces directly, the running counter CountWorkplacesSystem's own
+        /// job reads for the same purpose: the game updates it itself as workers are hired and
+        /// let go, so it can never disagree with itself the way a second, independent subtraction
+        /// could. The building-level resolution and the skip for a workplace not yet connected to
+        /// a road both mirror that same vanilla job too - both a mismatch here inflated Jobs
+        /// against the vanilla panel it should agree with.
         /// </summary>
         [BurstCompile]
         private struct WorkplaceJob : IJobChunk
         {
+            [ReadOnly] public EntityTypeHandle m_EntityType;
             [ReadOnly] public ComponentTypeHandle<WorkProvider> m_WorkProviderType;
             [ReadOnly] public ComponentTypeHandle<PrefabRef> m_PrefabRefType;
-            [ReadOnly] public BufferTypeHandle<Employee> m_EmployeeType;
+            [ReadOnly] public ComponentTypeHandle<FreeWorkplaces> m_FreeWorkplacesType;
             [ReadOnly] public ComponentTypeHandle<PropertyRenter> m_PropertyRenterType;
 
             [ReadOnly] public ComponentLookup<PrefabRef> m_PrefabRefs;
             [ReadOnly] public ComponentLookup<WorkplaceData> m_WorkplaceData;
             [ReadOnly] public ComponentLookup<SpawnableBuildingData> m_SpawnableBuildings;
+            [ReadOnly] public ComponentLookup<Building> m_Buildings;
 
             public NativeArray<int> m_Results;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in Unity.Burst.Intrinsics.v128 chunkEnabledMask)
             {
+                var entities = chunk.GetNativeArray(m_EntityType);
                 var providers = chunk.GetNativeArray(ref m_WorkProviderType);
                 var prefabs = chunk.GetNativeArray(ref m_PrefabRefType);
-                var employees = chunk.GetBufferAccessor(ref m_EmployeeType);
 
                 var hasRenter = chunk.Has<PropertyRenter>();
                 var renters = hasRenter
                     ? chunk.GetNativeArray(ref m_PropertyRenterType)
                     : default(NativeArray<PropertyRenter>);
 
+                var hasFree = chunk.Has<FreeWorkplaces>();
+                var free = hasFree
+                    ? chunk.GetNativeArray(ref m_FreeWorkplacesType)
+                    : default(NativeArray<FreeWorkplaces>);
+
                 for (var i = 0; i < providers.Length; i++)
                 {
+                    var entity = entities[i];
                     var prefab = prefabs[i].m_Prefab;
                     if (!m_WorkplaceData.HasComponent(prefab))
                     {
                         continue;
                     }
 
-                    var data = m_WorkplaceData[prefab];
-                    var level = BuildingLevel(hasRenter ? renters[i].m_Property : Entity.Null);
+                    var level = 1;
 
+                    if (hasRenter && renters[i].m_Property != Entity.Null)
+                    {
+                        var property = renters[i].m_Property;
+                        if (!m_PrefabRefs.HasComponent(property))
+                        {
+                            continue;
+                        }
+
+                        var propertyPrefab = m_PrefabRefs[property].m_Prefab;
+                        if (m_SpawnableBuildings.HasComponent(propertyPrefab))
+                        {
+                            level = m_SpawnableBuildings[propertyPrefab].m_Level;
+                        }
+                    }
+                    else if (m_Buildings.HasComponent(entity) && m_Buildings[entity].m_RoadEdge == Entity.Null)
+                    {
+                        // Not connected to a road yet - vanilla's own count leaves it out
+                        // entirely rather than promising jobs nobody can reach.
+                        continue;
+                    }
+
+                    var data = m_WorkplaceData[prefab];
                     var jobs = Game.Economy.EconomyUtils.CalculateNumberOfWorkplaces(
                         providers[i].m_MaxWorkers, data.m_Complexity, level);
 
                     AddLevels(Field.Jobs, jobs);
 
-                    // Vacancies start as every post and have the staff subtracted, so a level with
-                    // more people than posts - which happens while a building downgrades - cannot
-                    // push the column negative.
-                    AddLevels(Field.Vacant, jobs);
-
-                    var staff = employees[i];
-                    for (var e = 0; e < staff.Length; e++)
+                    if (hasFree)
                     {
-                        int lvl = staff[e].m_Level;
-                        if (lvl >= 0 && lvl < Levels)
-                        {
-                            Add(lvl, Field.Vacant, -1);
-                        }
+                        var vacancies = free[i];
+                        Add(0, Field.Vacant, vacancies.m_Uneducated);
+                        Add(1, Field.Vacant, vacancies.m_PoorlyEducated);
+                        Add(2, Field.Vacant, vacancies.m_Educated);
+                        Add(3, Field.Vacant, vacancies.m_WellEducated);
+                        Add(4, Field.Vacant, vacancies.m_HighlyEducated);
                     }
                 }
             }
@@ -235,26 +279,6 @@ namespace Seety.Systems
                 Add(2, field, jobs.m_Educated);
                 Add(3, field, jobs.m_WellEducated);
                 Add(4, field, jobs.m_HighlyEducated);
-            }
-
-            /// <summary>
-            /// The level of the building a company rents, or 1 for anything that does not rent -
-            /// city services and the like, which have no zone level.
-            /// </summary>
-            private int BuildingLevel(Entity property)
-            {
-                if (property == Entity.Null || !m_PrefabRefs.HasComponent(property))
-                {
-                    return 1;
-                }
-
-                var buildingPrefab = m_PrefabRefs[property].m_Prefab;
-                if (!m_SpawnableBuildings.HasComponent(buildingPrefab))
-                {
-                    return 1;
-                }
-
-                return m_SpawnableBuildings[buildingPrefab].m_Level;
             }
 
             private void Add(int level, Field field, int amount)

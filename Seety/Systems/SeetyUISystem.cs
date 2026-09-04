@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Colossal.UI.Binding;
+using Game.City;
 using Game.Prefabs;
 using Game.Simulation;
 using Game.UI;
@@ -28,6 +29,9 @@ namespace Seety.Systems
 
         private PrefabSystem _prefabs;
         private InfoviewsUISystem _infoviews;
+
+        /// <summary>Resolved once and kept, purely so AddFunds does not create a system on a click.</summary>
+        private CitySystem _cityForFunds;
         private Vitals.VitalReader _reader;
 
         private RawValueBinding _vitalsBinding;
@@ -50,6 +54,8 @@ namespace Seety.Systems
 
         /// <summary>Every active notification icon in the city. Built once, counted per refresh.</summary>
         private EntityQuery _iconQuery;
+        private EntityQuery _commercialCompanyQuery;
+        private EntityQuery _industrialCompanyQuery;
 
         /// <summary>Counting notifications walks a collection, so it only happens when shown.</summary>
         private bool _problemsActive;
@@ -89,6 +95,25 @@ namespace Seety.Systems
         private CitizenCensusSystem _census;
         private RawValueBinding _historyBinding;
         private RawValueBinding _notificationsBinding;
+
+        /// <summary>The blue demand bars taken apart per resource. See ResourceBreakdown.</summary>
+        private readonly Vitals.ResourceBreakdown _shops = new Vitals.ResourceBreakdown();
+
+        private readonly Vitals.ResourceBreakdown _factories = new Vitals.ResourceBreakdown();
+
+        /// <summary>
+        /// Office is not a separate company kind in this data - see ResourceBreakdown.RefreshOffice
+        /// - so this reads the same systems as _factories, filtered to the four resources
+        /// EconomyUtils.IsOfficeResource recognises.
+        /// </summary>
+        private readonly Vitals.ResourceBreakdown _offices = new Vitals.ResourceBreakdown();
+
+        /// <summary>Stuck vehicles, grouped by kind. Only refreshed while the traffic row is open.</summary>
+        private readonly Vitals.TrafficJamBreakdown _jams = new Vitals.TrafficJamBreakdown();
+
+        private EntityQuery _jamQuery;
+
+        private RawValueBinding _resourcesBinding;
         private Game.Rendering.CameraUpdateSystem _camera;
 
         /// <summary>The in-world notification icons, and whether they are currently hidden.</summary>
@@ -108,21 +133,50 @@ namespace Seety.Systems
                 EntityManager,
                 World.GetOrCreateSystemManaged<CitySystem>(),
                 World.GetOrCreateSystemManaged<CountHouseholdDataSystem>(),
-                World.GetOrCreateSystemManaged<CityStatisticsSystem>());
+                World.GetOrCreateSystemManaged<CityStatisticsSystem>(),
+                World.GetOrCreateSystemManaged<WaterStatisticsSystem>());
 
             _iconQuery = GetEntityQuery(
                 ComponentType.ReadOnly<Game.Notifications.Icon>(),
                 ComponentType.ReadOnly<PrefabRef>());
 
+            // Companies with a PrefabRef, for CompanyPriority to read each one's
+            // IndustrialProcessData.m_Output.m_Resource - the same field the game's own company
+            // count job reads to bucket a company by what it sells or makes.
+            _commercialCompanyQuery = GetEntityQuery(
+                ComponentType.ReadOnly<Game.Companies.CommercialCompany>(),
+                ComponentType.ReadOnly<PrefabRef>());
+
+            _industrialCompanyQuery = GetEntityQuery(
+                ComponentType.ReadOnly<Game.Companies.IndustrialCompany>(),
+                ComponentType.ReadOnly<PrefabRef>());
+
+            // StuckMovingObjectSystem's own query has no Car requirement: Blocker means "stuck"
+            // for anything that follows a path, and that includes pedestrians and animals, not
+            // only vehicles - a stuck pedestrian queue is not a traffic jam. Car narrows this back
+            // down to what "traffic" actually means, at the cost of trains, trams, ships and
+            // aircraft, which do not jam a road the way a stopped car does either.
+            _jamQuery = GetEntityQuery(
+                ComponentType.ReadOnly<Game.Vehicles.Blocker>(),
+                ComponentType.ReadOnly<Game.Vehicles.Car>(),
+                ComponentType.ReadOnly<PrefabRef>(),
+                ComponentType.Exclude<Game.Common.Deleted>(),
+                ComponentType.Exclude<Game.Tools.Temp>());
+
             _camera = World.GetOrCreateSystemManaged<Game.Rendering.CameraUpdateSystem>();
             _names = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
             _census = World.GetOrCreateSystemManaged<CitizenCensusSystem>();
 
+            // Building required, matching Game.Buildings.InitializeSchoolSystem's own
+            // m_CreatedSchoolQuery exactly - without it this query could also pick up a School
+            // component sitting on something that is not the building itself, which is where a
+            // missing Transform (see SchoolBreakdown.HasPosition) most plausibly comes from.
             _schoolQuery = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[]
                 {
                     ComponentType.ReadOnly<Game.Buildings.School>(),
+                    ComponentType.ReadOnly<Game.Buildings.Building>(),
                     ComponentType.ReadOnly<Game.Buildings.Student>(),
                     ComponentType.ReadOnly<PrefabRef>()
                 },
@@ -159,6 +213,8 @@ namespace Seety.Systems
             // Without this the settings have no way to reach the strip.
             Mod.RegisterUISystem(this);
 
+            _cityForFunds = World.GetOrCreateSystemManaged<CitySystem>();
+
             RebuildActiveVitals();
 
             _vitalsBinding = new RawValueBinding(Group, "vitals", WriteVitals);
@@ -180,8 +236,13 @@ namespace Seety.Systems
             _notificationsBinding = new RawValueBinding(Group, "notifications", WriteNotifications);
             AddBinding(_notificationsBinding);
 
+            _resourcesBinding = new RawValueBinding(Group, "resources", WriteResources);
+            AddBinding(_resourcesBinding);
+
             AddBinding(new TriggerBinding<string>(Group, "jumpToProblem", OnJumpToProblem));
+            AddBinding(new TriggerBinding<string>(Group, "jumpToJam", OnJumpToJam));
             AddBinding(new TriggerBinding<int>(Group, "jumpToSchool", OnJumpToSchool));
+            AddBinding(new TriggerBinding<string, int>(Group, "jumpToResource", OnJumpToResource));
             AddBinding(new TriggerBinding<string>(Group, "openInfoview", OnOpenInfoview));
 
             _configModeBinding = new ValueBinding<bool>(Group, "configMode", false);
@@ -207,6 +268,37 @@ namespace Seety.Systems
             // The UI sends back the id of the vital that was clicked.
             AddBinding(new TriggerBinding<string>(Group, "activate", OnVitalActivated));
             AddBinding(new TriggerBinding<bool>(Group, "setVisible", OnSetVisible));
+        }
+
+        /// <summary>
+        /// Adds (or, given a negative amount, removes) money from the city treasury.
+        ///
+        /// The one place in Seety that writes to the save - see the note on SeetySettings.AddFunds,
+        /// which is the only caller. PlayerMoney lives on the city entity as a plain component,
+        /// not behind a system method, so this is a direct read-modify-write: no Harmony, no job,
+        /// the same EntityManager access every other write in this file already uses.
+        /// </summary>
+        public void AddFunds(int amount)
+        {
+            try
+            {
+                var city = _cityForFunds == null ? Entity.Null : _cityForFunds.City;
+                if (city == Entity.Null || !EntityManager.HasComponent<PlayerMoney>(city))
+                {
+                    Mod.Log.Info("No city loaded; ignoring the funds request.");
+                    return;
+                }
+
+                var money = EntityManager.GetComponentData<PlayerMoney>(city);
+                money.Add(amount);
+                EntityManager.SetComponentData(city, money);
+
+                Mod.Log.Info("Added " + amount + " to the city treasury from the options page.");
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Error(e, "Could not change the city treasury.");
+            }
         }
 
         /// <summary>Called when the settings change which vitals are shown, or in what order.</summary>
@@ -376,6 +468,18 @@ namespace Seety.Systems
                 _notificationsBinding.Update();
             }
 
+            if (_expandedId == DemandVitalId)
+            {
+                RefreshResources();
+                _resourcesBinding.Update();
+            }
+
+            if (_expandedId == "traffic")
+            {
+                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names);
+                _notificationsBinding.Update();
+            }
+
             if (_transportActive)
             {
                 var before = _transport.PassengerTotal;
@@ -426,69 +530,93 @@ namespace Seety.Systems
 
             foreach (var vital in _active)
             {
-                float value;
-                _values.TryGetValue(vital.Id, out value);
-
-                writer.TypeBegin("seety.Vital");
-                writer.PropertyName("id");
-                writer.Write(vital.Id);
-                writer.PropertyName("title");
-                writer.Write(vital.Title);
-                writer.PropertyName("label");
-                writer.Write(vital.Label);
-                writer.PropertyName("icon");
-                writer.Write(IconFor(vital, value));
-                writer.PropertyName("badge");
-                writer.Write(vital.Badge ?? string.Empty);
-                writer.PropertyName("value");
-                writer.Write(value);
-                writer.PropertyName("format");
-                writer.Write((int)vital.Format);
-                writer.PropertyName("level");
-                writer.Write((int)Evaluate(vital, value));
-                writer.PropertyName("clickable");
-                writer.Write(ResolveEntity(vital) != Entity.Null);
-
-                // Service and hazard rows get their number from vanilla's own bindings, which
-                // only the UI can subscribe to. Send it what it needs to do that, plus the
-                // threshold, since the value it judges never passes through here.
-                var binding = vital.Binding;
-                writer.PropertyName("bindGroup");
-                writer.Write(binding == null ? string.Empty : binding.Group);
-                writer.PropertyName("bindSupply");
-                writer.Write(binding == null ? string.Empty : binding.Supply);
-                writer.PropertyName("bindDemand");
-                writer.Write(binding == null ? string.Empty : binding.Demand);
-                writer.PropertyName("bindSupply2");
-                writer.Write(binding == null ? string.Empty : binding.Supply2);
-                writer.PropertyName("bindDemand2");
-                writer.Write(binding == null ? string.Empty : binding.Demand2);
-                writer.PropertyName("bindKind");
-                writer.Write(binding == null ? 0 : (int)binding.Kind);
-
-                var threshold = vital.Threshold;
-                writer.PropertyName("warning");
-                writer.Write(threshold == null ? 0f : threshold.Warning);
-                writer.PropertyName("critical");
-                writer.Write(threshold == null ? 0f : threshold.Critical);
-                writer.PropertyName("lowIsBad");
-                writer.Write(threshold != null && threshold.LowIsBad);
-                writer.PropertyName("hasThreshold");
-                writer.Write(threshold != null && HighlightingEnabled());
-                writer.PropertyName("hasHistory");
-                writer.Write(vital.History.HasValue);
-                writer.PropertyName("invert");
-                writer.Write(vital.Invert);
-                writer.PropertyName("factors");
-                writer.Write(vital.Factors ?? string.Empty);
-                writer.PropertyName("enabled");
-                writer.Write(Mod.Settings == null || Mod.Settings.IsVitalEnabled(vital.Id));
-
-                writer.TypeEnd();
+                WriteVital(writer, vital, true);
             }
 
             writer.ArrayEnd();
         }
+
+        /// <summary>
+        /// One reading. Written for the bar, and again for each reading folded into a bar row's
+        /// window - see Vital.Companions.
+        /// </summary>
+        /// <param name="withCompanions">
+        /// False for a companion itself. Nesting stops at one level: a companion's own companion
+        /// list would have nowhere to be shown, so it is always sent empty rather than walked.
+        /// </param>
+        private void WriteVital(IJsonWriter writer, Vitals.Vital vital, bool withCompanions)
+        {
+            float value;
+            _values.TryGetValue(vital.Id, out value);
+
+            writer.TypeBegin("seety.Vital");
+            writer.PropertyName("id");
+            writer.Write(vital.Id);
+            writer.PropertyName("title");
+            writer.Write(vital.Title);
+            writer.PropertyName("label");
+            writer.Write(vital.Label);
+            writer.PropertyName("icon");
+            writer.Write(IconFor(vital, value));
+            writer.PropertyName("badge");
+            writer.Write(vital.Badge ?? string.Empty);
+            writer.PropertyName("value");
+            writer.Write(value);
+            writer.PropertyName("format");
+            writer.Write((int)vital.Format);
+            writer.PropertyName("level");
+            writer.Write((int)Evaluate(vital, value));
+            writer.PropertyName("clickable");
+            writer.Write(ResolveEntity(vital) != Entity.Null);
+
+            // Service and hazard rows get their number from vanilla's own bindings, which
+            // only the UI can subscribe to. Send it what it needs to do that, plus the
+            // threshold, since the value it judges never passes through here.
+            var binding = vital.Binding;
+            writer.PropertyName("bindGroup");
+            writer.Write(binding == null ? string.Empty : binding.Group);
+            writer.PropertyName("bindSupply");
+            writer.Write(binding == null ? string.Empty : binding.Supply);
+            writer.PropertyName("bindDemand");
+            writer.Write(binding == null ? string.Empty : binding.Demand);
+            writer.PropertyName("bindSupply2");
+            writer.Write(binding == null ? string.Empty : binding.Supply2);
+            writer.PropertyName("bindDemand2");
+            writer.Write(binding == null ? string.Empty : binding.Demand2);
+            writer.PropertyName("bindKind");
+            writer.Write(binding == null ? 0 : (int)binding.Kind);
+
+            var threshold = vital.Threshold;
+            writer.PropertyName("warning");
+            writer.Write(threshold == null ? 0f : threshold.Warning);
+            writer.PropertyName("critical");
+            writer.Write(threshold == null ? 0f : threshold.Critical);
+            writer.PropertyName("lowIsBad");
+            writer.Write(threshold != null && threshold.LowIsBad);
+            writer.PropertyName("hasThreshold");
+            writer.Write(threshold != null && HighlightingEnabled());
+            writer.PropertyName("hasHistory");
+            writer.Write(vital.History.HasValue);
+            writer.PropertyName("invert");
+            writer.Write(vital.Invert);
+            writer.PropertyName("factors");
+            writer.Write(vital.Factors ?? string.Empty);
+            writer.PropertyName("enabled");
+            writer.Write(Mod.Settings == null || Mod.Settings.IsVitalEnabled(vital.Id));
+
+            var companions = withCompanions ? vital.Companions : EmptyCompanions;
+            writer.PropertyName("companions");
+            writer.ArrayBegin((uint)companions.Length);
+            foreach (var companion in companions)
+            {
+                WriteVital(writer, companion, false);
+            }
+            writer.ArrayEnd();
+
+            writer.TypeEnd();
+        }
+
+        private static readonly Vitals.Vital[] EmptyCompanions = new Vitals.Vital[0];
 
         /// <summary>Vanilla's own warning triangle, used only when there is something to warn about.</summary>
         private const string WarningIcon = "Media/Misc/Warning.svg";
@@ -552,8 +680,11 @@ namespace Seety.Systems
             // own: adding another expandable row later means writing another entry here.
             var schools = _schools.Entries;
             var hasSchools = schools.Count > 0;
+            var jams = _jams.Groups;
+            var hasJams = jams.Count > 0;
 
-            var count = (uint)((_problemsActive ? 1 : 0) + (_transportActive ? 1 : 0) + (hasSchools ? 1 : 0));
+            var count = (uint)((_problemsActive ? 1 : 0) + (_transportActive ? 1 : 0)
+                + (hasSchools ? 1 : 0) + (hasJams ? 1 : 0));
             writer.ArrayBegin(count);
 
             if (_problemsActive)
@@ -563,6 +694,16 @@ namespace Seety.Systems
                 writer.Write("problems");
                 writer.PropertyName("rows");
                 WriteProblemRows(writer);
+                writer.TypeEnd();
+            }
+
+            if (hasJams)
+            {
+                writer.TypeBegin("seety.Breakdown");
+                writer.PropertyName("id");
+                writer.Write("traffic");
+                writer.PropertyName("rows");
+                WriteJamRows(writer, jams);
                 writer.TypeEnd();
             }
 
@@ -623,7 +764,9 @@ namespace Seety.Systems
                 writer.PropertyName("level");
                 writer.Write((int)level);
                 writer.PropertyName("clickable");
-                writer.Write(true);
+                // A school entity with no Transform - some upgrade or sub-building entities still
+                // match the School query - has nowhere for the camera to go. See SchoolEntry.HasPosition.
+                writer.Write(school.HasPosition);
                 writer.PropertyName("action");
                 writer.Write("school:" + i);
                 writer.TypeEnd();
@@ -651,6 +794,99 @@ namespace Seety.Systems
             {
                 var group = groups[i];
                 WriteRow(writer, group.Id, group.Icon, group.Count, group.Level, true, "jump");
+            }
+
+            writer.ArrayEnd();
+        }
+
+        /// <summary>
+        /// The stuck vehicles behind the traffic row, worst kind first. One icon for all of them
+        /// - the traffic row's own, already verified - since there is no reliable way to find a
+        /// per-vehicle-kind icon file the way a notification's name can be turned into one.
+        /// </summary>
+        private static void WriteJamRows(IJsonWriter writer, System.Collections.Generic.IReadOnlyList<Vitals.TrafficJamGroup> jams)
+        {
+            writer.ArrayBegin((uint)jams.Count);
+
+            foreach (var group in jams)
+            {
+                WriteRow(writer, group.Name, "Media/Game/Icons/Traffic.svg", group.Count,
+                    Vitals.VitalLevel.Normal, true, "jam:" + group.Name);
+            }
+
+            writer.ArrayEnd();
+        }
+
+        /// <summary>The vital whose window carries the per-resource tables.</summary>
+        private const string DemandVitalId = "demand";
+
+        /// <summary>
+        /// Rereads both resource tables.
+        ///
+        /// Only while the demand window is open. Each read completes a simulation job handle, and
+        /// doing that on every refresh for a window nobody has opened would make the whole strip
+        /// pay for a table almost no one is looking at.
+        /// </summary>
+        private void RefreshResources()
+        {
+            var companies = World.GetOrCreateSystemManaged<CountCompanyDataSystem>();
+            var industrialDemand = World.GetOrCreateSystemManaged<IndustrialDemandSystem>();
+
+            _shops.RefreshCommercial(
+                World.GetOrCreateSystemManaged<CommercialDemandSystem>(), companies,
+                _commercialCompanyQuery, EntityManager, _names);
+
+            _factories.RefreshIndustrial(
+                industrialDemand, companies, _industrialCompanyQuery, EntityManager, _names);
+
+            // Same company query as _factories - see the note on _offices. Office is a resource
+            // filter over industrial's own data, not a company kind of its own.
+            _offices.RefreshOffice(
+                industrialDemand, companies, _industrialCompanyQuery, EntityManager, _names);
+        }
+
+        /// <summary>
+        /// All three resource tables, keyed so the UI can show whichever demand row was opened.
+        /// </summary>
+        private void WriteResources(IJsonWriter writer)
+        {
+            writer.TypeBegin("seety.Resources");
+            writer.PropertyName("commercial");
+            WriteResourceRows(writer, _shops.Entries);
+            writer.PropertyName("industrial");
+            WriteResourceRows(writer, _factories.Entries);
+            writer.PropertyName("office");
+            WriteResourceRows(writer, _offices.Entries);
+            writer.TypeEnd();
+        }
+
+        private static void WriteResourceRows(IJsonWriter writer,
+            IReadOnlyList<Vitals.ResourceEntry> rows)
+        {
+            writer.ArrayBegin((uint)rows.Count);
+
+            foreach (var row in rows)
+            {
+                writer.TypeBegin("seety.ResourceRow");
+                writer.PropertyName("name");
+                writer.Write(row.Name);
+                writer.PropertyName("demand");
+                writer.Write(row.Demand);
+                writer.PropertyName("companies");
+                writer.Write(row.Companies);
+                writer.PropertyName("noPremises");
+                writer.Write(row.NoPremises);
+                writer.PropertyName("stock");
+                writer.Write(row.Stock);
+                writer.PropertyName("staff");
+                writer.Write(row.Staff);
+                writer.PropertyName("resourceIndex");
+                writer.Write(row.ResourceIndex);
+                writer.PropertyName("priorityName");
+                writer.Write(row.PriorityName ?? string.Empty);
+                writer.PropertyName("priorityReason");
+                writer.Write(row.PriorityReason ?? string.Empty);
+                writer.TypeEnd();
             }
 
             writer.ArrayEnd();
@@ -725,6 +961,21 @@ namespace Seety.Systems
             _expandedId = id ?? string.Empty;
             _historyBinding.Update();
 
+            if (_expandedId == DemandVitalId)
+            {
+                RefreshResources();
+            }
+
+            if (_resourcesBinding != null)
+            {
+                _resourcesBinding.Update();
+            }
+
+            if (_expandedId == "traffic")
+            {
+                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names);
+            }
+
             if (NeedsCensus)
             {
                 RefreshWorkforce();
@@ -775,14 +1026,65 @@ namespace Seety.Systems
         {
             try
             {
-                if (!_schools.Jump(index, _camera))
+                // Logged on both outcomes, temporarily - a school row that a player reports as
+                // "does nothing" needs to say whether the click reached here at all, and if it
+                // did, exactly why Jump refused it: index out of range, no HasPosition, or no
+                // active camera controller are three different problems that all looked
+                // identical from the strip.
+                var entries = _schools.Entries;
+                var inRange = index >= 0 && index < entries.Count;
+                var name = inRange ? entries[index].Name : "(out of range)";
+                var hasPosition = inRange && entries[index].HasPosition;
+                var cameraReady = _camera != null && _camera.activeCameraController != null;
+
+                if (_schools.Jump(index, _camera))
                 {
-                    Mod.Log.Info("Nothing to jump to at school index " + index + ".");
+                    Mod.Log.Info("Jumped to school index " + index + " ('" + name + "').");
+                }
+                else
+                {
+                    Mod.Log.Info("Nothing to jump to at school index " + index + " ('" + name +
+                        "'): entries=" + entries.Count + " inRange=" + inRange +
+                        " hasPosition=" + hasPosition + " cameraReady=" + cameraReady + ".");
                 }
             }
             catch (Exception e)
             {
                 Mod.Log.Error(e, "Could not jump to a school.");
+            }
+        }
+
+        /// <summary>
+        /// Jumps to whichever company is worst off for one resource - see CompanyPriority. All
+        /// three breakdowns share the resource index space, since it comes from the same
+        /// EconomyUtils.GetResourceIndex either way.
+        /// </summary>
+        private void OnJumpToResource(string kind, int resourceIndex)
+        {
+            try
+            {
+                Vitals.ResourceBreakdown breakdown;
+                switch (kind)
+                {
+                    case "industrial":
+                        breakdown = _factories;
+                        break;
+                    case "office":
+                        breakdown = _offices;
+                        break;
+                    default:
+                        breakdown = _shops;
+                        break;
+                }
+
+                if (!breakdown.Jump(resourceIndex, _camera))
+                {
+                    Mod.Log.Info("Nothing to jump to for resource " + resourceIndex + " (" + kind + ").");
+                }
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Error(e, "Could not jump to a resource's priority company.");
             }
         }
 
@@ -970,6 +1272,22 @@ namespace Seety.Systems
             catch (Exception e)
             {
                 Mod.Log.Error(e, "Could not jump to '" + id + "'.");
+            }
+        }
+
+        /// <summary>Jumps to the first stuck vehicle of one kind - see TrafficJamBreakdown.Jump.</summary>
+        private void OnJumpToJam(string name)
+        {
+            try
+            {
+                if (!_jams.Jump(name, _camera))
+                {
+                    Mod.Log.Info("Nothing to jump to for jam '" + name + "'.");
+                }
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Error(e, "Could not jump to a traffic jam.");
             }
         }
 

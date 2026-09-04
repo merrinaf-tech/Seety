@@ -15,12 +15,13 @@ namespace Seety.Settings
     /// rather than a fixed catalogue.
     /// </summary>
     [FileLocation("ModsSettings/Seety/Seety")]
-    [SettingsUIGroupOrder(DisplayGroup, AboutGroup)]
-    [SettingsUIShowGroupName(DisplayGroup, AboutGroup)]
+    [SettingsUIGroupOrder(DisplayGroup, FundsGroup, AboutGroup)]
+    [SettingsUIShowGroupName(DisplayGroup, FundsGroup, AboutGroup)]
     public class SeetySettings : ModSetting
     {
         public const string MainSection = "Main";
         public const string DisplayGroup = "DisplayGroup";
+        public const string FundsGroup = "FundsGroup";
         public const string AboutGroup = "AboutGroup";
 
         private bool _showStrip = true;
@@ -174,6 +175,39 @@ namespace Seety.Settings
             Mod.OnVitalsChanged();
         }
 
+        private int _fundsAmount;
+
+        /// <summary>
+        /// The one field on this page that writes to the save. Everything else on the bar only
+        /// reads and points the camera; this changes the treasury. No confirmation dialog on the
+        /// button below - clicking a button under a section called "Funds" after typing an amount
+        /// is already the deliberate step, and the description on this page already says what it
+        /// does. See DESIGN.md for why this exists at all.
+        ///
+        /// SettingsUITextInput does not render here - it is not used anywhere in the base game
+        /// either, and an int field with only that attribute produced no widget at all. A slider
+        /// is the form every other numeric option in this framework actually uses, and it comes
+        /// with a directly-typable value next to the handle, which is what "type a number" needed.
+        /// </summary>
+        [SettingsUISection(MainSection, FundsGroup)]
+        [SettingsUISlider(min = -10000000f, max = 10000000f, step = 10000f)]
+        public int FundsAmount
+        {
+            get { return _fundsAmount; }
+            set { _fundsAmount = value; }
+        }
+
+        /// <summary>
+        /// Adds FundsAmount to the city treasury. A negative amount subtracts, since
+        /// PlayerMoney.Add already accepts one - no separate control needed for that.
+        /// </summary>
+        [SettingsUISection(MainSection, FundsGroup)]
+        [SettingsUIButton]
+        public bool AddFunds
+        {
+            set { Mod.OnAddFunds(_fundsAmount); }
+        }
+
         // There is deliberately no list of vitals here any more.
         //
         // Thirty checkboxes on an options page is a list nobody reads, and it asks the player to
@@ -221,6 +255,7 @@ namespace Seety.Settings
             _stripX = DefaultStripX;
             _stripY = DefaultStripY;
             _disabled = string.Empty;
+            _fundsAmount = 0;
         }
     }
 }

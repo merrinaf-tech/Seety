@@ -41,6 +41,12 @@ interface Vital {
   factors: string;
   /** Whether the player has this row switched on. Only meaningful in configuration mode. */
   enabled: boolean;
+
+  /**
+   * Readings folded into this row's window rather than given their own square on the bar.
+   * Always empty on a companion itself - see Vital.Companions.
+   */
+  companions: Vital[];
 }
 
 /** Must match Seety.Vitals.VanillaKind on the C# side. */
@@ -131,7 +137,7 @@ interface BreakdownRow {
   clickable: boolean;
   /** Appended to the count. "%" for the school list, empty for a plain tally. */
   suffix: string;
-  /** "jump", "passenger", "cargo", "school:N", or empty. See SeetyUISystem.WriteRow. */
+  /** "jump", "passenger:X", "cargo:X", "school:N", or empty. See SeetyUISystem.WriteRow. */
   action: string;
 }
 
@@ -189,6 +195,31 @@ interface AgeRow {
 
 const demographics$ = bindValue<AgeRow[]>("seety", "demographics", []);
 
+/** One good, and how the city is doing at selling or making it. See ResourceEntry. */
+interface ResourceRow {
+  name: string;
+  /** Demand relative to the good the city wants most, 0-100. See ResourceBreakdown.Normalize. */
+  demand: number;
+  companies: number;
+  /** Companies of that trade with nowhere to operate from. */
+  noPremises: number;
+  /** Shelf stock (commercial) or production against demand (industrial), 0-100. */
+  stock: number;
+  staff: number;
+  /** For the jumpToResource trigger. See EconomyUtils.GetResourceIndex. */
+  resourceIndex: number;
+  /** The company currently losing the most ground on this resource, or empty. See CompanyPriority. */
+  priorityName: string;
+  /** The biggest cost behind that, or empty. */
+  priorityReason: string;
+}
+
+const resources$ = bindValue<{
+  commercial: ResourceRow[];
+  industrial: ResourceRow[];
+  office: ResourceRow[];
+}>("seety", "resources", { commercial: [], industrial: [], office: [] });
+
 /** The five education levels, shortened to fit a column head. */
 const LEVEL_NAMES = ["None", "Poor", "Educated", "Well", "Highly"];
 
@@ -203,7 +234,14 @@ const PARKING_ID = "parking";
 
 const parkingCapacity$ = bindValue<number>("roadsInfo", "parkingCapacity", 0);
 const parkedCars$ = bindValue<number>("roadsInfo", "parkedCars", 0);
-const bikeParking$ = bindValue<IndicatorValue | null>("bikesInfo", "bikeParkingAvailability", null);
+
+/**
+ * Raw bike parking counts. bikesInfo also exposes bikeParkingAvailability as a pre-reduced
+ * IndicatorValue with no numbers behind it - this is the sibling binding vanilla computes the
+ * same job's results into, {x: parked, y: capacity}, so bikes can be read the same way cars are
+ * instead of as a bare percentage.
+ */
+const bikeParking$ = bindValue<{ x: number; y: number }>("bikesInfo", "bikeParking", { x: 0, y: 0 });
 
 /** One reason behind a demand figure, as vanilla writes it. */
 interface Factor {
@@ -220,8 +258,28 @@ const ZERO$ = bindValue<number>("seety", "posX", 0);
  */
 const DRAG_THRESHOLD = 4;
 
+/**
+ * The strip snaps to a multiple of this many rem while being dragged, so it is easy to land it
+ * back on the exact same spot, or roughly level with another anchored panel, rather than
+ * fighting for a pixel-perfect drop. Not tied to the vanilla toolbar's own button spacing -
+ * nothing here reads that - just a plain, even grid.
+ */
+const DRAG_GRID = 8;
+
+function snapToGrid(value: number): number {
+  return Math.round(value / DRAG_GRID) * DRAG_GRID;
+}
+
 /** The row whose window carries the workforce-against-workplaces table. Matches the C# side. */
 const WORKFORCE_ID = "workers";
+
+/**
+ * The row whose window carries the stuck-vehicle list. Listed explicitly here rather than relying
+ * on `breakdown !== undefined` below, since that breakdown only exists once at least one jam has
+ * already been found - refreshed only while this window is open, the same as the resource tables
+ * - which would otherwise leave the row unclickable until the very thing opening it existed.
+ */
+const TRAFFIC_ID = "traffic";
 
 /** Stands in for a notification type whose own icon file is missing. */
 const FALLBACK_ICON = "Media/Game/Icons/Notifications.svg";
@@ -325,21 +383,31 @@ function activateRow(row: BreakdownRow) {
     return;
   }
 
-  switch (row.action) {
-    case "jump":
-      trigger("seety", "jumpToProblem", row.id);
-      return;
-    // The panel can be opened after all: GamePanelUISystem exposes
-    // game.showTransportationOverviewPanel, taking the tab as an int. Select the mode first so
-    // the panel comes up already showing that mode's lines.
-    case "passenger":
-      trigger("transportationOverview", "setSelectedPassengerType", row.id);
-      trigger("game", "showTransportationOverviewPanel", 0);
-      return;
-    case "cargo":
-      trigger("transportationOverview", "setSelectedCargoType", row.id);
-      trigger("game", "showTransportationOverviewPanel", 1);
-      return;
+  // The panel can be opened after all: GamePanelUISystem exposes
+  // game.showTransportationOverviewPanel, taking the tab as an int. Select the mode first so the
+  // panel comes up already showing that mode's lines.
+  //
+  // The type name after the colon, not row.id: vanilla matches a mode by
+  // Enum.GetName(typeof(TransportType), ...), and a row's display label is not always that name
+  // (cargo trucks are "Car" underneath). See TransportMode.Action in TransportBreakdown.cs.
+  if (row.action.startsWith("passenger:")) {
+    trigger("transportationOverview", "setSelectedPassengerType", row.action.slice(10));
+    trigger("game", "showTransportationOverviewPanel", 0);
+    return;
+  }
+  if (row.action.startsWith("cargo:")) {
+    trigger("transportationOverview", "setSelectedCargoType", row.action.slice(6));
+    trigger("game", "showTransportationOverviewPanel", 1);
+    return;
+  }
+
+  if (row.action.startsWith("jam:")) {
+    trigger("seety", "jumpToJam", row.action.slice(4));
+    return;
+  }
+
+  if (row.action === "jump") {
+    trigger("seety", "jumpToProblem", row.id);
   }
 }
 
@@ -362,6 +430,47 @@ function fillStyle(row: BreakdownRow): React.CSSProperties | undefined {
   return { color: `rgb(${r}, ${g}, ${b})` };
 }
 
+/** One row inside any breakdown panel: icon, name, number, click if applicable. */
+const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
+  const classes = [styles.panelRow];
+  if (row.level === VitalLevel.Critical) {
+    classes.push(styles.critical);
+  } else if (row.level === VitalLevel.Warning) {
+    classes.push(styles.warning);
+  }
+  if (row.clickable) {
+    classes.push(styles.clickable);
+  }
+
+  return (
+    <Tooltip
+      tooltip={
+        row.action === "jump" || row.action.startsWith("jam:")
+          ? `${row.id} - click to go there`
+          : row.action.startsWith("school:")
+          ? row.clickable
+            ? `${row.id} - click to go there`
+            : row.id
+          : row.clickable
+          ? `${row.id} - click to select this mode in the transport overview`
+          : row.id
+      }
+    >
+      <div
+        className={classes.join(" ")}
+        onClick={row.clickable ? () => activateRow(row) : undefined}
+      >
+        <RowIcon src={row.icon} />
+        <span className={styles.panelName}>{row.id}</span>
+        <span className={styles.value} style={fillStyle(row)}>
+          {row.count}
+          {row.action.startsWith("school:") ? "%" : row.suffix}
+        </span>
+      </div>
+    </Tooltip>
+  );
+};
+
 const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
   if (rows.length === 0) {
     return <div className={styles.panelEmpty}>Nothing to report</div>;
@@ -369,44 +478,47 @@ const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
 
   return (
     <>
-      {rows.map((row) => {
-        const classes = [styles.panelRow];
-        if (row.level === VitalLevel.Critical) {
-          classes.push(styles.critical);
-        } else if (row.level === VitalLevel.Warning) {
-          classes.push(styles.warning);
-        }
-        if (row.clickable) {
-          classes.push(styles.clickable);
-        }
+      {rows.map((row) => (
+        <BreakdownRowItem key={row.id} row={row} />
+      ))}
+    </>
+  );
+};
 
-        return (
-          <Tooltip
-            key={row.id}
-            tooltip={
-              row.action === "jump"
-                ? `${row.id} - click to go there`
-                : row.action.startsWith("school:")
-                ? `${row.id} - click to go there`
-                : row.clickable
-                ? `${row.id} - click to select this mode in the transport overview`
-                : row.id
-            }
-          >
-            <div
-              className={classes.join(" ")}
-              onClick={row.clickable ? () => activateRow(row) : undefined}
-            >
-              <RowIcon src={row.icon} />
-              <span className={styles.panelName}>{row.id}</span>
-              <span className={styles.value} style={fillStyle(row)}>
-                {row.count}
-                {row.action.startsWith("school:") ? "%" : row.suffix}
-              </span>
-            </div>
-          </Tooltip>
-        );
-      })}
+/**
+ * The transport list, split into passengers and cargo rather than one run-on list. The two
+ * groups are already distinguishable in the data - see TransportMode.Action - this just draws
+ * that distinction instead of throwing it away.
+ */
+const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
+  if (rows.length === 0) {
+    return <div className={styles.panelEmpty}>Nothing to report</div>;
+  }
+
+  const passengers = rows.filter((r) => r.action.startsWith("passenger:"));
+  const cargo = rows.filter((r) => r.action.startsWith("cargo:"));
+
+  return (
+    <>
+      {passengers.length > 0 ? (
+        <div className={styles.panelSection}>Passengers</div>
+      ) : null}
+      {passengers.map((row) => (
+        <BreakdownRowItem key={row.id} row={row} />
+      ))}
+
+      {cargo.length > 0 ? (
+        <div className={styles.panelSection}>Cargo</div>
+      ) : null}
+      {cargo.map((row) => (
+        <BreakdownRowItem key={row.id} row={row} />
+      ))}
+
+      <div className={styles.tableNote}>
+        Carried since the game last rolled its counters over, not aboard right now - the same
+        rolling total the game&apos;s own transportation overview is built from. A busy line reads
+        high even at 3am with nobody on it.
+      </div>
     </>
   );
 };
@@ -816,6 +928,132 @@ function spaceOut(name: string): string {
  * One strip row instead of six: they are usually all low together, and six cells for that was a
  * third of the bar spent on one idea.
  */
+/**
+ * The blue bar, taken apart.
+ *
+ * Vanilla gives one number for commercial demand and one for industrial, which says whether to
+ * zone but never what for. The game tracks all of this per resource already - it just never draws
+ * it. See Seety.Vitals.ResourceBreakdown.
+ *
+ * No icons: resource artwork lives on the resource prefabs rather than at a fixed path, so a
+ * guessed filename would have shown a column of broken images.
+ */
+type ResourceKind = "commercial" | "industrial" | "office";
+
+/**
+ * Per-kind labels. Office reads the industrial columns - it is the same production-against-
+ * demand shape, not a shop with shelves - see Seety.Vitals.ResourceBreakdown.RefreshOffice.
+ */
+const RESOURCE_TABLE_TEXT: Record<
+  ResourceKind,
+  { companyHead: string; stockHead: string; note: string }
+> = {
+  commercial: {
+    companyHead: "Shops",
+    stockHead: "Stock",
+    note: 'Wanted is demand relative to the good the city wants most - 100% is the top of the list, not "fully satisfied". Amber stock means the shops are there but the shelves are empty - that is a supply problem, not a zoning one. Homeless companies want premises.',
+  },
+  industrial: {
+    companyHead: "Plants",
+    stockHead: "Made",
+    note: "Wanted is demand relative to the good the city wants most; Made is production against that demand. Amber means the city is asking for more than anyone is producing.",
+  },
+  office: {
+    companyHead: "Offices",
+    stockHead: "Made",
+    note: "The same reading as industrial, for the four resources - software, telecom, financial services, media - the game itself counts as office work rather than manufacturing.",
+  },
+};
+
+const ResourceTable = ({ kind }: { kind: ResourceKind }) => {
+  const all = useValue(resources$);
+  const rows = all?.[kind] ?? [];
+
+  if (rows.length === 0) {
+    return <div className={styles.panelEmpty}>Nothing traded yet</div>;
+  }
+
+  const text = RESOURCE_TABLE_TEXT[kind];
+
+  return (
+    <div className={styles.table}>
+      <div className={`${styles.tableRow} ${styles.tableHead}`}>
+        <span className={styles.tableLevel}>Resource</span>
+        <span className={styles.tableCell}>Wanted</span>
+        <span className={styles.tableCell}>{text.companyHead}</span>
+        <span className={styles.tableCell}>{text.stockHead}</span>
+        <span className={styles.tableCell}>Staff</span>
+      </div>
+
+      {rows.map((r) => {
+        const clickable = r.priorityName !== "";
+        const row = (
+          <div
+            className={`${styles.tableRow} ${clickable ? styles.clickable : ""}`}
+            onClick={
+              clickable
+                ? () => trigger("seety", "jumpToResource", kind, r.resourceIndex)
+                : undefined
+            }
+          >
+            <span className={styles.tableLevel}>{spaceOut(r.name)}</span>
+            <span className={styles.tableCell}>{Math.round(r.demand)}%</span>
+            <span className={styles.tableCell}>{r.companies}</span>
+            {/* Wanted but unstocked is the supply-chain case: the shops exist and the shelves
+                are empty, so zoning more of them would not help. */}
+            <span
+              className={`${styles.tableCell} ${
+                r.demand > 0 && r.stock < 25 ? styles.tableShort : ""
+              }`}
+            >
+              {Math.round(r.stock)}%
+            </span>
+            <span
+              className={`${styles.tableCell} ${r.staff < 50 ? styles.tableShort : ""}`}
+            >
+              {Math.round(r.staff)}%
+            </span>
+          </div>
+        );
+
+        // Homeless companies want premises - worth knowing, but writing it into the row itself
+        // made every table row a different length and read as noise. It goes in the tooltip
+        // instead, alongside the priority reason that is already hover-only for the same reason.
+        const homeless =
+          r.noPremises > 0
+            ? `${r.noPremises} ${r.noPremises === 1 ? "company" : "companies"} homeless, waiting for premises`
+            : "";
+
+        // Not every resource has a company at all - a row with nobody trading in it is not
+        // clickable, and wrapping it in a Tooltip that says nothing would just be noise.
+        if (!clickable) {
+          return homeless ? (
+            <Tooltip key={r.name} tooltip={homeless}>
+              {row}
+            </Tooltip>
+          ) : (
+            <div key={r.name}>{row}</div>
+          );
+        }
+
+        const reason = r.priorityReason ? ` - ${r.priorityReason}` : "";
+        const homelessNote = homeless ? ` (${homeless})` : "";
+
+        return (
+          <Tooltip
+            key={r.name}
+            tooltip={`${r.priorityName}${reason}${homelessNote} - click to go there`}
+          >
+            {row}
+          </Tooltip>
+        );
+      })}
+
+      <div className={styles.tableNote}>{text.note}</div>
+    </div>
+  );
+};
+
 const DemandList = () => {
   const values = demand$.map((b) => useValue(b));
   const [open, setOpen] = useState<string | null>(null);
@@ -835,6 +1073,15 @@ const DemandList = () => {
             </span>
           </div>
           {open === d.id ? <FactorList binding={d.factors} /> : null}
+          {open === d.id && d.id === "commercialDemand" ? (
+            <ResourceTable kind="commercial" />
+          ) : null}
+          {open === d.id && d.id === "industrialDemand" ? (
+            <ResourceTable kind="industrial" />
+          ) : null}
+          {open === d.id && d.id === "officeDemand" ? (
+            <ResourceTable kind="office" />
+          ) : null}
         </div>
       ))}
       <div className={styles.tableNote}>
@@ -908,11 +1155,9 @@ const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
 };
 
 /**
- * Parking split in two, because the game reports it in two places.
- *
- * Cars come from the Roads panel as a capacity and a count; bikes come from the Bikes panel as an
- * indicator with no raw numbers behind it, so that row shows a percentage only. Both are read as
- * room left, matching the row on the strip.
+ * Parking split in two, because the game reports it in two places - roadsInfo for cars,
+ * bikesInfo for bikes - but both the same shape underneath: a parked count and a capacity, see
+ * bikeParking$. Room left, not spaces taken, matching the row on the strip: 100% is empty.
  */
 const ParkingList = () => {
   const capacity = useValue(parkingCapacity$);
@@ -920,10 +1165,7 @@ const ParkingList = () => {
   const bikes = useValue(bikeParking$);
 
   const carsFree = capacity > 0 ? Math.max(0, 100 - (parked / capacity) * 100) : 0;
-  const bikesFree =
-    bikes && bikes.max > bikes.min
-      ? ((bikes.current - bikes.min) / (bikes.max - bikes.min)) * 100
-      : 0;
+  const bikesFree = bikes.y > 0 ? Math.max(0, 100 - (bikes.x / bikes.y) * 100) : 0;
 
   return (
     <div className={styles.table}>
@@ -933,7 +1175,9 @@ const ParkingList = () => {
       >
         <img className={styles.icon} src="Media/Game/Icons/Parking.svg" />
         <span className={styles.panelName}>
-          Cars {capacity > 0 ? `- ${parked.toLocaleString()} of ${Math.round(capacity).toLocaleString()}` : ""}
+          {capacity > 0
+            ? `Cars - ${parked.toLocaleString()} parked of ${Math.round(capacity).toLocaleString()}`
+            : "Cars"}
         </span>
         <span className={styles.value}>{Math.round(carsFree)}%</span>
       </div>
@@ -943,14 +1187,12 @@ const ParkingList = () => {
         onClick={() => trigger("seety", "openInfoview", "Bicycles")}
       >
         <img className={styles.icon} src="Media/Game/Icons/Bicycles.svg" />
-        <span className={styles.panelName}>Bikes</span>
+        <span className={styles.panelName}>
+          {bikes.y > 0
+            ? `Bikes - ${bikes.x.toLocaleString()} parked of ${Math.round(bikes.y).toLocaleString()}`
+            : "Bikes"}
+        </span>
         <span className={styles.value}>{Math.round(bikesFree)}%</span>
-      </div>
-
-      <div className={styles.tableNote}>
-        Room left, not spaces taken. Cars come from the game&apos;s Roads panel with the raw counts;
-        bikes come from the Bikes panel, which reports only a level. Click either to open its map
-        view.
       </div>
     </div>
   );
@@ -998,6 +1240,68 @@ const PollutionList = () => {
 };
 
 /** A row whose number comes from vanilla. Split out so its hooks live in their own component. */
+/**
+ * One reading inside a window: icon, name, number, and a click that opens its info view.
+ *
+ * This is how a merged row shows both halves of its pair. The parent is drawn here too, not just
+ * its companions, because inside the window the visible reading is no longer privileged - the
+ * player opened it to see both.
+ */
+const ReadingRow = ({ vital }: { vital: Vital }) => {
+  const draw = (value: number, level: VitalLevel) => {
+    const classes = [styles.panelRow];
+    if (level === VitalLevel.Critical) {
+      classes.push(styles.critical);
+    } else if (level === VitalLevel.Warning) {
+      classes.push(styles.warning);
+    }
+    if (vital.clickable) {
+      classes.push(styles.clickable);
+    }
+
+    return (
+      <Tooltip
+        tooltip={
+          vital.clickable
+            ? `${vital.title} - click to open its info view`
+            : vital.title
+        }
+      >
+        <div
+          className={classes.join(" ")}
+          onClick={
+            vital.clickable
+              ? () => trigger("seety", "activate", vital.id)
+              : undefined
+          }
+        >
+          <RowIcon src={vital.icon} />
+          <span className={styles.panelName}>{vital.title}</span>
+          <span className={styles.value}>{formatValue(vital, value)}</span>
+        </div>
+      </Tooltip>
+    );
+  };
+
+  // Same split as the bar itself: vanilla-bound readings subscribe for their own number, the
+  // rest arrived with it already computed in C#.
+  return vital.bindGroup ? (
+    <VanillaEntry vital={vital} render={draw} />
+  ) : (
+    draw(vital.value, vital.level)
+  );
+};
+
+/** A merged row's window: the visible reading first, then the ones folded in behind it. */
+const MergedReadings = ({ vital }: { vital: Vital }) => (
+  <>
+    <ReadingRow vital={vital} />
+    {vital.companions.map((companion) => (
+      <ReadingRow key={companion.id} vital={companion} />
+    ))}
+  </>
+);
+
 const VanillaEntry = ({
   vital,
   render,
@@ -1090,8 +1394,8 @@ export const VitalsStrip = () => {
       const maxY = Math.max(0, window.innerHeight - height);
 
       setPos({
-        x: Math.min(Math.max(0, drag.current.originX + dx), maxX),
-        y: Math.min(Math.max(0, drag.current.originY + dy), maxY),
+        x: snapToGrid(Math.min(Math.max(0, drag.current.originX + dx), maxX)),
+        y: snapToGrid(Math.min(Math.max(0, drag.current.originY + dy), maxY)),
       });
     };
 
@@ -1143,6 +1447,15 @@ export const VitalsStrip = () => {
 
       {vitals
         .filter((vital) => configMode || vital.enabled)
+        // Bars first, counts last. Every bar-format entry is the same fixed box with no text in
+        // it; a count carries a number of its own and reads differently, so grouping them at one
+        // end keeps the left side a clean, uniform row instead of a number breaking it up every
+        // few entries. Stable sort, so within each group the game's own ordering is unchanged.
+        .sort((a, b) => {
+          const aBar = a.format === VitalFormat.Percentage ? 0 : 1;
+          const bBar = b.format === VitalFormat.Percentage ? 0 : 1;
+          return aBar - bBar;
+        })
         .map((vital) => {
         const breakdown = (breakdowns ?? []).find((b) => b.id === vital.id);
         // A row is expandable if it has a list behind it, a chart, a table, factors, or any
@@ -1156,8 +1469,10 @@ export const VitalsStrip = () => {
             vital.id === DEMOGRAPHICS_ID ||
             vital.id === PARKING_ID ||
             vital.id === POLLUTION_ID ||
+            vital.companions.length > 0 ||
             SCHOOL_IDS.indexOf(vital.id) >= 0 ||
-            vital.id === WORKFORCE_ID);
+            vital.id === WORKFORCE_ID ||
+            vital.id === TRAFFIC_ID);
 
         const row = (value: number, level: VitalLevel) => {
           const classes = [styles.entry];
@@ -1285,7 +1600,16 @@ export const VitalsStrip = () => {
           {openVital.id === WORKFORCE_ID && workforce ? (
             <WorkforceTable data={workforce} />
           ) : null}
-          {openBreakdown ? <BreakdownRows rows={openBreakdown.rows} /> : null}
+          {openVital.companions.length > 0 ? (
+            <MergedReadings vital={openVital} />
+          ) : null}
+          {openBreakdown ? (
+            openBreakdown.id === "transport" ? (
+              <TransportRows rows={openBreakdown.rows} />
+            ) : (
+              <BreakdownRows rows={openBreakdown.rows} />
+            )
+          ) : null}
         </FloatingWindow>
       ) : null}
     </div>

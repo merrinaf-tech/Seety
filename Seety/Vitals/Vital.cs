@@ -29,6 +29,19 @@ namespace Seety.Vitals
         Tourists,
 
         /// <summary>
+        /// Fresh water actually delivered, as a share of what the city asked for.
+        ///
+        /// Not capacity against consumption: that is a city-wide sum, so cutting the pipe to a
+        /// district leaves it reading full while those buildings run dry - the same blind spot
+        /// electricity had. WaterStatisticsSystem exposes fulfilledFreshConsumption publicly, so
+        /// unlike electricity this needs no binding at all.
+        /// </summary>
+        WaterServed,
+
+        /// <summary>Sewage actually taken away, as a share of what the city produced.</summary>
+        SewageServed,
+
+        /// <summary>
         /// How many notification icons the city is currently showing, counting only those at
         /// IconPriority.Problem or worse. This is the alert half of the mod arriving as just
         /// another row in the same list - which is the entire point of the design.
@@ -173,12 +186,36 @@ namespace Seety.Vitals
     /// </summary>
     public sealed class Vital
     {
+        /// <summary>
+        /// Readings folded into this one's window instead of taking a place on the bar.
+        ///
+        /// Some pairs are really one question asked twice. "How healthy are people" and "are
+        /// there beds for them" are read together or not at all, and giving each its own square
+        /// spent width on a distinction the player was not making. The first of the pair keeps
+        /// the visible number; both appear in the window it opens, and each still opens its own
+        /// info view when clicked.
+        ///
+        /// Never nested more than one deep: a companion with companions of its own would have
+        /// nowhere to show them.
+        /// </summary>
+        public Vital[] Companions { get; private set; }
+
+        private static readonly Vital[] NoCompanions = new Vital[0];
+
+        /// <summary>Folds readings into this one's window. Reads as part of the declaration.</summary>
+        public Vital With(params Vital[] companions)
+        {
+            Companions = companions ?? NoCompanions;
+            return this;
+        }
+
         public Vital(string id, VitalSource source, string title, string label, string icon,
             string[] infoviews, VitalFormat format, VitalThreshold threshold = null,
             VanillaBinding binding = null, bool defaultOn = true,
             Game.City.StatisticType? history = null, string historyLabel = null, string badge = null,
             bool invert = false, string factors = null)
         {
+            Companions = NoCompanions;
             Factors = factors ?? string.Empty;
             Invert = invert;
             Badge = badge ?? string.Empty;

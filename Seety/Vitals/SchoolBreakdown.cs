@@ -19,6 +19,14 @@ namespace Seety.Vitals
         public int Capacity;
         public float3 Position;
 
+        /// <summary>
+        /// False when the school entity itself carries no Transform - happens for some upgrade
+        /// or sub-building entities that still match the School query. Without this Jump fell
+        /// back to float3.zero and the camera landed at the world origin, wherever that happens
+        /// to sit on the current map - open water more often than not.
+        /// </summary>
+        public bool HasPosition;
+
         /// <summary>0-100. The number the list is sorted on and coloured by.</summary>
         public float Fullness
         {
@@ -115,16 +123,28 @@ namespace Seety.Vitals
                         }
 
                         var roll = entities.GetBuffer<Game.Buildings.Student>(school, true);
-                        var position = entities.HasComponent<Transform>(school)
+                        var hasPosition = entities.HasComponent<Transform>(school);
+                        var position = hasPosition
                             ? entities.GetComponentData<Transform>(school).m_Position
                             : float3.zero;
+
+                        if (!hasPosition)
+                        {
+                            // Reported as unclickable rather than jumping to world origin - see
+                            // HasPosition - but a real, placed school missing Transform would be
+                            // surprising now that the query also requires Building (see
+                            // SeetyUISystem._schoolQuery). Logged so a recurrence names the school
+                            // instead of needing to be reproduced blind.
+                            Mod.Log.Info("School '" + SafeName(names, school) + "' matched the query with no Transform.");
+                        }
 
                         _entries.Add(new SchoolEntry
                         {
                             Name = SafeName(names, school),
                             Students = roll.Length,
                             Capacity = data.m_StudentCapacity,
-                            Position = position
+                            Position = position,
+                            HasPosition = hasPosition
                         });
                     }
                     catch (Exception e)
@@ -144,7 +164,7 @@ namespace Seety.Vitals
         /// <summary>Moves the camera to a school by its position in the list.</summary>
         public bool Jump(int index, CameraUpdateSystem camera)
         {
-            if (index < 0 || index >= _entries.Count)
+            if (index < 0 || index >= _entries.Count || !_entries[index].HasPosition)
             {
                 return false;
             }

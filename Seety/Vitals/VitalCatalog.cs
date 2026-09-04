@@ -61,8 +61,14 @@ namespace Seety.Vitals
             {
                 new Vital("problems",     VitalSource.Problems,     "Active problems",    "Problem",  "Media/Game/Icons/Notifications.svg",       Names(),              VitalFormat.Number),
                 new Vital("happiness",    VitalSource.Happiness,    "Happiness and demographics", "Happy",    "Media/Game/Icons/Happy.svg",              Names("Happiness"),   VitalFormat.Percentage, LowHappiness),
-                new Vital("health",       VitalSource.Health,       "Average health",     "Health",   "Media/Game/Icons/Healthcare.svg",         Names("Healthcare"),  VitalFormat.Percentage, LowHealth),
-                Service("healthcare",  "Hospital capacity",    "Beds",    "Icons/Healthcare.svg",     "Healthcare",  "healthcareInfo",  "patientCapacity",       "sickCount"),
+                new Vital("health",       VitalSource.Health,       "Average health",     "Health",   "Media/Game/Icons/Healthcare.svg",         Names("Healthcare"),  VitalFormat.Percentage, LowHealth)
+                    // "Coverage", not "how full the beds are": this is patientCapacity against
+                    // sickCount, same Service()/Coverage shape as water or sewage below. A city
+                    // with beds to spare reads near 100% here, same as vanilla's own Healthcare
+                    // Availability bar does - "capacity" as a title read as occupancy instead and
+                    // was reported as nonsensical for exactly that reason.
+                    .With(Service("healthcare", "Hospital coverage", "Beds", "Icons/Healthcare.svg",
+                        "Healthcare", "healthcareInfo", "patientCapacity", "sickCount")),
                 new Vital("unemployment", VitalSource.Unemployment, "Unemployment",       "Jobless",  "Media/Game/Notifications/Unemployed.svg", Names("Workplaces"),  VitalFormat.Percentage, HighUnemployment, null, true, Game.City.StatisticType.Unemployed,    "Unemployed citizens"),
                 new Vital("homelessness", VitalSource.Homelessness, "Homelessness",       "Homeless", "Media/Game/Icons/ConditionHomeless.svg",  Names("Residential"), VitalFormat.Percentage, HighHomelessness, null, true, Game.City.StatisticType.HomelessCount, "Homeless citizens"),
                 new Vital("workers",      VitalSource.Workers,      "Workers",            "Work",     "Media/Game/Icons/Workers.svg",            Names("Workplaces"),  VitalFormat.Number, null, null, true, Game.City.StatisticType.WorkerCount,   "Workers"),
@@ -78,11 +84,17 @@ namespace Seety.Vitals
                     VitalFormat.Percentage, LowCoverage,
                     new VanillaBinding("electricityInfo", string.Empty, "electricityTransmission",
                         VanillaKind.Indicator), false),
-                Service("water",       "Water coverage",       "Water",   "Icons/Water.svg",          "WaterPipes",  "waterInfo",       "waterCapacity",         "waterConsumption"),
-                Service("sewage",      "Sewage coverage",      "Sewage",  "Icons/Sewage.svg",         "WaterPipes",  "waterInfo",       "sewageCapacity",        "sewageConsumption"),
+                // Delivered, not produced. See VitalSource.WaterServed: capacity against demand is
+                // a city-wide sum and stays healthy while a whole district runs dry.
+                new Vital("water",  VitalSource.WaterServed,  "Water delivered",  "Water",
+                    "Media/Game/Icons/Water.svg",  Names("WaterPipes"), VitalFormat.Percentage, LowCoverage),
+                new Vital("sewage", VitalSource.SewageServed, "Sewage taken away", "Sewage",
+                    "Media/Game/Icons/Sewage.svg", Names("WaterPipes"), VitalFormat.Percentage, LowCoverage),
 
-                // Deathcare, which the city notices only when it stops working.
-                Service("deathcare",   "Crematorium capacity", "Cremate", "Icons/Deathcare.svg",      "Healthcare",  "healthcareInfo",  "processingRate",        "deathRate"),
+                // Deathcare, which the city notices only when it stops working. Same Coverage
+                // shape and the same renaming as healthcare above - "coverage" of the current
+                // death rate, not how full the crematorium is.
+                Service("deathcare",   "Crematorium coverage", "Cremate", "Icons/Deathcare.svg",      "Healthcare",  "healthcareInfo",  "processingRate",        "deathRate"),
                 Container("cemetery",  "Cemetery space",       "Graves",  "Media/Game/Notifications/HearseServiceNeeded.svg", "Healthcare", "healthcareInfo", "cemeteryCapacity",   "cemeteryUse"),
                 // Schools are containers, not coverage. Capacity normally exceeds the eligible
                 // intake, so coverage capped every level at 100% and every bar came out full -
@@ -109,19 +121,17 @@ namespace Seety.Vitals
                     new VanillaBinding("roadsInfo", "parkingCapacity", "parkedCars", VanillaKind.Ratio),
                     false, null, null, null, true),
 
-                Service("garbage",   "Garbage processing", "Waste", "Icons/Garbage.svg",                  "Garbage", "garbageInfo", "processingRate", "productionRate"),
-                Container("landfill", "Landfill space",    "Dump",  "Media/Game/Icons/WasteRecycling.svg", "Garbage", "garbageInfo", "capacity",       "storedGarbage"),
+                Service("garbage",   "Garbage processing", "Waste", "Icons/Garbage.svg",                  "Garbage", "garbageInfo", "processingRate", "productionRate")
+                    .With(Container("landfill", "Landfill space", "Dump", "Media/Game/Icons/WasteRecycling.svg",
+                        "Garbage", "garbageInfo", "capacity", "storedGarbage")),
 
                 // Hazards: the binding is already a share of the game's own maximum.
-                Hazard("crimeprob", "Safety from crime", "Safe", "Notifications/CrimeScene.svg", "Police",     "policeInfo",        "averageCrimeProbability"),
+                Hazard("crimeprob", "Safety from crime", "Safe", "Icons/Police.svg", "Police",     "policeInfo",        "averageCrimeProbability")
+                    .With(new Vital("detention", VitalSource.Vanilla, "Free jail and prison cells", "Cells",
+                        "Media/Game/Notifications/CrimeScene.svg", Names("Police"), VitalFormat.Percentage, LowSpace,
+                        new VanillaBinding("policeInfo", "jailCapacity", "inJail", VanillaKind.Ratio,
+                            "prisonCapacity", "inPrison"), false, null, null, null, true)),
 
-                // Jail and prison as one row, immediately after crime: to the player they are the
-                // same question - is there somewhere to put criminals - and two rows carrying the
-                // same icon said it twice.
-                new Vital("detention", VitalSource.Vanilla, "Free jail and prison cells", "Cells",
-                    "Media/Game/Icons/Police.svg", Names("Police"), VitalFormat.Percentage, LowSpace,
-                    new VanillaBinding("policeInfo", "jailCapacity", "inJail", VanillaKind.Ratio,
-                        "prisonCapacity", "inPrison"), false, null, null, null, true),
 
                 // The four pollutions as one row, averaged, with the detail behind it. Four cells
                 // that usually move together was four times the width for one idea.
@@ -248,6 +258,16 @@ namespace Seety.Vitals
                 if (vital.Id == id)
                 {
                     return vital;
+                }
+
+                // Companions are not on the bar but are still clicked, so they still have to be
+                // findable - otherwise every reading folded into a window would open nothing.
+                foreach (var companion in vital.Companions)
+                {
+                    if (companion.Id == id)
+                    {
+                        return companion;
+                    }
                 }
             }
 

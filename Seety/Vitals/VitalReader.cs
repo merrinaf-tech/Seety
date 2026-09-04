@@ -34,10 +34,12 @@ namespace Seety.Vitals
         private readonly CitySystem _city;
         private readonly CountHouseholdDataSystem _households;
         private readonly CityStatisticsSystem _statistics;
+        private readonly WaterStatisticsSystem _water;
 
         public VitalReader(EntityManager entities, CitySystem city, CountHouseholdDataSystem households,
-            CityStatisticsSystem statistics)
+            CityStatisticsSystem statistics, WaterStatisticsSystem water)
         {
+            _water = water;
             _entities = entities;
             _city = city;
             _households = households;
@@ -74,6 +76,16 @@ namespace Seety.Vitals
                 case VitalSource.Problems:
                     return ProblemCount;
 
+                case VitalSource.WaterServed:
+                    return _water == null
+                        ? 0f
+                        : Served(_water.fulfilledFreshConsumption, _water.freshConsumption);
+
+                case VitalSource.SewageServed:
+                    return _water == null
+                        ? 0f
+                        : Served(_water.fulfilledSewageConsumption, _water.sewageConsumption);
+
                 case VitalSource.Vanilla:
                     // Computed in the UI, which is the only side that can subscribe to vanilla's
                     // bindings and thereby make those systems produce a value at all.
@@ -82,6 +94,21 @@ namespace Seety.Vitals
                 default:
                     return 0f;
             }
+        }
+
+        /// <summary>
+        /// How much of a demand was actually met. A city asking for nothing is fully served, which
+        /// keeps a brand new city off the red before anyone has turned on a tap.
+        /// </summary>
+        private static float Served(int fulfilled, int demanded)
+        {
+            if (demanded <= 0)
+            {
+                return 100f;
+            }
+
+            var share = 100f * fulfilled / demanded;
+            return share > 100f ? 100f : share;
         }
 
         /// <summary>Active notification icons at Problem severity or worse, as of the last refresh.</summary>

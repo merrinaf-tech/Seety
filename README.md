@@ -10,11 +10,15 @@ school is about to overflow.
 
 ## What it shows
 
-Thirty-two readings, each switched on or off by clicking the thing itself rather than a checkbox:
-happiness, health, unemployment, homelessness, workers, tourists, active problems, electricity,
-water, sewage, hospital and crematorium capacity, cemetery space, four school levels, parking,
-garbage, landfill, safety, cells, fire safety, four kinds of pollution, post, traffic, land value,
-zone demand and transport.
+Twenty-six readings, each switched on or off by clicking the thing itself rather than a
+checkbox: happiness, health, unemployment, homelessness, workers, tourists, active problems,
+electricity, water delivered, sewage taken away, crematorium capacity, cemetery space, four school
+levels, parking, garbage, safety, fire safety, environment quality, post, traffic, land value, zone
+demand and transport.
+
+Counted as rows on the bar. Environment quality is one row with four kinds of pollution behind it,
+and three rows carry a second figure in their window rather than a square of their own — health
+also holds hospital capacity, garbage also holds landfill space, safety also holds free cells.
 
 Two rules decide what is in that list:
 
@@ -33,9 +37,10 @@ rather than two of each.
 cells occupied. Those are inverted and renamed, so a fuller, greener bar always means better and
 there is no direction to remember per icon.
 
-**It reads, and it takes you there.** Nothing here writes city state and nothing reaches a
-savegame. The only things it changes are which info view is active and where the camera is
-looking — both because you asked by clicking.
+**It reads, and it takes you there.** The bar itself writes nothing. The only things clicking a
+reading changes are which info view is active and where the camera is looking. The one exception
+lives on the options page, not the bar: a field to add or remove treasury funds, typed in on
+purpose and confirmed before it does anything.
 
 [`DESIGN.md`](DESIGN.md) has the reasoning behind each decision, including the traps found along
 the way.
