@@ -22,7 +22,13 @@ namespace Seety
     {
         public const string Id = "Seety";
         public const string Name = "Seety";
-        public const string Version = "1.0.0";
+        /// <summary>
+        /// Kept in step with ModVersion in PublishConfiguration.xml, the csproj's Version and
+        /// UI/mod.json, which is what the .mjs banner is stamped from. Four places, and the log
+        /// line below is the only one a player ever sees - so a stale value here means every
+        /// bug report names the wrong build.
+        /// </summary>
+        public const string Version = "1.0.3";
 
         private const string LocaleId = "en-US";
 

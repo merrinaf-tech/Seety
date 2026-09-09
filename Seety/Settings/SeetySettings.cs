@@ -8,21 +8,24 @@ using Seety.Vitals;
 namespace Seety.Settings
 {
     /// <summary>
-    /// Which vitals the strip shows.
+    /// The stored state behind the strip: which vitals are switched on, where the bar sits, and
+    /// the one control that writes to the city.
     ///
-    /// v0.1 keeps this as one toggle per vital, which is honest about what the mod can do today.
-    /// Ordering and thresholds arrive with v0.2, when the list becomes a proper editable set
-    /// rather than a fixed catalogue.
+    /// There is deliberately no per-vital toggle on this page. Choosing rows happens on the strip
+    /// itself, in configuration mode, where the player picks the thing by sight rather than a name
+    /// in a list - see DESIGN.md. Only DisabledVitals, which that mode writes, lives here.
+    ///
+    /// Per-vital threshold numbers were declined on 2026-09-01 and a custom row order on
+    /// 2026-09-04. Do not re-propose either.
     /// </summary>
     [FileLocation("ModsSettings/Seety/Seety")]
-    [SettingsUIGroupOrder(DisplayGroup, FundsGroup, AboutGroup)]
-    [SettingsUIShowGroupName(DisplayGroup, FundsGroup, AboutGroup)]
+    [SettingsUIGroupOrder(DisplayGroup, FundsGroup)]
+    [SettingsUIShowGroupName(DisplayGroup, FundsGroup)]
     public class SeetySettings : ModSetting
     {
         public const string MainSection = "Main";
         public const string DisplayGroup = "DisplayGroup";
         public const string FundsGroup = "FundsGroup";
-        public const string AboutGroup = "AboutGroup";
 
         private bool _showStrip = true;
         private bool _highlightProblems = true;
@@ -210,42 +213,10 @@ namespace Seety.Settings
 
         // There is deliberately no list of vitals here any more.
         //
-        // Thirty checkboxes on an options page is a list nobody reads, and it asks the player to
-        // pick by name something they would recognise by sight. The gear on the strip does the
+        // Twenty-six checkboxes on an options page is a list nobody reads, and it asks the player
+        // to pick by name something they would recognise by sight. The gear on the strip does the
         // same job by letting them click the thing itself - see DESIGN.md. The stored state still
         // lives in DisabledVitals; only the page full of toggles is gone.
-
-
-
-
-
-
-
-
-        // Service and hazard rows. All off on a fresh install - see Vital.DefaultOn.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         public override void SetDefaults()
         {

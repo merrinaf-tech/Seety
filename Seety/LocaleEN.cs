@@ -24,7 +24,6 @@ namespace Seety
 
                 { _settings.GetOptionGroupLocaleID(SeetySettings.DisplayGroup), "Display" },
                 { _settings.GetOptionGroupLocaleID(SeetySettings.FundsGroup), "Funds" },
-                { _settings.GetOptionGroupLocaleID(SeetySettings.AboutGroup), "About" },
 
                 {
                     _settings.GetOptionLabelLocaleID(nameof(SeetySettings.ShowStrip)),

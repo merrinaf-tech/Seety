@@ -96,19 +96,27 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.0.2" />
+	<ModVersion Value="1.0.3" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
+	<!--
+	  ALREADY PUBLISHED, as 1.0.3 on 2026-09-09. Every paragraph below is live and has been read.
+	  This is not a running history: before the next NewVersion, delete the whole body and write
+	  only what changed since 1.0.3, bumping ModVersion in the same pass. See AGENTS.md - letting
+	  this accumulate across publishes is the repeat offender here.
+	-->
 	<ChangeLog>
-New: the traffic row opens a list of the worst jams by vehicle kind - click one to fly the camera to that jam. Built from the game's own stuck-vehicle marker, filtered to real road vehicles so stray pedestrians and animals no longer show up as "traffic", and aimed at wherever those vehicles are actually clustered rather than an arbitrary one of them.
+The bar no longer comes back after being switched off in the options.
 
-Two real bugs, fixed: vacant workplaces in the Workers window could read negative (it now reads the game's own running vacancy counter, the one behind its Workplace Availability panel, instead of a separate subtraction that could disagree with the jobs total); a school or a resource table's priority jump could land on open water when its target had no building of its own - both now show as not clickable instead of promising a destination that does not exist.
+Dragging follows the pointer on every screen. Above 1080p the bar moved further than the cursor - twice as far at 4K - and could be dragged off the edge and left there. Windows too.
 
-Bikes now show a real parked-of-capacity count instead of a bare percentage, and both parking rows say "parked" rather than an ambiguous "of". Demographics bars now start from the same point regardless of label length. The resource priority tooltip can now name what a struggling business pays per unit for its own materials, when the game tracks that price. A resource's extra "homeless" companies moved out of the row text and into its tooltip, so a long list of them doesn't clutter every row.
+The bar is shorter, and sits level with the buttons along the top of the HUD.
 
-Renamed two readings that were confusing at a glance: "Hospital capacity" and "Crematorium capacity" are now "coverage", matching what they actually measure - plenty of room reads as good, same as every other service row.
+Empty lists are drawn inside their window instead of below it, and the traffic window no longer opens blank in a city with no jams.
 
-The strip's background now matches the game's own interface colour instead of a guess, corners are rounder, and the icon-and-number layout was redone so a large number no longer covers the icon above it. Dragging the strip now snaps to a grid.
+In Workers, the Kids column no longer reads zero at the education levels where adults are studying.
+
+The problem list is rebuilt only while its window is open, instead of twice a second for the whole game.
 	</ChangeLog>
 </Publish>

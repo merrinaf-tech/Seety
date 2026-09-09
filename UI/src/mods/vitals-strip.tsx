@@ -153,6 +153,8 @@ interface WorkforceRow {
   total: number;
   children: number;
   students: number;
+  /** The part of `students` that is a child or a teenager. See CitizenCensusSystem. */
+  childStudents: number;
   seniors: number;
   workingAge: number;
   workers: number;
@@ -268,6 +270,49 @@ const DRAG_GRID = 8;
 
 function snapToGrid(value: number): number {
   return Math.round(value / DRAG_GRID) * DRAG_GRID;
+}
+
+/**
+ * How many real pixels one rem is worth right now.
+ *
+ * Everything here is positioned in rem, but a pointer event is in pixels, and the two are only
+ * the same number at 1080p. The game's own stylesheet sets `html { font-size: 0.0925926vh }` -
+ * one rem is the viewport height over 1080 - with a `@media (min-height: 56.25vw)` switching it
+ * to `vw / 1920` above 16:9. Mixing the two units made the strip run away from the cursor.
+ *
+ * MEASURED off the layout, not read from getComputedStyle. That was the first attempt and it made
+ * the drift worse rather than fixing it: Gameface's getComputedStyle is not the browser's, and
+ * against a font-size given in vh it hands back the specified string rather than the resolved
+ * pixel value - so parseFloat saw 0.0925926 and the strip flew roughly eleven times further than
+ * the pointer. A hidden 100rem box put through getBoundingClientRect is plain layout, which this
+ * renderer does do correctly; offsetWidth is already trusted a few lines below for the same
+ * reason.
+ *
+ * Read once when the drag starts - the resolution cannot change mid-gesture, and this touches the
+ * DOM twice.
+ */
+function pxPerRem(): number {
+  try {
+    const probe = document.createElement("div");
+    probe.style.position = "absolute";
+    probe.style.top = "-1000rem";
+    probe.style.width = "100rem";
+    probe.style.height = "0";
+    probe.style.visibility = "hidden";
+    probe.style.pointerEvents = "none";
+
+    document.body.appendChild(probe);
+    const measured = probe.getBoundingClientRect().width / 100;
+    document.body.removeChild(probe);
+
+    // Outside this range the measurement failed rather than the screen being unusual: a rem is
+    // the viewport height over 1080, so even an 8K display only reaches 4. Falling back to 1
+    // restores the old behaviour, which is correct at 1080p and merely wrong elsewhere - better
+    // than scaling by a number that came from nowhere.
+    return measured >= 0.1 && measured <= 10 ? measured : 1;
+  } catch {
+    return 1;
+  }
 }
 
 /** The row whose window carries the workforce-against-workplaces table. Matches the C# side. */
@@ -715,7 +760,7 @@ const FloatingWindow = ({
 }) => {
   const [pos, setPos] = useState({ x: 320, y: 160 });
   const [dragging, setDragging] = useState(false);
-  const grab = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0 });
+  const grab = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, scale: 1 });
 
   const onMouseDown = useCallback(
     (event: React.MouseEvent) => {
@@ -725,6 +770,8 @@ const FloatingWindow = ({
         pointerY: event.clientY,
         originX: pos.x,
         originY: pos.y,
+        // Pointer deltas are pixels, `pos` is rem. See pxPerRem.
+        scale: pxPerRem(),
       };
       setDragging(true);
     },
@@ -736,9 +783,10 @@ const FloatingWindow = ({
       return;
     }
     const onMove = (event: MouseEvent) => {
+      const scale = grab.current.scale;
       setPos({
-        x: Math.max(0, grab.current.originX + (event.clientX - grab.current.pointerX)),
-        y: Math.max(0, grab.current.originY + (event.clientY - grab.current.pointerY)),
+        x: Math.max(0, grab.current.originX + (event.clientX - grab.current.pointerX) / scale),
+        y: Math.max(0, grab.current.originY + (event.clientY - grab.current.pointerY) / scale),
       });
     };
     const onUp = () => setDragging(false);
@@ -786,9 +834,10 @@ const FloatingWindow = ({
  * Two separate tables leave that to be assembled in the reader's head.
  */
 const WorkforceTable = ({ data }: { data: Workforce }) => {
-  // Subscribing here is what makes vanilla compute these: the Workplaces infoview system skips
-  // its job unless something is listening. See VanillaBinding on the C# side.
-
+  // Every column arrives already counted from C#, jobs included - see CitizenCensusSystem. An
+  // earlier version subscribed to workplaces.workplacesData here, which is why this component
+  // used to carry a note about waking that binding; it reads zero unless vanilla's own
+  // Workplaces panel is on screen, so nothing is bound here any more.
   const rows = data?.rows ?? [];
   if (rows.length === 0) {
     return null;
@@ -798,9 +847,11 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
   // two without a line between them was the single thing that made the table hard to read.
   const columns: [string, (r: WorkforceRow, i: number) => number, boolean][] = [
     ["Total", (r) => r.total, false],
-    // Kids and Student overlapped: a child at school appeared in both. Kids is now the ones who
-    // are not studying, so the columns add up.
-    ["Kids", (r) => Math.max(0, r.children - r.students), false],
+    // Kids and Student overlapped: a child at school appeared in both. Kids is the ones who are
+    // not studying, so the columns add up - but only against the students who are actually
+    // children. Subtracting the whole Student column took university students, who are adults,
+    // off the children's total and drove Kids to zero on exactly the levels where people study.
+    ["Kids", (r) => Math.max(0, r.children - r.childStudents), false],
     ["Student", (r) => r.students, false],
     ["Old", (r) => r.seniors, false],
     ["Adults", (r) => r.workingAge, false],
@@ -869,8 +920,9 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
         Everything left of the line counts citizens; everything right of it counts jobs. Counted
         citizen by citizen, tourists excluded. Kids are the ones not at school. Idle is anyone of
         working age without a job in the city; Under holds a job below their education; Out lives
-        here and works outside; In commutes in from outside and is in no other column. Jobs and
-        Vacant come from the game&apos;s own Workplaces panel.
+        here and works outside; In commutes in from outside and is in no other column. Jobs are
+        counted from the employers themselves; Vacant is the game&apos;s own running count of posts
+        nobody is doing - the same one behind its Workplace Availability panel.
       </div>
     </div>
   );
@@ -1348,7 +1400,7 @@ export const VitalsStrip = () => {
     trigger("seety", "expand", expanded ?? "");
   }, [expanded]);
 
-  const drag = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, moved: false });
+  const drag = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, moved: false, scale: 1 });
   const elementRef = useRef<HTMLDivElement | null>(null);
 
   // The C# side is the owner of the position; follow it except while the pointer is down, when
@@ -1367,6 +1419,8 @@ export const VitalsStrip = () => {
         originX: pos.x,
         originY: pos.y,
         moved: false,
+        // Pointer deltas are pixels, `pos` is rem. See pxPerRem.
+        scale: pxPerRem(),
       };
       setDragging(true);
     },
@@ -1379,19 +1433,26 @@ export const VitalsStrip = () => {
     }
 
     const onMove = (event: MouseEvent) => {
-      const dx = event.clientX - drag.current.pointerX;
-      const dy = event.clientY - drag.current.pointerY;
+      // The threshold is about how far the pointer travelled, so it stays in pixels.
+      const movedX = event.clientX - drag.current.pointerX;
+      const movedY = event.clientY - drag.current.pointerY;
 
-      if (!drag.current.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) {
+      if (!drag.current.moved && Math.abs(movedX) + Math.abs(movedY) < DRAG_THRESHOLD) {
         return;
       }
       drag.current.moved = true;
 
-      // Keep a grabbable part of the strip on screen whatever the player does with it.
-      const width = elementRef.current?.offsetWidth ?? 0;
-      const height = elementRef.current?.offsetHeight ?? 0;
-      const maxX = Math.max(0, window.innerWidth - width);
-      const maxY = Math.max(0, window.innerHeight - height);
+      // Everything from here down is rem, because that is what `pos` and the grid are in.
+      const scale = drag.current.scale;
+      const dx = movedX / scale;
+      const dy = movedY / scale;
+
+      // Keep a grabbable part of the strip on screen whatever the player does with it. offsetWidth
+      // and innerWidth are both pixels, so both are converted before meeting a rem coordinate.
+      const width = (elementRef.current?.offsetWidth ?? 0) / scale;
+      const height = (elementRef.current?.offsetHeight ?? 0) / scale;
+      const maxX = Math.max(0, window.innerWidth / scale - width);
+      const maxY = Math.max(0, window.innerHeight / scale - height);
 
       setPos({
         x: snapToGrid(Math.min(Math.max(0, drag.current.originX + dx), maxX)),

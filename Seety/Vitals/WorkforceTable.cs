@@ -13,6 +13,10 @@ namespace Seety.Vitals
 
         public int Children;
         public int Students;
+
+        /// <summary>The part of <see cref="Students"/> that is a child or a teenager.</summary>
+        public int ChildStudents;
+
         public int Seniors;
 
         /// <summary>Adults, which is the pool the jobs actually draw from.</summary>
@@ -36,13 +40,16 @@ namespace Seety.Vitals
     }
 
     /// <summary>
-    /// The people half of the workforce table, one row per education level.
+    /// The workforce table, one row per education level.
     ///
-    /// Every column is counted rather than derived, so nothing here is an estimate. The jobs half
-    /// - how many posts exist at each level and how many are filled - is not here: it comes from
-    /// vanilla's own `workplaces.workplacesData` and `workplaces.employeesData` bindings, read in
-    /// the UI, which is the exact source the game's Workplaces panel uses. Reading it anywhere
-    /// else produced numbers that disagreed with the game.
+    /// Every column is counted rather than derived, so nothing here is an estimate. That includes
+    /// the jobs half - Jobs and Vacant - which is NOT read from vanilla's
+    /// `workplaces.workplacesData` and `workplaces.employeesData` bindings, although an earlier
+    /// version was: those are filled by a job that only runs while vanilla's own Workplaces panel
+    /// is on screen, so they read zero for a mod and the column shipped empty three times. Both
+    /// now come from <see cref="CitizenCensusSystem"/>'s own pass over the employers, mirroring
+    /// Game.Simulation.CountWorkplacesSystem - the system behind that same panel - so the numbers
+    /// still agree with the game without depending on it being open.
     ///
     /// The columns are deliberately unambiguous. "Total" is everyone at that level; children,
     /// students and seniors are broken out so the working-age figure is visibly what is left,
@@ -82,6 +89,7 @@ namespace Seety.Vitals
                     Children = census.Get(level, CitizenCensusSystem.Field.Children)
                                + census.Get(level, CitizenCensusSystem.Field.Teens),
                     Students = census.Get(level, CitizenCensusSystem.Field.Students),
+                    ChildStudents = census.Get(level, CitizenCensusSystem.Field.ChildStudents),
                     Seniors = census.Get(level, CitizenCensusSystem.Field.Seniors),
                     WorkingAge = census.Get(level, CitizenCensusSystem.Field.Adults),
                     Workers = census.Get(level, CitizenCensusSystem.Field.Workers),

@@ -220,10 +220,16 @@ namespace Seety.Systems
             _vitalsBinding = new RawValueBinding(Group, "vitals", WriteVitals);
             AddBinding(_vitalsBinding);
 
-            _visibleBinding = new ValueBinding<bool>(Group, "visible", true);
+            var settings = Mod.Settings;
+
+            // Seeded from the stored setting, not hardcoded true. LoadSettings runs before this
+            // system exists, so the ShowStrip setter's notification finds no UI system to tell
+            // and is dropped: a player who switched the strip off in the options had it back on
+            // every restart until they toggled it twice. Same shape as posX/posY below.
+            _visibleBinding = new ValueBinding<bool>(Group, "visible",
+                settings == null || settings.ShowStrip);
             AddBinding(_visibleBinding);
 
-            var settings = Mod.Settings;
             _posXBinding = new ValueBinding<int>(Group, "posX",
                 settings == null ? Settings.SeetySettings.DefaultStripX : settings.StripX);
             _posYBinding = new ValueBinding<int>(Group, "posY",
@@ -464,8 +470,17 @@ namespace Seety.Systems
                     changed = true;
                 }
 
-                _breakdown.Refresh(_iconQuery, _prefabs);
-                _notificationsBinding.Update();
+                // The count above is the strip's own number, so it stays current whatever is on
+                // screen. The grouped list behind it is a different matter: it walks the same
+                // icons a second time and records a position for every notification in the city,
+                // then reserialises the whole notifications payload. Doing that twice a second
+                // for a window nobody has opened was the strip's largest standing cost, and the
+                // Problems row is on by default, so every player paid it for the whole game.
+                if (_expandedId == ProblemsVitalId)
+                {
+                    _breakdown.Refresh(_iconQuery, _prefabs);
+                    _notificationsBinding.Update();
+                }
             }
 
             if (_expandedId == DemandVitalId)
@@ -474,14 +489,28 @@ namespace Seety.Systems
                 _resourcesBinding.Update();
             }
 
-            if (_expandedId == "traffic")
+            if (_expandedId == TrafficVitalId)
             {
                 _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names);
                 _notificationsBinding.Update();
             }
 
+            // The school list is deliberately NOT refreshed here, and that is not an oversight.
+            //
+            // It was, for one round, on the grounds that every other list in this group updates
+            // live. It broke the window twice over. The rows are sorted by fullness and fullness
+            // moves constantly, so they reordered under the pointer; worse, a row's id carries
+            // its student count and the UI keys on that id, so every refresh changed the key and
+            // React threw the row away and built a new one. A click needs its mousedown and its
+            // mouseup on the same node, and there was no longer any such node - clicking a school
+            // did nothing whatsoever, silently, because no trigger was ever raised.
+            //
+            // A snapshot taken when the window opens is what the player wants anyway: a list you
+            // are working through should hold still. RefreshSchools stays on OnExpand only.
+
             if (_transportActive)
             {
+                // Twelve statistic reads, cheap enough to keep current for the strip's own total.
                 var before = _transport.PassengerTotal;
                 _transport.Refresh(World.GetOrCreateSystemManaged<CityStatisticsSystem>());
                 if (_transport.PassengerTotal != before)
@@ -489,7 +518,12 @@ namespace Seety.Systems
                     changed = true;
                 }
 
-                _notificationsBinding.Update();
+                // Pushing them to the UI is not cheap - it rewrites every breakdown in the group
+                // - so that only happens while the window showing them is open.
+                if (_expandedId == TransportVitalId)
+                {
+                    _notificationsBinding.Update();
+                }
             }
 
             foreach (var vital in _active)
@@ -681,7 +715,13 @@ namespace Seety.Systems
             var schools = _schools.Entries;
             var hasSchools = schools.Count > 0;
             var jams = _jams.Groups;
-            var hasJams = jams.Count > 0;
+
+            // Keyed on the row being OPEN, not on the list happening to have something in it.
+            // Gated the other way round, a city with no jams produced no traffic block at all,
+            // and the window opened with nothing in it - not even the "Nothing to report" line,
+            // because the component that draws that was never reached. It also left the last
+            // session's jams sitting in the payload after the window was closed.
+            var hasJams = _expandedId == TrafficVitalId;
 
             var count = (uint)((_problemsActive ? 1 : 0) + (_transportActive ? 1 : 0)
                 + (hasSchools ? 1 : 0) + (hasJams ? 1 : 0));
@@ -691,7 +731,7 @@ namespace Seety.Systems
             {
                 writer.TypeBegin("seety.Breakdown");
                 writer.PropertyName("id");
-                writer.Write("problems");
+                writer.Write(ProblemsVitalId);
                 writer.PropertyName("rows");
                 WriteProblemRows(writer);
                 writer.TypeEnd();
@@ -701,7 +741,7 @@ namespace Seety.Systems
             {
                 writer.TypeBegin("seety.Breakdown");
                 writer.PropertyName("id");
-                writer.Write("traffic");
+                writer.Write(TrafficVitalId);
                 writer.PropertyName("rows");
                 WriteJamRows(writer, jams);
                 writer.TypeEnd();
@@ -711,7 +751,7 @@ namespace Seety.Systems
             {
                 writer.TypeBegin("seety.Breakdown");
                 writer.PropertyName("id");
-                writer.Write("transport");
+                writer.Write(TransportVitalId);
                 writer.PropertyName("rows");
                 WriteTransportRows(writer);
                 writer.TypeEnd();
@@ -731,8 +771,8 @@ namespace Seety.Systems
         }
 
         /// <summary>
-        /// The schools of the open level, fullest first. The row id is its index, because two
-        /// schools can share a name and the camera has to know which one was clicked.
+        /// The schools of the open level, fullest first. The row carries the school's entity id,
+        /// because two schools can share a name and the list re-sorts underneath the player.
         /// </summary>
         private void WriteSchoolRows(IJsonWriter writer, System.Collections.Generic.IReadOnlyList<Vitals.SchoolEntry> schools)
         {
@@ -768,7 +808,10 @@ namespace Seety.Systems
                 // match the School query - has nowhere for the camera to go. See SchoolEntry.HasPosition.
                 writer.Write(school.HasPosition);
                 writer.PropertyName("action");
-                writer.Write("school:" + i);
+                // The entity id, not the loop counter: the list re-sorts by fullness twice a
+                // second, so a seat number identifies whatever lands in it, not the school the
+                // player clicked. See SchoolEntry.Entity.
+                writer.Write("school:" + school.Entity.Index);
                 writer.TypeEnd();
             }
 
@@ -819,6 +862,15 @@ namespace Seety.Systems
 
         /// <summary>The vital whose window carries the per-resource tables.</summary>
         private const string DemandVitalId = "demand";
+
+        /// <summary>The vital whose window carries the stuck-vehicle list. Matches TRAFFIC_ID.</summary>
+        private const string TrafficVitalId = "traffic";
+
+        /// <summary>The vital whose window carries the grouped problem list.</summary>
+        private const string ProblemsVitalId = "problems";
+
+        /// <summary>The vital whose window carries the per-mode transport list.</summary>
+        private const string TransportVitalId = "transport";
 
         /// <summary>
         /// Rereads both resource tables.
@@ -971,9 +1023,16 @@ namespace Seety.Systems
                 _resourcesBinding.Update();
             }
 
-            if (_expandedId == "traffic")
+            if (_expandedId == TrafficVitalId)
             {
                 _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names);
+            }
+
+            // Built here as well as on the tick, because the tick only keeps it up to date while
+            // the window is already open - opening it has to fill it in the first place.
+            if (_expandedId == ProblemsVitalId)
+            {
+                _breakdown.Refresh(_iconQuery, _prefabs);
             }
 
             if (NeedsCensus)
@@ -1021,7 +1080,7 @@ namespace Seety.Systems
             }
         }
 
-        /// <summary>Take me to that school. The index is its position in the list on screen.</summary>
+        /// <summary>Take me to that school. The argument is its entity id - see SchoolEntry.Entity.</summary>
         private void OnJumpToSchool(int index)
         {
             try
@@ -1031,20 +1090,20 @@ namespace Seety.Systems
                 // did, exactly why Jump refused it: index out of range, no HasPosition, or no
                 // active camera controller are three different problems that all looked
                 // identical from the strip.
-                var entries = _schools.Entries;
-                var inRange = index >= 0 && index < entries.Count;
-                var name = inRange ? entries[index].Name : "(out of range)";
-                var hasPosition = inRange && entries[index].HasPosition;
+                var entry = _schools.Find(index);
+                var name = entry == null ? "(not in the list)" : entry.Name;
+                var hasPosition = entry != null && entry.HasPosition;
                 var cameraReady = _camera != null && _camera.activeCameraController != null;
 
                 if (_schools.Jump(index, _camera))
                 {
-                    Mod.Log.Info("Jumped to school index " + index + " ('" + name + "').");
+                    Mod.Log.Info("Jumped to school #" + index + " ('" + name + "').");
                 }
                 else
                 {
-                    Mod.Log.Info("Nothing to jump to at school index " + index + " ('" + name +
-                        "'): entries=" + entries.Count + " inRange=" + inRange +
+                    Mod.Log.Info("Nothing to jump to for school #" + index + " ('" + name +
+                        "'): entries=" + _schools.Entries.Count +
+                        " found=" + (entry != null) +
                         " hasPosition=" + hasPosition + " cameraReady=" + cameraReady + ".");
                 }
             }
@@ -1180,6 +1239,8 @@ namespace Seety.Systems
                 writer.Write(row.Children);
                 writer.PropertyName("students");
                 writer.Write(row.Students);
+                writer.PropertyName("childStudents");
+                writer.Write(row.ChildStudents);
                 writer.PropertyName("seniors");
                 writer.Write(row.Seniors);
                 writer.PropertyName("workingAge");
@@ -1348,6 +1409,10 @@ namespace Seety.Systems
             if (Mod.Settings != null)
             {
                 Mod.Settings.ShowStrip = visible;
+
+                // Written through, the same as OnPositionChanged: the setter only notifies, it
+                // does not persist, so without this the strip would come back on next session.
+                Mod.Settings.ApplyAndSave();
             }
         }
 

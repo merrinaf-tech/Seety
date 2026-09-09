@@ -13,7 +13,6 @@ UI/dist/
 # Source art: the exported PNG is versioned, the layered original is not
 Pic/*.psd
 
-# Development notes for continuity between coding sessions - not documentation for mod users,
-# and read as an obvious AI-collaboration log by anyone browsing the repo. Kept locally only.
+# Local working notes. Not documentation for players; kept out of the published repo.
 AGENTS.md
 DESIGN.md

@@ -14,16 +14,32 @@ namespace Seety.Vitals
     /// <summary>One school, with how full it is and where to find it.</summary>
     public sealed class SchoolEntry
     {
+        /// <summary>
+        /// Which school this actually is.
+        ///
+        /// The list is re-sorted by fullness twice a second while its window is open, and
+        /// fullness moves constantly, so two schools within a student of each other swap places
+        /// between one refresh and the next. A row identified by its position in the list is
+        /// therefore identifying whatever happens to be sitting there when the click lands, not
+        /// the school the player aimed at - which is how a click on "Small High School" jumped
+        /// the camera to "EE High School" instead. The row carries this entity's id now.
+        /// </summary>
+        public Entity Entity;
+
         public string Name;
         public int Students;
         public int Capacity;
         public float3 Position;
 
         /// <summary>
-        /// False when the school entity itself carries no Transform - happens for some upgrade
-        /// or sub-building entities that still match the School query. Without this Jump fell
-        /// back to float3.zero and the camera landed at the world origin, wherever that happens
-        /// to sit on the current map - open water more often than not.
+        /// False only when neither the school entity nor anything it belongs to has a position.
+        ///
+        /// A school inside a signature building is a sub-building or an upgrade: it carries no
+        /// Transform of its own, because it is placed relative to its parent. Without this Jump
+        /// fell back to float3.zero and the camera landed at the world origin - open water more
+        /// often than not - so the row was reported as non-clickable instead. That was honest but
+        /// unhelpful: the parent building does have a position, and it is where the player wants
+        /// to be taken. See PositionOf.
         /// </summary>
         public bool HasPosition;
 
@@ -80,11 +96,33 @@ namespace Seety.Vitals
 
             if (level < 0 || query.IsEmptyIgnoreFilter)
             {
+                // The early return is a branch too, and an empty query would look exactly like a
+                // silent failure from the log's point of view. level < 0 is the ordinary case -
+                // it fires on every non-school row - so only the surprising half is written down.
+                if (level >= 0)
+                {
+                    Mod.Log.Info("Schools refreshed: level=" + level + " but the query is empty.");
+                }
+
                 return;
             }
 
+            // One line per refresh saying what the query found and what became of it. The log
+            // has been silent through three attempts at this - no jump, no failure, not even the
+            // unplaceable report - which is contradictory: a school with a position is clickable
+            // and a click writes a line either way. Silence means the assumption is wrong
+            // somewhere before all of that, so this counts every branch rather than guessing
+            // which one to instrument next.
+            var matched = 0;
+            var noSchoolData = 0;
+            var shutDown = 0;
+            var wrongLevel = 0;
+            var failed = 0;
+
             using (var schools = query.ToEntityArray(Allocator.Temp))
             {
+                matched = schools.Length;
+
                 foreach (var school in schools)
                 {
                     try
@@ -92,6 +130,7 @@ namespace Seety.Vitals
                         var prefab = entities.GetComponentData<PrefabRef>(school).m_Prefab;
                         if (!entities.HasComponent<SchoolData>(prefab))
                         {
+                            noSchoolData++;
                             continue;
                         }
 
@@ -112,6 +151,7 @@ namespace Seety.Vitals
                         // of the totals. Counting it would promise places that do not exist.
                         if (IsShutDown(entities, school))
                         {
+                            shutDown++;
                             continue;
                         }
 
@@ -119,27 +159,23 @@ namespace Seety.Vitals
                         // strip counts its four school rows from zero.
                         if (data.m_EducationLevel - 1 != level)
                         {
+                            wrongLevel++;
                             continue;
                         }
 
                         var roll = entities.GetBuffer<Game.Buildings.Student>(school, true);
-                        var hasPosition = entities.HasComponent<Transform>(school);
-                        var position = hasPosition
-                            ? entities.GetComponentData<Transform>(school).m_Position
-                            : float3.zero;
+
+                        float3 position;
+                        var hasPosition = PositionOf(entities, school, out position);
 
                         if (!hasPosition)
                         {
-                            // Reported as unclickable rather than jumping to world origin - see
-                            // HasPosition - but a real, placed school missing Transform would be
-                            // surprising now that the query also requires Building (see
-                            // SeetyUISystem._schoolQuery). Logged so a recurrence names the school
-                            // instead of needing to be reproduced blind.
-                            Mod.Log.Info("School '" + SafeName(names, school) + "' matched the query with no Transform.");
+                            ReportUnplaceable(entities, school, names);
                         }
 
                         _entries.Add(new SchoolEntry
                         {
+                            Entity = school,
                             Name = SafeName(names, school),
                             Students = roll.Length,
                             Capacity = data.m_StudentCapacity,
@@ -149,10 +185,32 @@ namespace Seety.Vitals
                     }
                     catch (Exception e)
                     {
-                        Mod.Log.Warn("Could not read a school: " + e.Message);
+                        // Info, not Warn: a swallowed exception here would drop the school from
+                        // the list silently, and the whole point of this pass is that nothing be
+                        // silent. Warn may not reach the file at the configured level.
+                        failed++;
+                        Mod.Log.Info("Could not read school #" + school.Index + ": " + e);
                     }
                 }
             }
+
+            var clickable = 0;
+            foreach (var entry in _entries)
+            {
+                if (entry.HasPosition)
+                {
+                    clickable++;
+                }
+            }
+
+            Mod.Log.Info("Schools refreshed: level=" + level
+                + " matchedQuery=" + matched
+                + " listed=" + _entries.Count
+                + " clickable=" + clickable
+                + " (skipped: noSchoolData=" + noSchoolData
+                + " shutDown=" + shutDown
+                + " wrongLevel=" + wrongLevel
+                + " threw=" + failed + ")");
 
             // Fullest first: the list is read from the top and the top is what needs building.
             _entries.Sort(delegate(SchoolEntry a, SchoolEntry b)
@@ -161,10 +219,117 @@ namespace Seety.Vitals
             });
         }
 
-        /// <summary>Moves the camera to a school by its position in the list.</summary>
-        public bool Jump(int index, CameraUpdateSystem camera)
+        /// <summary>Schools already reported as unplaceable, so the log says each one once.</summary>
+        private readonly HashSet<string> _reported = new HashSet<string>();
+
+        /// <summary>
+        /// Writes down exactly why a school has nowhere for the camera to go.
+        ///
+        /// Following Game.Common.Owner up was the obvious answer for a school inside a signature
+        /// building and it did not work, so the next test needs to say what the chain actually
+        /// looks like rather than leaving it to be guessed at again. Many of these buildings come
+        /// from mods Paradox distributes, so they need not be shaped like a vanilla one.
+        /// </summary>
+        private void ReportUnplaceable(EntityManager entities, Entity school, NameSystem names)
         {
-            if (index < 0 || index >= _entries.Count || !_entries[index].HasPosition)
+            var name = SafeName(names, school);
+            if (!_reported.Add(name))
+            {
+                return;
+            }
+
+            var chain = string.Empty;
+            var current = school;
+
+            for (var depth = 0; depth < 5; depth++)
+            {
+                chain += (depth == 0 ? "" : " -> ") + "#" + current.Index
+                    + (entities.HasComponent<Transform>(current) ? " [Transform]" : " [no Transform]")
+                    + (entities.HasComponent<Game.Buildings.Building>(current) ? " [Building]" : string.Empty)
+                    + (entities.HasComponent<Game.Buildings.Extension>(current) ? " [Extension]" : string.Empty)
+                    + (entities.HasBuffer<Game.Objects.SubObject>(current) ? " [has SubObjects]" : string.Empty);
+
+                if (!entities.HasComponent<Game.Common.Owner>(current))
+                {
+                    chain += " [no Owner]";
+                    break;
+                }
+
+                var owner = entities.GetComponentData<Game.Common.Owner>(current).m_Owner;
+                if (owner == Entity.Null || owner == current)
+                {
+                    chain += " [Owner is null or self]";
+                    break;
+                }
+
+                current = owner;
+            }
+
+            Mod.Log.Info("School '" + name + "' has nowhere to jump to: " + chain);
+        }
+
+        /// <summary>
+        /// Where to send the camera for this school: its own Transform, or the nearest thing it
+        /// belongs to that has one.
+        ///
+        /// A school in a signature building has no Transform of its own - it is a sub-building or
+        /// an upgrade, placed relative to its parent - so it is followed up the Game.Common.Owner
+        /// chain instead. Bounded rather than a while loop on purpose: an unexpected cycle in that
+        /// chain would hang the UI thread, and nothing here is worth that risk. Four is well past
+        /// what the game actually nests.
+        /// </summary>
+        private static bool PositionOf(EntityManager entities, Entity entity, out float3 position)
+        {
+            var current = entity;
+
+            for (var depth = 0; depth < 4; depth++)
+            {
+                if (entities.HasComponent<Transform>(current))
+                {
+                    position = entities.GetComponentData<Transform>(current).m_Position;
+                    return true;
+                }
+
+                if (!entities.HasComponent<Game.Common.Owner>(current))
+                {
+                    break;
+                }
+
+                var owner = entities.GetComponentData<Game.Common.Owner>(current).m_Owner;
+                if (owner == Entity.Null || owner == current)
+                {
+                    break;
+                }
+
+                current = owner;
+            }
+
+            position = float3.zero;
+            return false;
+        }
+
+        /// <summary>The school with this entity id, or null - see SchoolEntry.Entity.</summary>
+        public SchoolEntry Find(int entityIndex)
+        {
+            foreach (var entry in _entries)
+            {
+                if (entry.Entity.Index == entityIndex)
+                {
+                    return entry;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Moves the camera to one school, named by its entity id rather than by where it
+        /// happens to sit in the list. See SchoolEntry.Entity for why that distinction matters.
+        /// </summary>
+        public bool Jump(int entityIndex, CameraUpdateSystem camera)
+        {
+            var entry = Find(entityIndex);
+            if (entry == null || !entry.HasPosition)
             {
                 return false;
             }
@@ -174,7 +339,7 @@ namespace Seety.Vitals
                 return false;
             }
 
-            var target = _entries[index].Position;
+            var target = entry.Position;
             camera.activeCameraController.pivot = new UnityEngine.Vector3(target.x, target.y, target.z);
             return true;
         }

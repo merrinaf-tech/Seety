@@ -208,19 +208,6 @@ namespace Seety.Vitals
                 null, null, null, true);
         }
 
-        /// <summary>
-        /// A service vanilla reports as headroom rather than as two numbers. The UI turns that
-        /// back into coverage, so it reads the same way as <see cref="Service"/> - see
-        /// VanillaKind.Indicator.
-        /// </summary>
-        private static Vital Headroom(string id, string title, string label, string icon, string infoview,
-            string group, string binding)
-        {
-            return new Vital(id, VitalSource.Vanilla, title, label, "Media/Game/" + icon,
-                Names(infoview), VitalFormat.Percentage, LowCoverage,
-                new VanillaBinding(group, string.Empty, binding, VanillaKind.Indicator), false);
-        }
-
         /// <summary>A plain number with no denominator and no threshold. Purely informational.</summary>
         private static Vital Plain(string id, string title, string label, string icon, string infoview,
             string group, string binding)

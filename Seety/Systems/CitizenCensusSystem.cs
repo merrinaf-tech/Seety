@@ -25,10 +25,15 @@ namespace Seety.Systems
     /// for the whole game. Ours is Burst-compiled too, runs twice a second, and only while the
     /// window showing it is open. It is a fraction of what the game already pays.
     ///
-    /// The classification mirrors that job deliberately - the Tourist and ValidCitizen filters,
-    /// the dead check, the age switch, and the rule that someone holding a job below their
-    /// education still counts as looking for work. Diverging would produce a table that quietly
-    /// disagrees with the game.
+    /// The filters mirror that job deliberately - Tourist and ValidCitizen, the dead check
+    /// and the age switch - because diverging there would produce a table that quietly disagrees
+    /// with the game.
+    ///
+    /// One column is Seety's own and is NOT a vanilla figure: someone holding a job below their
+    /// education is counted in Under and nowhere else. It does not also go into Unemployed, which
+    /// is exactly what the table's own note says - "Idle is anyone of working age without a job in
+    /// the city". Folding the two together would double-count a person who is visibly in both
+    /// columns and make the row stop adding up.
     /// </summary>
     public partial class CitizenCensusSystem : GameSystemBase
     {
@@ -36,7 +41,7 @@ namespace Seety.Systems
         public const int Levels = 5;
 
         /// <summary>Counters held per level. Order matters: Field indexes into them.</summary>
-        public const int Fields = 13;
+        public const int Fields = 14;
 
         public enum Field
         {
@@ -56,7 +61,17 @@ namespace Seety.Systems
             Jobs = 11,
 
             /// <summary>Of those, the ones nobody is doing.</summary>
-            Vacant = 12
+            Vacant = 12,
+
+            /// <summary>
+            /// Students who are still children or teenagers.
+            ///
+            /// Students counts every citizen in a Student chunk, and university students are
+            /// adults - so the table's "Kids" column, which is children minus students, went to
+            /// zero on the levels where adults study. This is the part of Students that is
+            /// actually a child, which is the only part Kids should be subtracting.
+            /// </summary>
+            ChildStudents = 13
         }
 
         private EntityQuery _query;
@@ -322,6 +337,10 @@ namespace Seety.Systems
                 var members = chunk.Has<HouseholdMember>()
                     ? chunk.GetNativeArray(ref m_HouseholdMemberType)
                     : default(NativeArray<HouseholdMember>);
+                // Disposed at the end of this method, not left to the allocator. Execute runs
+                // once per CHUNK, and a Temp allocation inside a job is only rewound when the
+                // whole job finishes - so without this every chunk in the city piled up before
+                // anything was released, twice a second.
                 var isCommuter = new NativeArray<bool>(citizens.Length, Allocator.Temp);
                 if (members.IsCreated)
                 {
@@ -390,6 +409,11 @@ namespace Seety.Systems
                     if (isStudentChunk)
                     {
                         Add(level, Field.Students);
+
+                        if (age == CitizenAge.Child || age == CitizenAge.Teen)
+                        {
+                            Add(level, Field.ChildStudents);
+                        }
                     }
 
                     var worksOutside = false;
@@ -423,6 +447,8 @@ namespace Seety.Systems
                         Add(level, Field.Unemployed);
                     }
                 }
+
+                isCommuter.Dispose();
             }
 
             private void Add(int level, Field field)
