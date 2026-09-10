@@ -213,8 +213,9 @@ namespace Seety.Vitals
             string[] infoviews, VitalFormat format, VitalThreshold threshold = null,
             VanillaBinding binding = null, bool defaultOn = true,
             Game.City.StatisticType? history = null, string historyLabel = null, string badge = null,
-            bool invert = false, string factors = null)
+            bool invert = false, string factors = null, string unit = null)
         {
+            Unit = unit ?? string.Empty;
             Companions = NoCompanions;
             Factors = factors ?? string.Empty;
             Invert = invert;
@@ -331,6 +332,19 @@ namespace Seety.Vitals
 
         /// <summary>What the charted series actually counts. Shown above the chart.</summary>
         public string HistoryLabel { get; }
+
+        /// <summary>
+        /// The game's own unit this reading is expressed in, or empty for a plain count.
+        ///
+        /// The game stores several figures in internal units that mean nothing on screen -
+        /// electricity in tenths of a kilowatt, freight in kilograms - and its own UI converts
+        /// them at the point of display. Seety names the unit and does the same, with vanilla's
+        /// exact thresholds, so "6000000" reads as "600 MW" the way it does everywhere else in
+        /// the game rather than as an abbreviated "6M" that is not a quantity of anything.
+        ///
+        /// Recognised: "power", "weight".
+        /// </summary>
+        public string Unit { get; }
     }
 
     /// <summary>How a raw value is turned into the short string shown in the strip.</summary>
