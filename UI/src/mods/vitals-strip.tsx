@@ -906,12 +906,19 @@ const FloatingWindow = ({
         {action}
         <span className={styles.windowClose} onClick={onClose}>
           {/* Drawn rather than typed: the game's font has no glyph for a multiplication sign,
-              so the character came out as an empty rectangle. */}
-          <svg viewBox="0 0 12 12" className={styles.windowCloseIcon}>
+              so the character came out as an empty rectangle.
+
+              The colour is written out here rather than inherited through `currentColor`, which
+              this renderer does not resolve - it left the cross black on a near-black title bar.
+              The history chart a few components down was the tell: it names its colours outright
+              and has always drawn correctly. `fill` is explicit for the same class of reason, a
+              path with none defaults to black rather than to nothing. */}
+          <svg viewBox="0 0 14 14" className={styles.windowCloseIcon}>
             <path
-              d="M2 2 L10 10 M10 2 L2 10"
-              stroke="currentColor"
-              strokeWidth="1.6"
+              d="M3 3 L11 11 M11 3 L3 11"
+              fill="none"
+              stroke="rgb(233, 240, 247)"
+              strokeWidth="2"
               strokeLinecap="round"
             />
           </svg>

@@ -315,13 +315,28 @@
   white-space: nowrap;
 }
 
+// The cross is drawn with its colour named outright - see the note in the component - so hover
+// cannot be a change of `color` the way it used to be: nothing would inherit it. A background
+// behind the glyph instead, which is what every other pressable thing in this file already does.
 .windowClose {
-  padding: 0 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 22rem;
+  height: 22rem;
+  margin-left: 4rem;
+  border-radius: 11rem;
+
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.55);
+  background-color: rgba(255, 255, 255, 0.1);
 
   &:hover {
-    color: rgba(255, 255, 255, 0.95);
+    background-color: rgba(255, 118, 105, 0.85);
+  }
+
+  &:active {
+    background-color: rgba(255, 118, 105, 1);
   }
 }
 
@@ -433,8 +448,8 @@
 // The close glyph, drawn as a path. See the note in the component.
 .windowCloseIcon {
   display: block;
-  width: 12rem;
-  height: 12rem;
+  width: 14rem;
+  height: 14rem;
 }
 
 // The line that separates people from posts in the workforce table: everything left of it counts
