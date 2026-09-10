@@ -273,6 +273,44 @@ function snapToGrid(value: number): number {
 }
 
 /**
+ * The top edge of the vanilla HUD's own top-left row, in rem.
+ *
+ * From the game's compiled stylesheet, where its top layout is
+ * `position: absolute; top: 10rem; left: 10rem; right: 10rem`. Read from the game rather than
+ * eyeballed, but it is the container's edge, not necessarily the buttons' - if they sit inside
+ * padding of its own, this needs to be whatever lines up in game. One constant, one place.
+ *
+ * Like the icon paths, this is a value the game owns and could move in an update. Wrong, it costs
+ * a slightly-off magnet, not a broken bar.
+ */
+const HUD_TOP_Y = 10;
+
+/**
+ * How near that line the bar has to be dragged before it locks onto it, in rem.
+ *
+ * Wider than it sounds: the ordinary grid is 8rem, so anything much larger than this would swallow
+ * the two gridlines either side and make the top of the screen feel sticky.
+ */
+const HUD_SNAP_PULL = 5;
+
+/**
+ * Vertical snapping: the plain grid everywhere, except near the vanilla HUD row, where the bar
+ * locks flush to it.
+ *
+ * The grid alone could not reach that line at all - 10 is not a multiple of 8 - so lining the bar
+ * up with the game's own buttons was impossible by hand, which is the entire reason this exists.
+ * Deliberately one extra target rather than a general magnetic grid: dragging keeps behaving
+ * exactly as it did everywhere else, and only the one alignment worth having is made reachable.
+ */
+function snapY(value: number): number {
+  if (Math.abs(value - HUD_TOP_Y) <= HUD_SNAP_PULL) {
+    return HUD_TOP_Y;
+  }
+
+  return snapToGrid(value);
+}
+
+/**
  * How many real pixels one rem is worth right now.
  *
  * Everything here is positioned in rem, but a pointer event is in pixels, and the two are only
@@ -1456,7 +1494,8 @@ export const VitalsStrip = () => {
 
       setPos({
         x: snapToGrid(Math.min(Math.max(0, drag.current.originX + dx), maxX)),
-        y: snapToGrid(Math.min(Math.max(0, drag.current.originY + dy), maxY)),
+        // Horizontal keeps the plain grid; only the vertical has a line worth locking onto.
+        y: snapY(Math.min(Math.max(0, drag.current.originY + dy), maxY)),
       });
     };
 
