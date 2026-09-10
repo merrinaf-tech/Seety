@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Colossal.IO.AssetDatabase;
 using Colossal.Logging;
 using Game;
@@ -30,14 +31,16 @@ namespace Seety
         /// </summary>
         public const string Version = "1.0.3";
 
-        private const string LocaleId = "en-US";
 
         public static readonly ILog Log = LogManager.GetLogger(Id).SetShowsErrorsInUI(false);
 
         public static SeetySettings Settings { get; private set; }
 
         private static SeetyUISystem _uiSystem;
-        private static LocaleEN _locale;
+
+        /// <summary>One source per language, kept so they can be removed again on unload.</summary>
+        private static readonly List<Localization.LocaleSource> _locales = new List<Localization.LocaleSource>();
+
         private static bool _ready;
 
         public void OnLoad(UpdateSystem updateSystem)
@@ -47,8 +50,7 @@ namespace Seety
             Settings = new SeetySettings(this);
             Settings.RegisterInOptionsUI();
 
-            _locale = new LocaleEN(Settings);
-            GameManager.instance.localizationManager.AddSource(LocaleId, _locale);
+            AddLocaleSources();
 
             AssetDatabase.global.LoadSettings(Id, Settings, new SeetySettings(this));
 
@@ -68,22 +70,7 @@ namespace Seety
             _ready = false;
             _uiSystem = null;
 
-            if (_locale != null)
-            {
-                try
-                {
-                    if (GameManager.instance != null && GameManager.instance.localizationManager != null)
-                    {
-                        GameManager.instance.localizationManager.RemoveSource(LocaleId, _locale);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Log.Warn("Could not remove the localisation source: " + e.Message);
-                }
-
-                _locale = null;
-            }
+            RemoveLocaleSources();
 
             if (Settings != null)
             {
@@ -100,6 +87,62 @@ namespace Seety
             }
 
             Log.Info("Seety disposed.");
+        }
+
+        /// <summary>
+        /// Registers every language table with the game.
+        ///
+        /// One source per locale, all added up front: the game hands each source the locale it
+        /// was registered under and asks only the active one for entries, so registering twelve
+        /// costs twelve dictionary builds once and nothing after that. A table that fails to
+        /// register must not take the other eleven with it, hence the per-language catch.
+        /// </summary>
+        private static void AddLocaleSources()
+        {
+            var manager = GameManager.instance == null ? null : GameManager.instance.localizationManager;
+            if (manager == null)
+            {
+                Log.Warn("No localisation manager; Seety will read in English.");
+                return;
+            }
+
+            foreach (var table in Localization.LocaleTables.All())
+            {
+                try
+                {
+                    var source = new Localization.LocaleSource(Settings, table);
+                    manager.AddSource(source.LocaleId, source);
+                    _locales.Add(source);
+                }
+                catch (Exception e)
+                {
+                    Log.Warn("Could not register " + table.LocaleId + ": " + e.Message);
+                }
+            }
+
+            Log.Info("Registered " + _locales.Count + " languages.");
+        }
+
+        private static void RemoveLocaleSources()
+        {
+            var manager = GameManager.instance == null ? null : GameManager.instance.localizationManager;
+
+            foreach (var source in _locales)
+            {
+                try
+                {
+                    if (manager != null)
+                    {
+                        manager.RemoveSource(source.LocaleId, source);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.Warn("Could not remove " + source.LocaleId + ": " + e.Message);
+                }
+            }
+
+            _locales.Clear();
         }
 
         /// <summary>Registered by the UI system so the settings can talk to it.</summary>

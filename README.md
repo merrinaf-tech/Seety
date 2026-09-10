@@ -6,7 +6,7 @@ A single strip over the Cities: Skylines II HUD that shows the state of your cit
 Click a reading and the matching in-game info view opens. Click one that has more behind it and a
 window appears: the city's problems grouped by type with the camera jumping to each, the workforce
 against the jobs that exist, who lives here by age and education, why zone demand is stuck, which
-school is about to overflow.
+school is about to overflow, which cemetery is about to fill.
 
 ## What it shows
 
@@ -16,9 +16,12 @@ electricity, water delivered, sewage taken away, crematorium capacity, cemetery 
 levels, parking, garbage, safety, fire safety, environment quality, post, traffic, land value, zone
 demand and transport.
 
-Counted as rows on the bar. Environment quality is one row with four kinds of pollution behind it,
-and three rows carry a second figure in their window rather than a square of their own — health
-also holds hospital capacity, garbage also holds landfill space, safety also holds free cells.
+Counted as rows on the bar. Several carry more behind them than they show: environment quality is
+one row with four kinds of pollution behind it; health also holds hospital coverage, garbage also
+holds landfill space, and safety also holds free cells; electricity holds the battery charge and
+the power the city buys and sells; water and sewage hold their own trade.
+
+Available in the twelve languages the game supports.
 
 Two rules decide what is in that list:
 

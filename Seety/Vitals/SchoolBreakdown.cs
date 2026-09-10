@@ -149,7 +149,7 @@ namespace Seety.Vitals
 
                         // A building with no efficiency is not running, and vanilla leaves it out
                         // of the totals. Counting it would promise places that do not exist.
-                        if (IsShutDown(entities, school))
+                        if (BuildingLocator.IsShutDown(entities, school))
                         {
                             shutDown++;
                             continue;
@@ -166,7 +166,7 @@ namespace Seety.Vitals
                         var roll = entities.GetBuffer<Game.Buildings.Student>(school, true);
 
                         float3 position;
-                        var hasPosition = PositionOf(entities, school, out position);
+                        var hasPosition = BuildingLocator.PositionOf(entities, school, out position);
 
                         if (!hasPosition)
                         {
@@ -176,7 +176,7 @@ namespace Seety.Vitals
                         _entries.Add(new SchoolEntry
                         {
                             Entity = school,
-                            Name = SafeName(names, school),
+                            Name = BuildingLocator.SafeName(names, school, "School"),
                             Students = roll.Length,
                             Capacity = data.m_StudentCapacity,
                             Position = position,
@@ -232,7 +232,7 @@ namespace Seety.Vitals
         /// </summary>
         private void ReportUnplaceable(EntityManager entities, Entity school, NameSystem names)
         {
-            var name = SafeName(names, school);
+            var name = BuildingLocator.SafeName(names, school, "School");
             if (!_reported.Add(name))
             {
                 return;
@@ -268,46 +268,6 @@ namespace Seety.Vitals
             Mod.Log.Info("School '" + name + "' has nowhere to jump to: " + chain);
         }
 
-        /// <summary>
-        /// Where to send the camera for this school: its own Transform, or the nearest thing it
-        /// belongs to that has one.
-        ///
-        /// A school in a signature building has no Transform of its own - it is a sub-building or
-        /// an upgrade, placed relative to its parent - so it is followed up the Game.Common.Owner
-        /// chain instead. Bounded rather than a while loop on purpose: an unexpected cycle in that
-        /// chain would hang the UI thread, and nothing here is worth that risk. Four is well past
-        /// what the game actually nests.
-        /// </summary>
-        private static bool PositionOf(EntityManager entities, Entity entity, out float3 position)
-        {
-            var current = entity;
-
-            for (var depth = 0; depth < 4; depth++)
-            {
-                if (entities.HasComponent<Transform>(current))
-                {
-                    position = entities.GetComponentData<Transform>(current).m_Position;
-                    return true;
-                }
-
-                if (!entities.HasComponent<Game.Common.Owner>(current))
-                {
-                    break;
-                }
-
-                var owner = entities.GetComponentData<Game.Common.Owner>(current).m_Owner;
-                if (owner == Entity.Null || owner == current)
-                {
-                    break;
-                }
-
-                current = owner;
-            }
-
-            position = float3.zero;
-            return false;
-        }
-
         /// <summary>The school with this entity id, or null - see SchoolEntry.Entity.</summary>
         public SchoolEntry Find(int entityIndex)
         {
@@ -339,49 +299,8 @@ namespace Seety.Vitals
                 return false;
             }
 
-            var target = entry.Position;
-            camera.activeCameraController.pivot = new UnityEngine.Vector3(target.x, target.y, target.z);
-            return true;
+            return BuildingLocator.Jump(entry.Position, camera);
         }
 
-        /// <summary>
-        /// Whether a building is producing nothing at all.
-        ///
-        /// Efficiency is a buffer of factors that multiply together; a single zero shuts the
-        /// building down. BuildingUtils.GetEfficiency does exactly this, but its DynamicBuffer
-        /// overload will not compile against net48 - it resolves through Span - so the same
-        /// multiplication is done here.
-        /// </summary>
-        private static bool IsShutDown(EntityManager entities, Entity building)
-        {
-            if (!entities.HasBuffer<Efficiency>(building))
-            {
-                return false;
-            }
-
-            var factors = entities.GetBuffer<Efficiency>(building, true);
-            for (var i = 0; i < factors.Length; i++)
-            {
-                if (factors[i].m_Efficiency <= 0f)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static string SafeName(NameSystem names, Entity entity)
-        {
-            try
-            {
-                var label = names.GetRenderedLabelName(entity);
-                return string.IsNullOrEmpty(label) ? "School" : label;
-            }
-            catch
-            {
-                return "School";
-            }
-        }
     }
 }

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
+import { useLocalization } from "cs2/l10n";
 import styles from "./vitals-strip.module.scss";
 
 /** Mirrors the record written by SeetyUISystem.WriteVitals. Keep the two in step. */
@@ -9,6 +10,9 @@ interface Vital {
   /** Full name, shown on hover. With icons instead of text, this is what names the row. */
   title: string;
   label: string;
+  /** Where to look `title` and `label` up in the player's language. See useT. */
+  titleKey: string;
+  labelKey: string;
   /** Vanilla icon, relative to the GameUI root. Empty means "use the label". */
   icon: string;
   /** A short rank drawn over the icon, or empty. The four school tiers share one icon. */
@@ -88,13 +92,13 @@ function usePollutionAverage(): number {
 const POLLUTION_ID = "pollution";
 
 /** The six zone demands, and the factor list behind each. Matches VanillaKind.DemandGroup. */
-const DEMANDS: { id: string; label: string; icon: string; factors: string }[] = [
-  { id: "residentialLowDemand",    label: "Residential low",    icon: "Media/Game/Icons/ZoneResidentialLow.svg",    factors: "residentialLowFactors" },
-  { id: "residentialMediumDemand", label: "Residential medium", icon: "Media/Game/Icons/ZoneResidentialMedium.svg", factors: "residentialMediumFactors" },
-  { id: "residentialHighDemand",   label: "Residential high",   icon: "Media/Game/Icons/ZoneResidentialHigh.svg",   factors: "residentialHighFactors" },
-  { id: "commercialDemand",        label: "Commercial",         icon: "Media/Game/Icons/ZoneCommercial.svg",        factors: "commercialFactors" },
-  { id: "industrialDemand",        label: "Industrial",         icon: "Media/Game/Icons/ZoneIndustrial.svg",        factors: "industrialFactors" },
-  { id: "officeDemand",            label: "Office",             icon: "Media/Game/Icons/ZoneOffice.svg",            factors: "officeFactors" },
+const DEMANDS: { id: string; key: string; label: string; icon: string; factors: string }[] = [
+  { id: "residentialLowDemand",    key: "Seety.ZONE_RES_LOW",    label: "Residential low",    icon: "Media/Game/Icons/ZoneResidentialLow.svg",    factors: "residentialLowFactors" },
+  { id: "residentialMediumDemand", key: "Seety.ZONE_RES_MED",    label: "Residential medium", icon: "Media/Game/Icons/ZoneResidentialMedium.svg", factors: "residentialMediumFactors" },
+  { id: "residentialHighDemand",   key: "Seety.ZONE_RES_HIGH",   label: "Residential high",   icon: "Media/Game/Icons/ZoneResidentialHigh.svg",   factors: "residentialHighFactors" },
+  { id: "commercialDemand",        key: "Seety.ZONE_COMMERCIAL", label: "Commercial",         icon: "Media/Game/Icons/ZoneCommercial.svg",        factors: "commercialFactors" },
+  { id: "industrialDemand",        key: "Seety.ZONE_INDUSTRIAL", label: "Industrial",         icon: "Media/Game/Icons/ZoneIndustrial.svg",        factors: "industrialFactors" },
+  { id: "officeDemand",            key: "Seety.ZONE_OFFICE",     label: "Office",             icon: "Media/Game/Icons/ZoneOffice.svg",            factors: "officeFactors" },
 ];
 
 const demand$ = DEMANDS.map((d) => bindValue<number>("cityInfo", d.id, 0));
@@ -179,6 +183,19 @@ interface History {
   values: number[];
 }
 
+/**
+ * Looks a string up in the player's language, falling back to the English written at the call
+ * site.
+ *
+ * Every call passes that fallback on purpose: a key missing from one of the twelve tables then
+ * shows that one string in English instead of leaving a blank cell, which is the difference
+ * between a mod that looks untranslated in one place and one that looks broken.
+ */
+function useT(): (key: string, english: string) => string {
+  const { translate } = useLocalization();
+  return (key, english) => translate(key, english) ?? english;
+}
+
 const vitals$ = bindValue<Vital[]>("seety", "vitals", []);
 const breakdowns$ = bindValue<Breakdown[]>("seety", "notifications", []);
 const history$ = bindValue<History>("seety", "history", { label: "", values: [] });
@@ -192,6 +209,8 @@ const configMode$ = bindValue<boolean>("seety", "configMode", false);
 /** One age band, split across the five education levels. */
 interface AgeRow {
   age: string;
+  /** Where to look `age` up in the player's language. Sent by C#, never assembled here. */
+  ageKey: string;
   levels: number[];
 }
 
@@ -223,7 +242,13 @@ const resources$ = bindValue<{
 }>("seety", "resources", { commercial: [], industrial: [], office: [] });
 
 /** The five education levels, shortened to fit a column head. */
-const LEVEL_NAMES = ["None", "Poor", "Educated", "Well", "Highly"];
+const LEVEL_NAMES = [
+  { key: "Seety.EDU_NONE", english: "None" },
+  { key: "Seety.EDU_POOR", english: "Poor" },
+  { key: "Seety.EDU_EDUCATED", english: "Educated" },
+  { key: "Seety.EDU_WELL", english: "Well" },
+  { key: "Seety.EDU_HIGHLY", english: "Highly" },
+];
 
 /** The row whose window carries the demographics table. Matches the C# side. */
 const DEMOGRAPHICS_ID = "happiness";
@@ -364,6 +389,13 @@ const WORKFORCE_ID = "workers";
  */
 const TRAFFIC_ID = "traffic";
 
+/**
+ * The row whose window lists the city's cemeteries. Listed here for the same reason TRAFFIC_ID is:
+ * its breakdown only exists once the window is open, so `breakdown !== undefined` would leave the
+ * row unclickable until the very thing that opens it existed.
+ */
+const CEMETERY_ID = "cemetery";
+
 /** Stands in for a notification type whose own icon file is missing. */
 const FALLBACK_ICON = "Media/Game/Icons/Notifications.svg";
 
@@ -411,9 +443,10 @@ function formatValue(vital: Vital, value: number): string {
  */
 const VitalGlyph = ({ vital }: { vital: Vital }) => {
   const [failed, setFailed] = useState(false);
+  const t = useT();
 
   if (!vital.icon || failed) {
-    return <span className={styles.label}>{vital.label}</span>;
+    return <span className={styles.label}>{t(vital.labelKey, vital.label)}</span>;
   }
 
   return (
@@ -484,6 +517,11 @@ function activateRow(row: BreakdownRow) {
     return;
   }
 
+  if (row.action.startsWith("cemetery:")) {
+    trigger("seety", "jumpToCemetery", parseInt(row.action.slice(9), 10));
+    return;
+  }
+
   if (row.action.startsWith("jam:")) {
     trigger("seety", "jumpToJam", row.action.slice(4));
     return;
@@ -502,7 +540,7 @@ function activateRow(row: BreakdownRow) {
  * what a list sorted by fullness is for.
  */
 function fillStyle(row: BreakdownRow): React.CSSProperties | undefined {
-  if (!row.action.startsWith("school:")) {
+  if (!row.action.startsWith("school:") && !row.action.startsWith("cemetery:")) {
     return undefined;
   }
 
@@ -515,6 +553,7 @@ function fillStyle(row: BreakdownRow): React.CSSProperties | undefined {
 
 /** One row inside any breakdown panel: icon, name, number, click if applicable. */
 const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
+  const t = useT();
   const classes = [styles.panelRow];
   if (row.level === VitalLevel.Critical) {
     classes.push(styles.critical);
@@ -528,14 +567,17 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
   return (
     <Tooltip
       tooltip={
-        row.action === "jump" || row.action.startsWith("jam:")
-          ? `${row.id} - click to go there`
-          : row.action.startsWith("school:")
-          ? row.clickable
-            ? `${row.id} - click to go there`
-            : row.id
+        row.action === "jump" ||
+        row.action.startsWith("jam:") ||
+        ((row.action.startsWith("school:") || row.action.startsWith("cemetery:")) && row.clickable)
+          ? `${row.id} - ${t("Seety.TIP_GO_THERE", "click to go there")}`
+          : row.action.startsWith("school:") || row.action.startsWith("cemetery:")
+          ? row.id
           : row.clickable
-          ? `${row.id} - click to select this mode in the transport overview`
+          ? `${row.id} - ${t(
+              "Seety.TIP_SELECT_MODE",
+              "click to select this mode in the transport overview"
+            )}`
           : row.id
       }
     >
@@ -547,7 +589,11 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
         <span className={styles.panelName}>{row.id}</span>
         <span className={styles.value} style={fillStyle(row)}>
           {row.count}
-          {row.action.startsWith("school:") ? "%" : row.suffix}
+          {/* row.suffix, not a "%" hardcoded for school rows. The special case existed because
+              suffix used to arrive shuffled - two C# writers emitted this type in different
+              field orders - and hardcoding it here is what hid that from view. One writer now,
+              so the value sent is the value shown. */}
+          {row.suffix}
         </span>
       </div>
     </Tooltip>
@@ -555,8 +601,13 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
 };
 
 const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
+  const t = useT();
   if (rows.length === 0) {
-    return <div className={styles.panelEmpty}>Nothing to report</div>;
+    return (
+      <div className={styles.panelEmpty}>
+        {t("Seety.EMPTY_NOTHING", "Nothing to report")}
+      </div>
+    );
   }
 
   return (
@@ -574,8 +625,13 @@ const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
  * that distinction instead of throwing it away.
  */
 const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
+  const t = useT();
   if (rows.length === 0) {
-    return <div className={styles.panelEmpty}>Nothing to report</div>;
+    return (
+      <div className={styles.panelEmpty}>
+        {t("Seety.EMPTY_NOTHING", "Nothing to report")}
+      </div>
+    );
   }
 
   const passengers = rows.filter((r) => r.action.startsWith("passenger:"));
@@ -584,14 +640,16 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
   return (
     <>
       {passengers.length > 0 ? (
-        <div className={styles.panelSection}>Passengers</div>
+        <div className={styles.panelSection}>
+          {t("Seety.SEC_PASSENGERS", "Passengers")}
+        </div>
       ) : null}
       {passengers.map((row) => (
         <BreakdownRowItem key={row.id} row={row} />
       ))}
 
       {cargo.length > 0 ? (
-        <div className={styles.panelSection}>Cargo</div>
+        <div className={styles.panelSection}>{t("Seety.SEC_CARGO", "Cargo")}</div>
       ) : null}
       {cargo.map((row) => (
         <BreakdownRowItem key={row.id} row={row} />
@@ -876,6 +934,7 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
   // earlier version subscribed to workplaces.workplacesData here, which is why this component
   // used to carry a note about waking that binding; it reads zero unless vanilla's own
   // Workplaces panel is on screen, so nothing is bound here any more.
+  const t = useT();
   const rows = data?.rows ?? [];
   if (rows.length === 0) {
     return null;
@@ -884,24 +943,24 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
   // Left of the divider every column counts citizens; right of it they count jobs. Mixing the
   // two without a line between them was the single thing that made the table hard to read.
   const columns: [string, (r: WorkforceRow, i: number) => number, boolean][] = [
-    ["Total", (r) => r.total, false],
+    [t("Seety.WF_TOTAL", "Total"), (r) => r.total, false],
     // Kids and Student overlapped: a child at school appeared in both. Kids is the ones who are
     // not studying, so the columns add up - but only against the students who are actually
     // children. Subtracting the whole Student column took university students, who are adults,
     // off the children's total and drove Kids to zero on exactly the levels where people study.
-    ["Kids", (r) => Math.max(0, r.children - r.childStudents), false],
-    ["Student", (r) => r.students, false],
-    ["Old", (r) => r.seniors, false],
-    ["Adults", (r) => r.workingAge, false],
-    ["Employed", (r) => r.workers, false],
-    ["Idle", (r) => r.unemployed, false],
-    ["Under", (r) => r.under, false],
-    ["Out", (r) => r.outside, false],
-    ["In", (r) => r.commuters, false],
+    [t("Seety.WF_KIDS", "Kids"), (r) => Math.max(0, r.children - r.childStudents), false],
+    [t("Seety.WF_STUDENT", "Student"), (r) => r.students, false],
+    [t("Seety.WF_OLD", "Old"), (r) => r.seniors, false],
+    [t("Seety.WF_ADULTS", "Adults"), (r) => r.workingAge, false],
+    [t("Seety.WF_EMPLOYED", "Employed"), (r) => r.workers, false],
+    [t("Seety.WF_IDLE", "Idle"), (r) => r.unemployed, false],
+    [t("Seety.WF_UNDER", "Under"), (r) => r.under, false],
+    [t("Seety.WF_OUT", "Out"), (r) => r.outside, false],
+    [t("Seety.WF_IN", "In"), (r) => r.commuters, false],
     // "Posts" was opaque. These are jobs, not people: how many exist at this level, and how many
     // of them nobody is doing.
-    ["Jobs", (r) => r.jobs, true],
-    ["Vacant", (r) => r.vacant, false],
+    [t("Seety.WF_JOBS", "Jobs"), (r) => r.jobs, true],
+    [t("Seety.WF_VACANT", "Vacant"), (r) => r.vacant, false],
   ];
 
   const totals = columns.map(([, get]) =>
@@ -916,7 +975,7 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
   return (
     <div className={styles.table}>
       <div className={`${styles.tableRow} ${styles.tableHead}`}>
-        <span className={styles.tableLevel}>Education</span>
+        <span className={styles.tableLevel}>{t("Seety.WF_EDUCATION", "Education")}</span>
         {columns.map(([name, , divider]) => (
           <span key={name} className={cellClass(divider, false)}>
             {name}
@@ -946,7 +1005,7 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
       })}
 
       <div className={`${styles.tableRow} ${styles.tableTotal}`}>
-        <span className={styles.tableLevel}>Total</span>
+        <span className={styles.tableLevel}>{t("Seety.WF_TOTAL", "Total")}</span>
         {totals.map((value, i) => (
           <span key={i} className={cellClass(columns[i][2], false)}>
             {value.toLocaleString()}
@@ -979,9 +1038,14 @@ const FactorList = ({ binding }: { binding: string }) => {
     [binding]
   );
   const factors = useValue(factors$) ?? [];
+  const t = useT();
 
   if (factors.length === 0) {
-    return <div className={styles.panelEmpty}>No factors reported</div>;
+    return (
+      <div className={styles.panelEmpty}>
+        {t("Seety.EMPTY_FACTORS", "No factors reported")}
+      </div>
+    );
   }
 
   return (
@@ -1036,31 +1100,42 @@ type ResourceKind = "commercial" | "industrial" | "office";
  */
 const RESOURCE_TABLE_TEXT: Record<
   ResourceKind,
-  { companyHead: string; stockHead: string; note: string }
+  { companyKey: string; companyHead: string; stockKey: string; stockHead: string; note: string }
 > = {
   commercial: {
+    companyKey: "Seety.RES_SHOPS",
     companyHead: "Shops",
+    stockKey: "Seety.RES_STOCK",
     stockHead: "Stock",
     note: 'Wanted is demand relative to the good the city wants most - 100% is the top of the list, not "fully satisfied". Amber stock means the shops are there but the shelves are empty - that is a supply problem, not a zoning one. Homeless companies want premises.',
   },
   industrial: {
+    companyKey: "Seety.RES_PLANTS",
     companyHead: "Plants",
+    stockKey: "Seety.RES_MADE",
     stockHead: "Made",
     note: "Wanted is demand relative to the good the city wants most; Made is production against that demand. Amber means the city is asking for more than anyone is producing.",
   },
   office: {
+    companyKey: "Seety.RES_OFFICES",
     companyHead: "Offices",
+    stockKey: "Seety.RES_MADE",
     stockHead: "Made",
     note: "The same reading as industrial, for the four resources - software, telecom, financial services, media - the game itself counts as office work rather than manufacturing.",
   },
 };
 
 const ResourceTable = ({ kind }: { kind: ResourceKind }) => {
+  const t = useT();
   const all = useValue(resources$);
   const rows = all?.[kind] ?? [];
 
   if (rows.length === 0) {
-    return <div className={styles.panelEmpty}>Nothing traded yet</div>;
+    return (
+      <div className={styles.panelEmpty}>
+        {t("Seety.EMPTY_TRADE", "Nothing traded yet")}
+      </div>
+    );
   }
 
   const text = RESOURCE_TABLE_TEXT[kind];
@@ -1068,11 +1143,11 @@ const ResourceTable = ({ kind }: { kind: ResourceKind }) => {
   return (
     <div className={styles.table}>
       <div className={`${styles.tableRow} ${styles.tableHead}`}>
-        <span className={styles.tableLevel}>Resource</span>
-        <span className={styles.tableCell}>Wanted</span>
-        <span className={styles.tableCell}>{text.companyHead}</span>
-        <span className={styles.tableCell}>{text.stockHead}</span>
-        <span className={styles.tableCell}>Staff</span>
+        <span className={styles.tableLevel}>{t("Seety.RES_RESOURCE", "Resource")}</span>
+        <span className={styles.tableCell}>{t("Seety.RES_WANTED", "Wanted")}</span>
+        <span className={styles.tableCell}>{t(text.companyKey, text.companyHead)}</span>
+        <span className={styles.tableCell}>{t(text.stockKey, text.stockHead)}</span>
+        <span className={styles.tableCell}>{t("Seety.RES_STAFF", "Staff")}</span>
       </div>
 
       {rows.map((r) => {
@@ -1145,6 +1220,7 @@ const ResourceTable = ({ kind }: { kind: ResourceKind }) => {
 };
 
 const DemandList = () => {
+  const t = useT();
   const values = demand$.map((b) => useValue(b));
   const [open, setOpen] = useState<string | null>(null);
 
@@ -1157,7 +1233,7 @@ const DemandList = () => {
             onClick={() => setOpen((o) => (o === d.id ? null : d.id))}
           >
             <img className={styles.icon} src={d.icon} />
-            <span className={styles.panelName}>{d.label}</span>
+            <span className={styles.panelName}>{t(d.key, d.label)}</span>
             <span className={styles.value}>
               {Math.round((values[i] ?? 0) * 100)}%
             </span>
@@ -1191,6 +1267,7 @@ const DemandList = () => {
  * school problem arriving in a few years.
  */
 const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
+  const t = useT();
   if (rows.length === 0) {
     return null;
   }
@@ -1201,13 +1278,15 @@ const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
   return (
     <div className={styles.table}>
       <div className={`${styles.tableRow} ${styles.tableHead}`}>
-        <span className={styles.tableLevel}>Age</span>
-        {LEVEL_NAMES.map((name) => (
-          <span key={name} className={styles.tableCell}>
-            {name}
+        <span className={styles.tableLevel}>{t("Seety.DEMO_AGE", "Age")}</span>
+        {LEVEL_NAMES.map((level) => (
+          <span key={level.key} className={styles.tableCell}>
+            {t(level.key, level.english)}
           </span>
         ))}
-        <span className={`${styles.tableCell} ${styles.tableDivider}`}>Total</span>
+        <span className={`${styles.tableCell} ${styles.tableDivider}`}>
+          {t("Seety.WF_TOTAL", "Total")}
+        </span>
       </div>
 
       {rows.map((row) => {
@@ -1217,7 +1296,7 @@ const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
         return (
           <div key={row.age} className={styles.tableRow}>
             <span className={styles.tableLevel}>
-              {row.age}
+              {t(row.ageKey, row.age)}
               <span
                 className={styles.ageBar}
                 style={{ width: `${Math.max(2, share).toFixed(1)}%` }}
@@ -1250,6 +1329,7 @@ const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
  * bikeParking$. Room left, not spaces taken, matching the row on the strip: 100% is empty.
  */
 const ParkingList = () => {
+  const t = useT();
   const capacity = useValue(parkingCapacity$);
   const parked = useValue(parkedCars$);
   const bikes = useValue(bikeParking$);
@@ -1266,8 +1346,11 @@ const ParkingList = () => {
         <img className={styles.icon} src="Media/Game/Icons/Parking.svg" />
         <span className={styles.panelName}>
           {capacity > 0
-            ? `Cars - ${parked.toLocaleString()} parked of ${Math.round(capacity).toLocaleString()}`
-            : "Cars"}
+            ? `${t("Seety.PARK_CARS", "Cars")} - ${parked.toLocaleString()} ${t(
+                "Seety.PARKED_OF",
+                "parked of"
+              )} ${Math.round(capacity).toLocaleString()}`
+            : t("Seety.PARK_CARS", "Cars")}
         </span>
         <span className={styles.value}>{Math.round(carsFree)}%</span>
       </div>
@@ -1279,8 +1362,11 @@ const ParkingList = () => {
         <img className={styles.icon} src="Media/Game/Icons/Bicycles.svg" />
         <span className={styles.panelName}>
           {bikes.y > 0
-            ? `Bikes - ${bikes.x.toLocaleString()} parked of ${Math.round(bikes.y).toLocaleString()}`
-            : "Bikes"}
+            ? `${t("Seety.PARK_BIKES", "Bikes")} - ${bikes.x.toLocaleString()} ${t(
+                "Seety.PARKED_OF",
+                "parked of"
+              )} ${Math.round(bikes.y).toLocaleString()}`
+            : t("Seety.PARK_BIKES", "Bikes")}
         </span>
         <span className={styles.value}>{Math.round(bikesFree)}%</span>
       </div>
@@ -1338,6 +1424,7 @@ const PollutionList = () => {
  * player opened it to see both.
  */
 const ReadingRow = ({ vital }: { vital: Vital }) => {
+  const t = useT();
   const draw = (value: number, level: VitalLevel) => {
     const classes = [styles.panelRow];
     if (level === VitalLevel.Critical) {
@@ -1353,8 +1440,11 @@ const ReadingRow = ({ vital }: { vital: Vital }) => {
       <Tooltip
         tooltip={
           vital.clickable
-            ? `${vital.title} - click to open its info view`
-            : vital.title
+            ? `${t(vital.titleKey, vital.title)} - ${t(
+                "Seety.TIP_OPEN_INFO",
+                "click to open its info view"
+              )}`
+            : t(vital.titleKey, vital.title)
         }
       >
         <div
@@ -1366,7 +1456,7 @@ const ReadingRow = ({ vital }: { vital: Vital }) => {
           }
         >
           <RowIcon src={vital.icon} />
-          <span className={styles.panelName}>{vital.title}</span>
+          <span className={styles.panelName}>{t(vital.titleKey, vital.title)}</span>
           <span className={styles.value}>{formatValue(vital, value)}</span>
         </div>
       </Tooltip>
@@ -1416,6 +1506,7 @@ const VanillaEntry = ({
 };
 
 export const VitalsStrip = () => {
+  const t = useT();
   const vitals = useValue(vitals$);
   const visible = useValue(visible$);
   const savedX = useValue(posX$);
@@ -1542,7 +1633,9 @@ export const VitalsStrip = () => {
       onMouseDown={onMouseDown}
     >
       {configMode ? (
-        <span className={styles.configBanner}>Choosing what to show</span>
+        <span className={styles.configBanner}>
+          {t("Seety.CONFIG_BANNER", "Choosing what to show")}
+        </span>
       ) : null}
 
       {vitals
@@ -1572,7 +1665,8 @@ export const VitalsStrip = () => {
             vital.companions.length > 0 ||
             SCHOOL_IDS.indexOf(vital.id) >= 0 ||
             vital.id === WORKFORCE_ID ||
-            vital.id === TRAFFIC_ID);
+            vital.id === TRAFFIC_ID ||
+            vital.id === CEMETERY_ID);
 
         const row = (value: number, level: VitalLevel) => {
           const classes = [styles.entry];
@@ -1600,7 +1694,9 @@ export const VitalsStrip = () => {
           }
 
           return (
-            <Tooltip tooltip={`${vital.title}: ${formatValue(vital, value)}`}>
+            <Tooltip
+              tooltip={`${t(vital.titleKey, vital.title)}: ${formatValue(vital, value)}`}
+            >
               <div
                 className={classes.join(" ")}
                 onClick={() => {
@@ -1648,8 +1744,11 @@ export const VitalsStrip = () => {
       <Tooltip
         tooltip={
           configMode
-            ? "Done choosing"
-            : "Choose which readings to show: click the ones you want"
+            ? t("Seety.CONFIG_ON", "Done choosing")
+            : t(
+                "Seety.CONFIG_OFF",
+                "Choose which readings to show: click the ones you want"
+              )
         }
       >
         <div
@@ -1668,22 +1767,24 @@ export const VitalsStrip = () => {
 
       {openVital ? (
         <FloatingWindow
-          title={openVital.title}
+          title={t(openVital.titleKey, openVital.title)}
           onClose={() => setExpanded(null)}
           action={
             openVital.id === "problems" ? (
               <Tooltip
                 tooltip={
                   iconsHidden
-                    ? "Show the notification icons over the city"
-                    : "Hide the notification icons over the city"
+                    ? t("Seety.ICONS_SHOW_TIP", "Show the notification icons over the city")
+                    : t("Seety.ICONS_HIDE_TIP", "Hide the notification icons over the city")
                 }
               >
                 <span
                   className={styles.windowAction}
                   onClick={() => trigger("seety", "setIconsHidden", !iconsHidden)}
                 >
-                  {iconsHidden ? "Show icons" : "Hide icons"}
+                  {iconsHidden
+                    ? t("Seety.ICONS_SHOW", "Show icons")
+                    : t("Seety.ICONS_HIDE", "Hide icons")}
                 </span>
               </Tooltip>
             ) : undefined
