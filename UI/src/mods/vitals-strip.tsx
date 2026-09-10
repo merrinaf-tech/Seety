@@ -656,9 +656,8 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
       ))}
 
       <div className={styles.tableNote}>
-        Carried since the game last rolled its counters over, not aboard right now - the same
-        rolling total the game&apos;s own transportation overview is built from. A busy line reads
-        high even at 3am with nobody on it.
+        Aboard right now, counted vehicle by vehicle, against what the vehicles currently running
+        that mode could hold between them. Not a rolling total: an empty line reads empty.
       </div>
     </>
   );

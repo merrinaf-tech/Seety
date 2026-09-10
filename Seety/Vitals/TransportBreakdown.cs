@@ -1,23 +1,35 @@
 using System.Collections.Generic;
-using Game.City;
-using Game.Simulation;
+using Game.Prefabs;
+using Unity.Collections;
+using Unity.Entities;
 
 namespace Seety.Vitals
 {
-    /// <summary>One transport mode and how much it carried.</summary>
+    /// <summary>Which vehicles a cargo row counts. Cargo prefabs carry no TransportType of their own.</summary>
+    public enum CargoKind
+    {
+        None,
+        Truck,
+        Train,
+        Ship,
+        Aircraft
+    }
+
+    /// <summary>One transport mode and how much it is carrying right now.</summary>
     public sealed class TransportMode
     {
-        public TransportMode(string id, string icon, StatisticType statistic, string action = "")
+        public TransportMode(string id, string icon, string action, TransportType type,
+            CargoKind cargo = CargoKind.None)
         {
             Id = id;
             Icon = icon;
-            Statistic = statistic;
             Action = action;
+            Type = type;
+            Cargo = cargo;
         }
 
         public string Id { get; }
         public string Icon { get; }
-        public StatisticType Statistic { get; }
 
         /// <summary>
         /// What clicking this row does, as understood by the UI: "passenger:X" or "cargo:X" to
@@ -31,54 +43,82 @@ namespace Seety.Vitals
         /// TransportType has no separate truck member - so the two must not be the same string.
         ///
         /// Only the pre-selection is possible. Vanilla exposes those two triggers, but the panel's
-        /// own open/closed state lives in the game's React UI and has no binding, so no mod can
-        /// open it without reaching into vanilla's UI internals.
+        /// own open/closed state lives in the game's React UI and has no binding.
         /// </summary>
         public string Action { get; }
-        public int Count { get; set; }
+
+        /// <summary>Which TransportType a passenger vehicle must declare to count here.</summary>
+        public TransportType Type { get; }
+
+        /// <summary>For a cargo row, which kind of vehicle counts. None on a passenger row.</summary>
+        public CargoKind Cargo { get; }
+
+        /// <summary>
+        /// People aboard, or units of freight aboard, at this instant.
+        ///
+        /// A live count: the length of each vehicle's Passenger buffer, or the sum of its
+        /// Resources buffer. Not a sampled statistic - see the note on the class.
+        /// </summary>
+        public int Aboard { get; set; }
+
+        /// <summary>What the vehicles currently running this mode could carry between them.</summary>
+        public int Capacity { get; set; }
     }
 
     /// <summary>
-    /// Passengers and freight, split by mode.
+    /// What the city's transport network is carrying right now, split by mode.
     ///
-    /// One row in the strip with everything behind it, rather than a dozen rows: the total answers
-    /// "is anyone using my network", and the list answers "using what".
+    /// One row in the strip with everything behind it: the total answers "is anyone using my
+    /// network", and the list answers "using what".
     ///
-    /// These come from CityStatisticsSystem, which is correct here and not a relapse into the
-    /// mistake VitalReader warns about. `TransportInfoviewUISystem.BindSummaries` builds vanilla's
-    /// own per-mode summaries from exactly these statistics, so mirroring them is mirroring
-    /// vanilla. They are also inherently per-period counts, which is what that system is for.
+    /// **These are live counts, and they used to be sampled statistics.** The old figures came
+    /// from CityStatisticsSystem's PassengerCount* series, which is what vanilla's own transport
+    /// summaries are built from - but that series is a rolling per-period tally, so a busy line
+    /// read high at three in the morning with nobody aboard, and the window needed a footnote
+    /// explaining that its number did not mean what it looked like it meant.
+    ///
+    /// It can simply be counted instead. A vehicle's <c>Game.Vehicles.Passenger</c> buffer holds
+    /// one entry per person aboard and its length is therefore the answer; a cargo vehicle's
+    /// <c>Game.Economy.Resources</c> buffer holds what it is carrying. Both are plain components
+    /// on the vehicle, so nothing here can be caught by the sleeping-binding trap, and the number
+    /// now means exactly what the row says it means.
+    ///
+    /// This also agrees more closely with the game's own transportation overview, not less: that
+    /// panel lists each line with the passengers on it at this moment, and these are those
+    /// numbers added up per mode.
     /// </summary>
     public sealed class TransportBreakdown
     {
-        // Every passenger label here happens to already match its TransportType member name
-        // (Bus, Tram, Subway, Train, Taxi, Ferry, Ship, Airplane all exist verbatim on the enum),
-        // which is what let the mismatch below hide for as long as it did.
+        // Every passenger label here happens to already match its TransportType member name,
+        // which is what let the cargo mismatch below hide for as long as it did.
         private readonly List<TransportMode> _passengers = new List<TransportMode>
         {
-            new TransportMode("Bus",      "Media/Game/Icons/Bus.svg",      StatisticType.PassengerCountBus, "passenger:Bus"),
-            new TransportMode("Tram",     "Media/Game/Icons/Tram.svg",     StatisticType.PassengerCountTram, "passenger:Tram"),
-            new TransportMode("Subway",   "Media/Game/Icons/Subway.svg",   StatisticType.PassengerCountSubway, "passenger:Subway"),
-            new TransportMode("Train",    "Media/Game/Icons/Train.svg",    StatisticType.PassengerCountTrain, "passenger:Train"),
-            new TransportMode("Taxi",     "Media/Game/Icons/Taxi.svg",     StatisticType.PassengerCountTaxi, "passenger:Taxi"),
-            new TransportMode("Ferry",    "Media/Game/Icons/Ship.svg",     StatisticType.PassengerCountFerry, "passenger:Ferry"),
-            new TransportMode("Ship",     "Media/Game/Icons/Ship.svg",     StatisticType.PassengerCountShip, "passenger:Ship"),
-            new TransportMode("Airplane", "Media/Game/Icons/Airplane.svg", StatisticType.PassengerCountAirplane, "passenger:Airplane")
+            new TransportMode("Bus",      "Media/Game/Icons/Bus.svg",      "passenger:Bus",      TransportType.Bus),
+            new TransportMode("Tram",     "Media/Game/Icons/Tram.svg",     "passenger:Tram",     TransportType.Tram),
+            new TransportMode("Subway",   "Media/Game/Icons/Subway.svg",   "passenger:Subway",   TransportType.Subway),
+            new TransportMode("Train",    "Media/Game/Icons/Train.svg",    "passenger:Train",    TransportType.Train),
+            new TransportMode("Taxi",     "Media/Game/Icons/Taxi.svg",     "passenger:Taxi",     TransportType.Taxi),
+            new TransportMode("Ferry",    "Media/Game/Icons/Ship.svg",     "passenger:Ferry",    TransportType.Ferry),
+            new TransportMode("Ship",     "Media/Game/Icons/Ship.svg",     "passenger:Ship",     TransportType.Ship),
+            new TransportMode("Airplane", "Media/Game/Icons/Airplane.svg", "passenger:Airplane", TransportType.Airplane)
         };
 
-        // Cargo is where the labels and the underlying TransportType diverge. TransportType has
-        // no member for a truck - Car is the only ground-vehicle value it defines - so "Cargo
-        // trucks" resolves to Car, not to anything matching its own name. Train, Ship and Airplane
-        // are shared with the passenger list and unambiguous.
+        // Cargo is where the labels and the underlying TransportType diverge. TransportType has no
+        // member for a truck - Car is the only ground-vehicle value it defines - so "Cargo trucks"
+        // resolves to Car, not to anything matching its own name.
+        //
+        // The counting side needs a different discriminator again: a cargo prefab carries
+        // CargoTransportVehicleData, which has a capacity but no transport type, so which row a
+        // cargo vehicle belongs to is decided by what kind of vehicle it is.
         private readonly List<TransportMode> _cargo = new List<TransportMode>
         {
-            new TransportMode("Cargo trucks",   "Media/Game/Icons/CargoTruck.svg",    StatisticType.CargoCountTruck, "cargo:Car"),
-            new TransportMode("Cargo trains",   "Media/Game/Icons/CargoTrain.svg",    StatisticType.CargoCountTrain, "cargo:Train"),
-            new TransportMode("Cargo ships",    "Media/Game/Icons/CargoShip.svg",     StatisticType.CargoCountShip, "cargo:Ship"),
-            new TransportMode("Cargo aircraft", "Media/Game/Icons/CargoAirplane.svg", StatisticType.CargoCountAirplane, "cargo:Airplane")
+            new TransportMode("Cargo trucks",   "Media/Game/Icons/CargoTruck.svg",    "cargo:Car",      TransportType.Car,      CargoKind.Truck),
+            new TransportMode("Cargo trains",   "Media/Game/Icons/CargoTrain.svg",    "cargo:Train",    TransportType.Train,    CargoKind.Train),
+            new TransportMode("Cargo ships",    "Media/Game/Icons/CargoShip.svg",     "cargo:Ship",     TransportType.Ship,     CargoKind.Ship),
+            new TransportMode("Cargo aircraft", "Media/Game/Icons/CargoAirplane.svg", "cargo:Airplane", TransportType.Airplane, CargoKind.Aircraft)
         };
 
-        /// <summary>Passengers across every mode. The headline number on the strip.</summary>
+        /// <summary>Everyone riding public transport at this instant. The headline on the strip.</summary>
         public int PassengerTotal { get; private set; }
 
         public IReadOnlyList<TransportMode> Passengers
@@ -91,25 +131,157 @@ namespace Seety.Vitals
             get { return _cargo; }
         }
 
-        public void Refresh(CityStatisticsSystem statistics)
+        /// <summary>
+        /// Recounts what is aboard.
+        ///
+        /// One pass over the transit vehicles, which is a far smaller set than the notification
+        /// walk the problem list used to do every tick - bounded by how many vehicles are running,
+        /// not by how much is wrong with the city.
+        /// </summary>
+        public void Refresh(EntityQuery passengerVehicles, EntityQuery cargoVehicles,
+            EntityManager entities)
         {
-            PassengerTotal = 0;
-
-            if (statistics == null)
-            {
-                return;
-            }
-
             foreach (var mode in _passengers)
             {
-                mode.Count = statistics.GetStatisticValue(mode.Statistic);
-                PassengerTotal += mode.Count;
+                mode.Aboard = 0;
+                mode.Capacity = 0;
             }
 
             foreach (var mode in _cargo)
             {
-                mode.Count = statistics.GetStatisticValue(mode.Statistic);
+                mode.Aboard = 0;
+                mode.Capacity = 0;
             }
+
+            CountPassengers(passengerVehicles, entities);
+            CountCargo(cargoVehicles, entities);
+
+            PassengerTotal = 0;
+            foreach (var mode in _passengers)
+            {
+                PassengerTotal += mode.Aboard;
+            }
+        }
+
+        private void CountPassengers(EntityQuery query, EntityManager entities)
+        {
+            if (query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            using (var vehicles = query.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var vehicle in vehicles)
+                {
+                    var prefab = entities.GetComponentData<PrefabRef>(vehicle).m_Prefab;
+                    if (!entities.HasComponent<PublicTransportVehicleData>(prefab))
+                    {
+                        continue;
+                    }
+
+                    var data = entities.GetComponentData<PublicTransportVehicleData>(prefab);
+
+                    foreach (var mode in _passengers)
+                    {
+                        if (mode.Type != data.m_TransportType)
+                        {
+                            continue;
+                        }
+
+                        // The buffer holds one entry per person aboard, so its length is the count.
+                        if (entities.HasBuffer<Game.Vehicles.Passenger>(vehicle))
+                        {
+                            mode.Aboard += entities.GetBuffer<Game.Vehicles.Passenger>(vehicle, true).Length;
+                        }
+
+                        mode.Capacity += data.m_PassengerCapacity;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void CountCargo(EntityQuery query, EntityManager entities)
+        {
+            if (query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            using (var vehicles = query.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var vehicle in vehicles)
+                {
+                    var prefab = entities.GetComponentData<PrefabRef>(vehicle).m_Prefab;
+                    if (!entities.HasComponent<CargoTransportVehicleData>(prefab))
+                    {
+                        continue;
+                    }
+
+                    var kind = KindOf(entities, vehicle);
+                    if (kind == CargoKind.None)
+                    {
+                        continue;
+                    }
+
+                    var data = entities.GetComponentData<CargoTransportVehicleData>(prefab);
+
+                    foreach (var mode in _cargo)
+                    {
+                        if (mode.Cargo != kind)
+                        {
+                            continue;
+                        }
+
+                        if (entities.HasBuffer<Game.Economy.Resources>(vehicle))
+                        {
+                            var held = entities.GetBuffer<Game.Economy.Resources>(vehicle, true);
+                            for (var i = 0; i < held.Length; i++)
+                            {
+                                mode.Aboard += held[i].m_Amount;
+                            }
+                        }
+
+                        mode.Capacity += data.m_CargoCapacity;
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Which cargo row a vehicle belongs to.
+        ///
+        /// Decided from what the vehicle IS rather than from a transport type, because
+        /// CargoTransportVehicleData does not carry one. The same four components the traffic
+        /// jam list already distinguishes vehicles by.
+        /// </summary>
+        private static CargoKind KindOf(EntityManager entities, Entity vehicle)
+        {
+            if (entities.HasComponent<Game.Vehicles.Train>(vehicle))
+            {
+                return CargoKind.Train;
+            }
+
+            if (entities.HasComponent<Game.Vehicles.Watercraft>(vehicle))
+            {
+                return CargoKind.Ship;
+            }
+
+            if (entities.HasComponent<Game.Vehicles.Aircraft>(vehicle))
+            {
+                return CargoKind.Aircraft;
+            }
+
+            // Last, because a train carriage is also a Car in some archetypes and the more
+            // specific kinds have to win first.
+            if (entities.HasComponent<Game.Vehicles.Car>(vehicle))
+            {
+                return CargoKind.Truck;
+            }
+
+            return CargoKind.None;
         }
     }
 }
