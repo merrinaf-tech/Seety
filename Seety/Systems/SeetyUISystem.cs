@@ -83,6 +83,11 @@ namespace Seety.Systems
         private readonly Vitals.SchoolBreakdown _schools = new Vitals.SchoolBreakdown();
 
         private EntityQuery _schoolQuery;
+
+        /// <summary>The city's cemeteries, behind the Cemetery space row.</summary>
+        private readonly Vitals.CemeteryBreakdown _cemeteries = new Vitals.CemeteryBreakdown();
+
+        private EntityQuery _cemeteryQuery;
         private Game.UI.NameSystem _names;
 
         /// <summary>Workforce against workplaces, behind the Workers row.</summary>
@@ -183,6 +188,19 @@ namespace Seety.Systems
                 None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
             });
 
+            // Building required for the same reason the school query requires it: it keeps the
+            // query to the facility itself rather than anything else carrying the component.
+            _cemeteryQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Buildings.DeathcareFacility>(),
+                    ComponentType.ReadOnly<Game.Buildings.Building>(),
+                    ComponentType.ReadOnly<PrefabRef>()
+                },
+                None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
+            });
+
             // NotificationIconDisplayData, not NotificationIconData: the first is the enableable
             // component the buffer system checks, the second is something else entirely. And
             // IgnoreComponentEnabledState, or once hidden the prefabs drop out of the query and
@@ -248,6 +266,7 @@ namespace Seety.Systems
             AddBinding(new TriggerBinding<string>(Group, "jumpToProblem", OnJumpToProblem));
             AddBinding(new TriggerBinding<string>(Group, "jumpToJam", OnJumpToJam));
             AddBinding(new TriggerBinding<int>(Group, "jumpToSchool", OnJumpToSchool));
+            AddBinding(new TriggerBinding<int>(Group, "jumpToCemetery", OnJumpToCemetery));
             AddBinding(new TriggerBinding<string, int>(Group, "jumpToResource", OnJumpToResource));
             AddBinding(new TriggerBinding<string>(Group, "openInfoview", OnOpenInfoview));
 
@@ -590,6 +609,13 @@ namespace Seety.Systems
             writer.Write(vital.Title);
             writer.PropertyName("label");
             writer.Write(vital.Label);
+            // The English above travels with the row as the fallback, and these name the entry to
+            // look up instead. A language missing one string therefore shows that row in English
+            // rather than blank - see Localization.LocaleKeys.
+            writer.PropertyName("titleKey");
+            writer.Write(Localization.LocaleKeys.VitalTitle(vital.Id));
+            writer.PropertyName("labelKey");
+            writer.Write(Localization.LocaleKeys.VitalLabel(vital.Id));
             writer.PropertyName("icon");
             writer.Write(IconFor(vital, value));
             writer.PropertyName("badge");
@@ -714,6 +740,8 @@ namespace Seety.Systems
             // own: adding another expandable row later means writing another entry here.
             var schools = _schools.Entries;
             var hasSchools = schools.Count > 0;
+            var cemeteries = _cemeteries.Entries;
+            var hasCemeteries = _expandedId == CemeteryVitalId;
             var jams = _jams.Groups;
 
             // Keyed on the row being OPEN, not on the list happening to have something in it.
@@ -724,7 +752,7 @@ namespace Seety.Systems
             var hasJams = _expandedId == TrafficVitalId;
 
             var count = (uint)((_problemsActive ? 1 : 0) + (_transportActive ? 1 : 0)
-                + (hasSchools ? 1 : 0) + (hasJams ? 1 : 0));
+                + (hasSchools ? 1 : 0) + (hasJams ? 1 : 0) + (hasCemeteries ? 1 : 0));
             writer.ArrayBegin(count);
 
             if (_problemsActive)
@@ -754,6 +782,16 @@ namespace Seety.Systems
                 writer.Write(TransportVitalId);
                 writer.PropertyName("rows");
                 WriteTransportRows(writer);
+                writer.TypeEnd();
+            }
+
+            if (hasCemeteries)
+            {
+                writer.TypeBegin("seety.Breakdown");
+                writer.PropertyName("id");
+                writer.Write(CemeteryVitalId);
+                writer.PropertyName("rows");
+                WriteCemeteryRows(writer, cemeteries);
                 writer.TypeEnd();
             }
 
@@ -792,27 +830,51 @@ namespace Seety.Systems
                     level = Vitals.VitalLevel.Warning;
                 }
 
-                writer.TypeBegin("seety.BreakdownRow");
-                writer.PropertyName("id");
-                writer.Write(school.Name + "  " + school.Students + "/" + school.Capacity);
-                writer.PropertyName("icon");
-                writer.Write("Media/Game/Icons/Education.svg");
-                writer.PropertyName("count");
-                writer.Write((int)school.Fullness);
-                writer.PropertyName("suffix");
-                writer.Write("%");
-                writer.PropertyName("level");
-                writer.Write((int)level);
-                writer.PropertyName("clickable");
-                // A school entity with no Transform - some upgrade or sub-building entities still
-                // match the School query - has nowhere for the camera to go. See SchoolEntry.HasPosition.
-                writer.Write(school.HasPosition);
-                writer.PropertyName("action");
-                // The entity id, not the loop counter: the list re-sorts by fullness twice a
-                // second, so a seat number identifies whatever lands in it, not the school the
-                // player clicked. See SchoolEntry.Entity.
-                writer.Write("school:" + school.Entity.Index);
-                writer.TypeEnd();
+                // Through the shared writer, not a second copy of it. There used to be two
+                // places emitting seety.BreakdownRow and they disagreed on the order of the
+                // fields: schools wrote suffix, level, clickable where everything else wrote
+                // level, clickable, suffix. A row decoded by position therefore took the numeric
+                // level as its `clickable` flag - and VitalLevel.Normal is 0, which is false in
+                // JavaScript. Every school under 80% full was silently unclickable, with no
+                // trigger raised and nothing in the log to say so, while the fuller ones worked.
+                // Invisible on screen too, because the UI hardcodes "%" for these rows and
+                // colours the number from its own value rather than from the level.
+                WriteRow(writer, school.Name + "  " + school.Students + "/" + school.Capacity,
+                    "Media/Game/Icons/Education.svg", (int)school.Fullness, level,
+                    // A school with nowhere for the camera to go - see SchoolEntry.HasPosition.
+                    school.HasPosition,
+                    // The entity id, not the loop counter. See SchoolEntry.Entity.
+                    "school:" + school.Entity.Index,
+                    "%");
+            }
+
+            writer.ArrayEnd();
+        }
+
+        /// <summary>
+        /// The city's cemeteries, fullest first. Same shape as the school list, and through the
+        /// same shared row writer - see the note in WriteSchoolRows about why there is only one.
+        /// </summary>
+        private static void WriteCemeteryRows(IJsonWriter writer,
+            IReadOnlyList<Vitals.CemeteryEntry> cemeteries)
+        {
+            writer.ArrayBegin((uint)cemeteries.Count);
+
+            foreach (var cemetery in cemeteries)
+            {
+                var level = Vitals.VitalLevel.Normal;
+                if (cemetery.Fullness >= 95f)
+                {
+                    level = Vitals.VitalLevel.Critical;
+                }
+                else if (cemetery.Fullness >= 80f)
+                {
+                    level = Vitals.VitalLevel.Warning;
+                }
+
+                WriteRow(writer, cemetery.Name + "  " + cemetery.Stored + "/" + cemetery.Capacity,
+                    "Media/Game/Notifications/HearseServiceNeeded.svg", (int)cemetery.Fullness,
+                    level, cemetery.HasPosition, "cemetery:" + cemetery.Entity.Index, "%");
             }
 
             writer.ArrayEnd();
@@ -868,6 +930,9 @@ namespace Seety.Systems
 
         /// <summary>The vital whose window carries the grouped problem list.</summary>
         private const string ProblemsVitalId = "problems";
+
+        /// <summary>The vital whose window lists the city's cemeteries. Matches CEMETERY_ID.</summary>
+        private const string CemeteryVitalId = "cemetery";
 
         /// <summary>The vital whose window carries the per-mode transport list.</summary>
         private const string TransportVitalId = "transport";
@@ -984,7 +1049,7 @@ namespace Seety.Systems
         /// pre-select that mode in vanilla's transportation overview, empty means not clickable.
         /// </summary>
         private static void WriteRow(IJsonWriter writer, string id, string icon, int count,
-            Vitals.VitalLevel level, bool clickable, string action = "")
+            Vitals.VitalLevel level, bool clickable, string action = "", string suffix = "")
         {
             writer.TypeBegin("seety.BreakdownRow");
             writer.PropertyName("id");
@@ -998,7 +1063,7 @@ namespace Seety.Systems
             writer.PropertyName("clickable");
             writer.Write(clickable);
             writer.PropertyName("suffix");
-            writer.Write(string.Empty);
+            writer.Write(suffix ?? string.Empty);
             writer.PropertyName("action");
             writer.Write(action);
             writer.TypeEnd();
@@ -1041,6 +1106,7 @@ namespace Seety.Systems
             }
 
             RefreshSchools();
+            RefreshCemeteries();
         }
 
         /// <summary>
@@ -1048,6 +1114,16 @@ namespace Seety.Systems
         /// while somebody is looking: it walks every school and asks the naming system for a
         /// label, which is not work to do twice a second for nothing.
         /// </summary>
+        /// <summary>
+        /// Rebuilds the cemetery list when its row is open. Same gate and same reason as the
+        /// school list: it walks every facility and asks the naming system for a label.
+        /// </summary>
+        private void RefreshCemeteries()
+        {
+            _cemeteries.Refresh(EntityManager, _cemeteryQuery, _names, _expandedId == CemeteryVitalId);
+            _notificationsBinding.Update();
+        }
+
         private void RefreshSchools()
         {
             var level = Vitals.SchoolBreakdown.LevelFor(_expandedId);
@@ -1110,6 +1186,32 @@ namespace Seety.Systems
             catch (Exception e)
             {
                 Mod.Log.Error(e, "Could not jump to a school.");
+            }
+        }
+
+        /// <summary>Take me to that cemetery. The argument is its entity id.</summary>
+        private void OnJumpToCemetery(int index)
+        {
+            try
+            {
+                var entry = _cemeteries.Find(index);
+                var name = entry == null ? "(not in the list)" : entry.Name;
+
+                if (_cemeteries.Jump(index, _camera))
+                {
+                    Mod.Log.Info("Jumped to cemetery #" + index + " (" + name + ").");
+                }
+                else
+                {
+                    Mod.Log.Info("Nothing to jump to for cemetery #" + index + " (" + name +
+                        "): entries=" + _cemeteries.Entries.Count +
+                        " found=" + (entry != null) +
+                        " hasPosition=" + (entry != null && entry.HasPosition) + ".");
+                }
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Error(e, "Could not jump to a cemetery.");
             }
         }
 
@@ -1201,6 +1303,11 @@ namespace Seety.Systems
                 writer.TypeBegin("seety.AgeRow");
                 writer.PropertyName("age");
                 writer.Write(row[0]);
+                // Sent, not assembled in the UI from the label above. A key built by
+                // concatenation is a key nothing can check, and it breaks silently the day the
+                // label changes.
+                writer.PropertyName("ageKey");
+                writer.Write("Seety.AGE_" + row[0].ToUpperInvariant());
 
                 writer.PropertyName("levels");
                 writer.ArrayBegin((uint)Systems.CitizenCensusSystem.Levels);

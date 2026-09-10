@@ -79,17 +79,35 @@ namespace Seety.Vitals
                 // Not production against consumption: that is a city-wide sum, so cutting the cable
                 // to half the city leaves it reading 100% while those buildings sit dark. The
                 // transmission indicator is demand actually delivered, which is the question.
+                // The electricityInfo group publishes nine figures and vanilla's own panel draws
+                // almost none of them. Three are worth a window: how much power is banked, and
+                // whether the city is buying or selling it. Importing is a bill most players never
+                // notice they are paying.
                 new Vital("electricity", VitalSource.Vanilla, "Electricity delivered", "Power",
                     "Media/Game/Icons/Electricity.svg", Names("Electricity"),
                     VitalFormat.Percentage, LowCoverage,
                     new VanillaBinding("electricityInfo", string.Empty, "electricityTransmission",
-                        VanillaKind.Indicator), false),
+                        VanillaKind.Indicator), false)
+                    .With(Charge("battery", "Battery charge", "Battery",
+                              "Media/Game/Notifications/BatteryEmpty.svg", "Electricity",
+                              "electricityInfo", "batteryCharge"),
+                          Plain("powerimport", "Electricity bought in", "In", "Icons/Import.svg",
+                              "Electricity", "electricityInfo", "electricityImport"),
+                          Plain("powerexport", "Electricity sold out", "Out", "Icons/Export.svg",
+                              "Electricity", "electricityInfo", "electricityExport")),
                 // Delivered, not produced. See VitalSource.WaterServed: capacity against demand is
                 // a city-wide sum and stays healthy while a whole district runs dry.
                 new Vital("water",  VitalSource.WaterServed,  "Water delivered",  "Water",
-                    "Media/Game/Icons/Water.svg",  Names("WaterPipes"), VitalFormat.Percentage, LowCoverage),
+                    "Media/Game/Icons/Water.svg",  Names("WaterPipes"), VitalFormat.Percentage, LowCoverage)
+                    // waterInfo publishes the trade figures too, and nothing draws them either.
+                    .With(Plain("waterimport", "Water bought in", "In", "Icons/Import.svg",
+                              "WaterPipes", "waterInfo", "waterImport"),
+                          Plain("waterexport", "Water sold out", "Out", "Icons/Export.svg",
+                              "WaterPipes", "waterInfo", "waterExport")),
                 new Vital("sewage", VitalSource.SewageServed, "Sewage taken away", "Sewage",
-                    "Media/Game/Icons/Sewage.svg", Names("WaterPipes"), VitalFormat.Percentage, LowCoverage),
+                    "Media/Game/Icons/Sewage.svg", Names("WaterPipes"), VitalFormat.Percentage, LowCoverage)
+                    .With(Plain("sewageexport", "Sewage sent away", "Out", "Icons/Export.svg",
+                              "WaterPipes", "waterInfo", "sewageExport")),
 
                 // Deathcare, which the city notices only when it stops working. Same Coverage
                 // shape and the same renaming as healthcare above - "coverage" of the current
@@ -206,6 +224,21 @@ namespace Seety.Vitals
                 Names(infoview), VitalFormat.Percentage, LowSafety,
                 new VanillaBinding(group, string.Empty, binding, VanillaKind.Indicator), false,
                 null, null, null, true);
+        }
+
+        /// <summary>
+        /// An IndicatorValue read as a level on its own scale, with no threshold.
+        ///
+        /// No threshold on purpose. A city with no batteries at all has max 0 and therefore reads
+        /// 0%, which is honest - there is no stored power - but it is not a fault, and painting it
+        /// red would be the same cry-wolf mistake the water row taught: see VanillaKind.Coverage.
+        /// </summary>
+        private static Vital Charge(string id, string title, string label, string icon, string infoview,
+            string group, string binding)
+        {
+            return new Vital(id, VitalSource.Vanilla, title, label, icon,
+                Names(infoview), VitalFormat.Percentage, null,
+                new VanillaBinding(group, string.Empty, binding, VanillaKind.Indicator), false);
         }
 
         /// <summary>A plain number with no denominator and no threshold. Purely informational.</summary>
