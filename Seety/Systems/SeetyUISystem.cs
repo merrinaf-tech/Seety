@@ -123,6 +123,11 @@ namespace Seety.Systems
 
         private EntityQuery _cargoVehicleQuery;
 
+        /// <summary>Taxis and road freight, which the two queries above do not match.</summary>
+        private EntityQuery _taxiQuery;
+
+        private EntityQuery _deliveryTruckQuery;
+
         private RawValueBinding _resourcesBinding;
         private Game.Rendering.CameraUpdateSystem _camera;
 
@@ -180,6 +185,26 @@ namespace Seety.Systems
                 All = new[]
                 {
                     ComponentType.ReadOnly<Game.Vehicles.PublicTransport>(),
+                    ComponentType.ReadOnly<PrefabRef>()
+                },
+                None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
+            });
+
+            _taxiQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Vehicles.Taxi>(),
+                    ComponentType.ReadOnly<PrefabRef>()
+                },
+                None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
+            });
+
+            _deliveryTruckQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Vehicles.DeliveryTruck>(),
                     ComponentType.ReadOnly<PrefabRef>()
                 },
                 None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
@@ -559,7 +584,8 @@ namespace Seety.Systems
                 // One pass over the transit vehicles - bounded by how many are running, not by
                 // how big the city is - so the strip's own total can stay current.
                 var before = _transport.PassengerTotal;
-                _transport.Refresh(_passengerVehicleQuery, _cargoVehicleQuery, EntityManager);
+                _transport.Refresh(_passengerVehicleQuery, _taxiQuery, _cargoVehicleQuery,
+                    _deliveryTruckQuery, EntityManager);
                 if (_transport.PassengerTotal != before)
                 {
                     changed = true;
@@ -689,6 +715,9 @@ namespace Seety.Systems
             writer.Write(vital.Invert);
             writer.PropertyName("factors");
             writer.Write(vital.Factors ?? string.Empty);
+            // The game unit this reading is in, or empty for a plain count. See Vital.Unit.
+            writer.PropertyName("unit");
+            writer.Write(vital.Unit ?? string.Empty);
             writer.PropertyName("enabled");
             writer.Write(Mod.Settings == null || Mod.Settings.IsVitalEnabled(vital.Id));
 
@@ -1064,12 +1093,13 @@ namespace Seety.Systems
 
             foreach (var mode in rows)
             {
-                // Aboard right now, with what the running vehicles could hold beside it - the
-                // same "name  current/capacity" shape the school and cemetery lists use, so the
-                // three read the same way. No severity: a full bus is a used bus, not a fault.
-                WriteRow(writer, mode.Id + "  " + mode.Aboard + "/" + mode.Capacity,
-                    mode.Icon, mode.Aboard, Vitals.VitalLevel.Normal,
-                    !string.IsNullOrEmpty(mode.Action), mode.Action);
+                // Aboard right now against what the running vehicles could hold. Sent as two raw
+                // numbers plus the unit they are in, rather than pasted into the label here:
+                // freight is counted in kilograms, so a cargo train read "3476687" until the UI
+                // was given what it needed to say "3,477 t".
+                WriteRow(writer, mode.Id, mode.Icon, mode.Aboard, Vitals.VitalLevel.Normal,
+                    !string.IsNullOrEmpty(mode.Action), mode.Action, string.Empty,
+                    mode.Capacity, mode.Cargo == Vitals.CargoKind.None ? string.Empty : "weight");
             }
 
             writer.ArrayEnd();
@@ -1081,7 +1111,8 @@ namespace Seety.Systems
         /// pre-select that mode in vanilla's transportation overview, empty means not clickable.
         /// </summary>
         private static void WriteRow(IJsonWriter writer, string id, string icon, int count,
-            Vitals.VitalLevel level, bool clickable, string action = "", string suffix = "")
+            Vitals.VitalLevel level, bool clickable, string action = "", string suffix = "",
+            int total = 0, string unit = "")
         {
             writer.TypeBegin("seety.BreakdownRow");
             writer.PropertyName("id");
@@ -1098,6 +1129,13 @@ namespace Seety.Systems
             writer.Write(suffix ?? string.Empty);
             writer.PropertyName("action");
             writer.Write(action);
+            // A denominator, when the row has one, and the game unit both numbers are in. The UI
+            // converts and formats: the raw values here are the game's own internal units - a
+            // tenth of a kilowatt, a kilogram - which mean nothing to a player as they stand.
+            writer.PropertyName("total");
+            writer.Write(total);
+            writer.PropertyName("unit");
+            writer.Write(unit ?? string.Empty);
             writer.TypeEnd();
         }
 

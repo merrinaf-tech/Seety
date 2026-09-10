@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
-import { useLocalization } from "cs2/l10n";
+import { useLocalization, UnitSystem } from "cs2/l10n";
 import styles from "./vitals-strip.module.scss";
 
 /** Mirrors the record written by SeetyUISystem.WriteVitals. Keep the two in step. */
@@ -43,6 +43,8 @@ interface Vital {
   invert: boolean;
   /** A cityInfo binding carrying the reasons behind this figure, or empty. See Vital.Factors. */
   factors: string;
+  /** The game unit this reading is in, or empty for a plain count. See formatUnit. */
+  unit: string;
   /** Whether the player has this row switched on. Only meaningful in configuration mode. */
   enabled: boolean;
 
@@ -143,6 +145,10 @@ interface BreakdownRow {
   suffix: string;
   /** "jump", "passenger:X", "cargo:X", "school:N", or empty. See SeetyUISystem.WriteRow. */
   action: string;
+  /** A denominator, when the row has one. Zero when it does not. */
+  total: number;
+  /** The game unit `count` and `total` are in, or empty for a plain tally. See formatUnit. */
+  unit: string;
 }
 
 /** The rows behind one expandable vital, keyed by that vital's id. */
@@ -422,7 +428,50 @@ function trim(value: number): string {
   return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(1);
 }
 
-function formatValue(vital: Vital, value: number): string {
+/**
+ * Turns one of the game's internal units into the text the game itself would show.
+ *
+ * The game stores several figures in units that mean nothing on screen - electricity in tenths of
+ * a kilowatt, freight in kilograms - and converts at the point of display. These are vanilla's own
+ * thresholds and divisors, read out of its compiled UI, so a number here reads the same as the
+ * same number anywhere else in the game: 6000000 is "600 MW", not an abbreviated "6M" that is not
+ * a quantity of anything.
+ *
+ * The player's own unit system is respected, because vanilla respects it.
+ */
+function formatUnit(value: number, unit: string, metric: boolean): string {
+  const n = (v: number, digits: number) =>
+    v.toLocaleString(undefined, { maximumFractionDigits: digits });
+
+  if (unit === "power") {
+    // Watts are watts: vanilla has no imperial variant for this one.
+    return Math.abs(value) < 1e4
+      ? `${n(value / 10, 1)} kW`
+      : `${n(value / 1e4, 2)} MW`;
+  }
+
+  if (unit === "weight") {
+    if (metric) {
+      if (Math.abs(value) < 100) return `${n(value, 1)} kg`;
+      if (Math.abs(value) < 1e6) return `${n(value / 1e3, 2)} t`;
+      return `${n(value / 1e6, 2)} kt`;
+    }
+
+    const pounds = value * 2.204622621848776;
+    const shortTons = value / 907.1847;
+    if (Math.abs(value) < 100) return `${n(pounds, 1)} lb`;
+    if (Math.abs(value) < 9071847.4) return `${n(shortTons, 2)} tn`;
+    return `${n(shortTons / 1e3, 2)} ktn`;
+  }
+
+  return abbreviate(Math.round(value));
+}
+
+function formatValue(vital: Vital, value: number, metric = true): string {
+  if (vital.unit) {
+    return formatUnit(value, vital.unit, metric);
+  }
+
   switch (vital.format) {
     case VitalFormat.Percentage:
       // Already on a 0-100 scale, exactly as the vanilla panels use it, so there is nothing to
@@ -554,6 +603,8 @@ function fillStyle(row: BreakdownRow): React.CSSProperties | undefined {
 /** One row inside any breakdown panel: icon, name, number, click if applicable. */
 const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
   const t = useT();
+  const { unitSettings } = useLocalization();
+  const metric = unitSettings.unitSystem === UnitSystem.Metric;
   const classes = [styles.panelRow];
   if (row.level === VitalLevel.Critical) {
     classes.push(styles.critical);
@@ -588,12 +639,20 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
         <RowIcon src={row.icon} />
         <span className={styles.panelName}>{row.id}</span>
         <span className={styles.value} style={fillStyle(row)}>
-          {row.count}
           {/* row.suffix, not a "%" hardcoded for school rows. The special case existed because
               suffix used to arrive shuffled - two C# writers emitted this type in different
               field orders - and hardcoding it here is what hid that from view. One writer now,
-              so the value sent is the value shown. */}
+              so the value sent is the value shown.
+
+              A row with a denominator shows both halves; the unit, when there is one, is applied
+              to each by formatUnit rather than pasted on in C#. */}
+          {row.unit
+            ? formatUnit(row.count, row.unit, metric)
+            : row.count.toLocaleString()}
           {row.suffix}
+          {row.total > 0
+            ? ` / ${row.unit ? formatUnit(row.total, row.unit, metric) : row.total.toLocaleString()}`
+            : ""}
         </span>
       </div>
     </Tooltip>
@@ -1431,6 +1490,8 @@ const PollutionList = () => {
  */
 const ReadingRow = ({ vital }: { vital: Vital }) => {
   const t = useT();
+  const { unitSettings } = useLocalization();
+  const metric = unitSettings.unitSystem === UnitSystem.Metric;
   const draw = (value: number, level: VitalLevel) => {
     const classes = [styles.panelRow];
     if (level === VitalLevel.Critical) {
@@ -1463,7 +1524,7 @@ const ReadingRow = ({ vital }: { vital: Vital }) => {
         >
           <RowIcon src={vital.icon} />
           <span className={styles.panelName}>{t(vital.titleKey, vital.title)}</span>
-          <span className={styles.value}>{formatValue(vital, value)}</span>
+          <span className={styles.value}>{formatValue(vital, value, metric)}</span>
         </div>
       </Tooltip>
     );
@@ -1513,6 +1574,8 @@ const VanillaEntry = ({
 
 export const VitalsStrip = () => {
   const t = useT();
+  const { unitSettings } = useLocalization();
+  const metric = unitSettings.unitSystem === UnitSystem.Metric;
   const vitals = useValue(vitals$);
   const visible = useValue(visible$);
   const savedX = useValue(posX$);
@@ -1701,7 +1764,7 @@ export const VitalsStrip = () => {
 
           return (
             <Tooltip
-              tooltip={`${t(vital.titleKey, vital.title)}: ${formatValue(vital, value)}`}
+              tooltip={`${t(vital.titleKey, vital.title)}: ${formatValue(vital, value, metric)}`}
             >
               <div
                 className={classes.join(" ")}
@@ -1731,7 +1794,7 @@ export const VitalsStrip = () => {
                 ) : null}
                 <VitalGlyph vital={vital} />
                 {asBar ? null : (
-                  <span className={styles.value}>{formatValue(vital, value)}</span>
+                  <span className={styles.value}>{formatValue(vital, value, metric)}</span>
                 )}
               </div>
             </Tooltip>

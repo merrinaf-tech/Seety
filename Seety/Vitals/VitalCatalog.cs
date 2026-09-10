@@ -92,9 +92,9 @@ namespace Seety.Vitals
                               "Media/Game/Notifications/BatteryEmpty.svg", "Electricity",
                               "electricityInfo", "batteryCharge"),
                           Plain("powerimport", "Electricity bought in", "In", "Icons/Import.svg",
-                              "Electricity", "electricityInfo", "electricityImport"),
+                              "Electricity", "electricityInfo", "electricityImport", "power"),
                           Plain("powerexport", "Electricity sold out", "Out", "Icons/Export.svg",
-                              "Electricity", "electricityInfo", "electricityExport")),
+                              "Electricity", "electricityInfo", "electricityExport", "power")),
                 // Delivered, not produced. See VitalSource.WaterServed: capacity against demand is
                 // a city-wide sum and stays healthy while a whole district runs dry.
                 new Vital("water",  VitalSource.WaterServed,  "Water delivered",  "Water",
@@ -243,11 +243,12 @@ namespace Seety.Vitals
 
         /// <summary>A plain number with no denominator and no threshold. Purely informational.</summary>
         private static Vital Plain(string id, string title, string label, string icon, string infoview,
-            string group, string binding)
+            string group, string binding, string unit = null)
         {
             return new Vital(id, VitalSource.Vanilla, title, label, "Media/Game/" + icon,
                 Names(infoview), VitalFormat.Number, null,
-                new VanillaBinding(group, string.Empty, binding, VanillaKind.Scalar), false);
+                new VanillaBinding(group, string.Empty, binding, VanillaKind.Scalar), false,
+                null, null, null, false, null, unit);
         }
 
         /// <summary>Traffic flow, where a LOW number is the bad one: nothing is moving.</summary>

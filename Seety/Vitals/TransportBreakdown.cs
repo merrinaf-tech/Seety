@@ -15,17 +15,32 @@ namespace Seety.Vitals
         Aircraft
     }
 
+    /// <summary>
+    /// Which query a passenger row is filled from.
+    ///
+    /// Taxis are not public transport as the game models it: they carry Game.Vehicles.Taxi and
+    /// their capacity lives on TaxiData, so a query built on PublicTransport misses them entirely
+    /// and the row read 0/0 with taxis visibly driving around.
+    /// </summary>
+    public enum PassengerSource
+    {
+        PublicTransport,
+        Taxi
+    }
+
     /// <summary>One transport mode and how much it is carrying right now.</summary>
     public sealed class TransportMode
     {
         public TransportMode(string id, string icon, string action, TransportType type,
-            CargoKind cargo = CargoKind.None)
+            CargoKind cargo = CargoKind.None,
+            PassengerSource source = PassengerSource.PublicTransport)
         {
             Id = id;
             Icon = icon;
             Action = action;
             Type = type;
             Cargo = cargo;
+            Source = source;
         }
 
         public string Id { get; }
@@ -52,6 +67,9 @@ namespace Seety.Vitals
 
         /// <summary>For a cargo row, which kind of vehicle counts. None on a passenger row.</summary>
         public CargoKind Cargo { get; }
+
+        /// <summary>Which query fills a passenger row. See PassengerSource.</summary>
+        public PassengerSource Source { get; }
 
         /// <summary>
         /// People aboard, or units of freight aboard, at this instant.
@@ -97,7 +115,7 @@ namespace Seety.Vitals
             new TransportMode("Tram",     "Media/Game/Icons/Tram.svg",     "passenger:Tram",     TransportType.Tram),
             new TransportMode("Subway",   "Media/Game/Icons/Subway.svg",   "passenger:Subway",   TransportType.Subway),
             new TransportMode("Train",    "Media/Game/Icons/Train.svg",    "passenger:Train",    TransportType.Train),
-            new TransportMode("Taxi",     "Media/Game/Icons/Taxi.svg",     "passenger:Taxi",     TransportType.Taxi),
+            new TransportMode("Taxi",     "Media/Game/Icons/Taxi.svg",     "passenger:Taxi",     TransportType.Taxi, CargoKind.None, PassengerSource.Taxi),
             new TransportMode("Ferry",    "Media/Game/Icons/Ship.svg",     "passenger:Ferry",    TransportType.Ferry),
             new TransportMode("Ship",     "Media/Game/Icons/Ship.svg",     "passenger:Ship",     TransportType.Ship),
             new TransportMode("Airplane", "Media/Game/Icons/Airplane.svg", "passenger:Airplane", TransportType.Airplane)
@@ -138,8 +156,8 @@ namespace Seety.Vitals
         /// walk the problem list used to do every tick - bounded by how many vehicles are running,
         /// not by how much is wrong with the city.
         /// </summary>
-        public void Refresh(EntityQuery passengerVehicles, EntityQuery cargoVehicles,
-            EntityManager entities)
+        public void Refresh(EntityQuery passengerVehicles, EntityQuery taxis,
+            EntityQuery cargoVehicles, EntityQuery deliveryTrucks, EntityManager entities)
         {
             foreach (var mode in _passengers)
             {
@@ -154,7 +172,9 @@ namespace Seety.Vitals
             }
 
             CountPassengers(passengerVehicles, entities);
+            CountTaxis(taxis, entities);
             CountCargo(cargoVehicles, entities);
+            CountDeliveryTrucks(deliveryTrucks, entities);
 
             PassengerTotal = 0;
             foreach (var mode in _passengers)
@@ -198,6 +218,97 @@ namespace Seety.Vitals
                         mode.Capacity += data.m_PassengerCapacity;
                         break;
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Taxis, which the game does not model as public transport - see PassengerSource.
+        /// Passengers are counted from the same buffer; only the capacity lives elsewhere.
+        /// </summary>
+        private void CountTaxis(EntityQuery query, EntityManager entities)
+        {
+            if (query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            TransportMode row = null;
+            foreach (var mode in _passengers)
+            {
+                if (mode.Source == PassengerSource.Taxi)
+                {
+                    row = mode;
+                    break;
+                }
+            }
+
+            if (row == null)
+            {
+                return;
+            }
+
+            using (var vehicles = query.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var vehicle in vehicles)
+                {
+                    var prefab = entities.GetComponentData<PrefabRef>(vehicle).m_Prefab;
+                    if (!entities.HasComponent<TaxiData>(prefab))
+                    {
+                        continue;
+                    }
+
+                    if (entities.HasBuffer<Game.Vehicles.Passenger>(vehicle))
+                    {
+                        row.Aboard += entities.GetBuffer<Game.Vehicles.Passenger>(vehicle, true).Length;
+                    }
+
+                    row.Capacity += entities.GetComponentData<TaxiData>(prefab).m_PassengerCapacity;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Delivery trucks, which are the "cargo trucks" row.
+        ///
+        /// They are not CargoTransport - that component is for vehicles running a cargo line, so
+        /// the row stayed empty in a city full of trucks. A delivery truck also carries its load
+        /// on the component itself rather than in a Resources buffer.
+        /// </summary>
+        private void CountDeliveryTrucks(EntityQuery query, EntityManager entities)
+        {
+            if (query.IsEmptyIgnoreFilter)
+            {
+                return;
+            }
+
+            TransportMode row = null;
+            foreach (var mode in _cargo)
+            {
+                if (mode.Cargo == CargoKind.Truck)
+                {
+                    row = mode;
+                    break;
+                }
+            }
+
+            if (row == null)
+            {
+                return;
+            }
+
+            using (var vehicles = query.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var vehicle in vehicles)
+                {
+                    var prefab = entities.GetComponentData<PrefabRef>(vehicle).m_Prefab;
+                    if (!entities.HasComponent<DeliveryTruckData>(prefab))
+                    {
+                        continue;
+                    }
+
+                    row.Aboard += entities.GetComponentData<Game.Vehicles.DeliveryTruck>(vehicle).m_Amount;
+                    row.Capacity += entities.GetComponentData<DeliveryTruckData>(prefab).m_CargoCapacity;
                 }
             }
         }
@@ -274,13 +385,8 @@ namespace Seety.Vitals
                 return CargoKind.Aircraft;
             }
 
-            // Last, because a train carriage is also a Car in some archetypes and the more
-            // specific kinds have to win first.
-            if (entities.HasComponent<Game.Vehicles.Car>(vehicle))
-            {
-                return CargoKind.Truck;
-            }
-
+            // No Car branch: a vehicle running a cargo LINE is a train, a ship or an aircraft.
+            // Road freight is a DeliveryTruck and has its own pass - see CountDeliveryTrucks.
             return CargoKind.None;
         }
     }
