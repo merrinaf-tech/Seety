@@ -118,6 +118,11 @@ namespace Seety.Systems
 
         private EntityQuery _jamQuery;
 
+        /// <summary>Transit vehicles, for counting who and what is aboard right now.</summary>
+        private EntityQuery _passengerVehicleQuery;
+
+        private EntityQuery _cargoVehicleQuery;
+
         private RawValueBinding _resourcesBinding;
         private Game.Rendering.CameraUpdateSystem _camera;
 
@@ -167,6 +172,28 @@ namespace Seety.Systems
                 ComponentType.ReadOnly<PrefabRef>(),
                 ComponentType.Exclude<Game.Common.Deleted>(),
                 ComponentType.Exclude<Game.Tools.Temp>());
+
+            // Deleted excluded so a vehicle already on its way out is not still counted as
+            // carrying people, the same exclusion the jam query makes.
+            _passengerVehicleQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Vehicles.PublicTransport>(),
+                    ComponentType.ReadOnly<PrefabRef>()
+                },
+                None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
+            });
+
+            _cargoVehicleQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Vehicles.CargoTransport>(),
+                    ComponentType.ReadOnly<PrefabRef>()
+                },
+                None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
+            });
 
             _camera = World.GetOrCreateSystemManaged<Game.Rendering.CameraUpdateSystem>();
             _names = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
@@ -529,9 +556,10 @@ namespace Seety.Systems
 
             if (_transportActive)
             {
-                // Twelve statistic reads, cheap enough to keep current for the strip's own total.
+                // One pass over the transit vehicles - bounded by how many are running, not by
+                // how big the city is - so the strip's own total can stay current.
                 var before = _transport.PassengerTotal;
-                _transport.Refresh(World.GetOrCreateSystemManaged<CityStatisticsSystem>());
+                _transport.Refresh(_passengerVehicleQuery, _cargoVehicleQuery, EntityManager);
                 if (_transport.PassengerTotal != before)
                 {
                     changed = true;
@@ -1014,9 +1042,11 @@ namespace Seety.Systems
         {
             var rows = new List<Vitals.TransportMode>();
 
+            // A mode with vehicles but nobody aboard still belongs in the list - an empty line is
+            // exactly the thing worth seeing. A mode with no vehicles at all does not.
             foreach (var mode in _transport.Passengers)
             {
-                if (mode.Count > 0)
+                if (mode.Capacity > 0)
                 {
                     rows.Add(mode);
                 }
@@ -1024,7 +1054,7 @@ namespace Seety.Systems
 
             foreach (var mode in _transport.Cargo)
             {
-                if (mode.Count > 0)
+                if (mode.Capacity > 0)
                 {
                     rows.Add(mode);
                 }
@@ -1034,9 +1064,11 @@ namespace Seety.Systems
 
             foreach (var mode in rows)
             {
-                // No severity: a mode carrying people is not a problem. Clicking pre-selects that
-                // mode in vanilla's transportation overview - see the note on TransportMode.Action.
-                WriteRow(writer, mode.Id, mode.Icon, mode.Count, Vitals.VitalLevel.Normal,
+                // Aboard right now, with what the running vehicles could hold beside it - the
+                // same "name  current/capacity" shape the school and cemetery lists use, so the
+                // three read the same way. No severity: a full bus is a used bus, not a fault.
+                WriteRow(writer, mode.Id + "  " + mode.Aboard + "/" + mode.Capacity,
+                    mode.Icon, mode.Aboard, Vitals.VitalLevel.Normal,
                     !string.IsNullOrEmpty(mode.Action), mode.Action);
             }
 
