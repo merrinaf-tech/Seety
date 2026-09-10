@@ -15,18 +15,17 @@
   // flexbox gap - the game's own stylesheet uses it exactly once, which is the tell. Every
   // increase looked right in the source and changed nothing on screen. Spacing is done with
   // margins, which Gameface does honour.
-  // Strip height: 1 + 37 + 1 = 39rem, level with the vanilla HUD buttons along the top edge.
+  // Strip height: 1.5 + 37 + 1.5 = 40rem, to sit level with the vanilla HUD buttons along the
+  // top edge. 40rem is the game's own size for a HUD toggle (--floatingToggleSize) and for
+  // several of its round interface buttons, so it is a real target rather than an eyeballed one.
   //
-  // It went 50 -> 45 -> 40 -> 39 across three requests, and every rem of it came out of this
-  // padding rather than out of the cells, because the cells have nothing to give: .entry holds
-  // 34.6rem of icon, gap and number pill inside a 35rem content box, 0.4rem of slack. Take a rem
-  // out of the box instead and the icon's top edge goes past overflow:hidden - the clipping
-  // DESIGN 4h already fixed once.
-  //
-  // This is now the floor. One more rem would leave the entries touching the panel edge, and
-  // anything past that has to come out of the icon (20rem) or the number pill (13.6rem), which is
-  // a legibility decision rather than a spacing one.
-  padding: 1rem 4rem;
+  // It went 50 -> 45 -> 40 across two requests. This is the floor without shrinking what the
+  // cell holds: .entry keeps 34.6rem of icon, gap and number pill inside a 35rem content box,
+  // 0.4rem of slack. Take another rem out of the box and the icon's top edge goes past
+  // overflow:hidden - the clipping DESIGN 4h already fixed once. Below 40rem the height has to
+  // come out of the icon (20rem) or the number pill (13.6rem), which is a legibility decision,
+  // not a spacing one.
+  padding: 1.5rem 4rem;
 
   // Was a guessed rgba(20, 24, 33, 0.94) - close in darkness but missing the blue the vanilla
   // panels actually carry. #223141 is --commonDarkBlue, a real root-level custom property in the
