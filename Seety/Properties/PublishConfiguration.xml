@@ -108,6 +108,12 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<!--
 	  Published as 1.0.5 on 2026-09-11. Replace the whole body and bump ModVersion for the next release.
 	-->
+	<!--
+	  ALREADY PUBLISHED, as 1.0.5 on 2026-09-10. Every paragraph below is live and has been read.
+	  This is not a running history: before the next NewVersion, delete the whole body and write
+	  only what changed since 1.0.5, bumping ModVersion in the same pass. See AGENTS.md - letting
+	  this accumulate across publishes is the repeat offender here.
+	-->
 	<ChangeLog>
 Fixed a UI error introduced in 1.0.4 that could prevent the Seety bar from appearing: "Cannot read properties of undefined (reading 'Metric')". The bar and its detail windows now read the game's unit setting correctly, preserving both metric and imperial units.
 	</ChangeLog>
