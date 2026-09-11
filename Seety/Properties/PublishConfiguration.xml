@@ -76,7 +76,7 @@ There is exactly one exception, and it is nowhere near the bar. The options page
 
 ## Before you install
 
-English only for now. Free and open source under the MIT licence: [source on GitHub](https://github.com/merrinaf-tech/Seety).
+Available in all twelve languages supported by the game. Free and open source under the MIT licence: [source on GitHub](https://github.com/merrinaf-tech/Seety).
 
 If it saves you a few trips through the menus, you can [buy me a coffee](https://ko-fi.com/fabiozsche). Entirely optional - the mod is the same either way.
 	</LongDescription>
@@ -101,29 +101,14 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.0.4" />
+	<ModVersion Value="1.0.5" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
 	<!--
-	  ALREADY PUBLISHED, as 1.0.4 on 2026-09-10. Delete the whole body before the next NewVersion. Every paragraph below is live and has been read.
-	  This is not a running history: before the next NewVersion, delete the whole body and write
-	  only what changed since 1.0.3, bumping ModVersion in the same pass. See AGENTS.md - letting
-	  this accumulate across publishes is the repeat offender here.
+	  Published as 1.0.5 on 2026-09-11. Replace the whole body and bump ModVersion for the next release.
 	-->
 	<ChangeLog>
-Seety now speaks the twelve languages the game does, instead of English only.
-
-The transport window shows who and what is aboard right now, mode by mode, against what the running vehicles can hold - not a rolling total that read high at 3am with nobody on board. Taxis and cargo trucks appear at last; both were being looked for in the wrong place and never showed up. Freight and electricity are shown in the game's own units, so a cargo train reads 3.48 kt rather than 3476687.
-
-Electricity opens a window: how much power is banked in your batteries, and how much the city is buying in or selling out - a bill that is easy to pay without noticing. Water and sewage show their trade too.
-
-Cemetery space opens a list of your cemeteries, fullest first, and clicking one flies the camera to it - the same as the school list.
-
-Fixed: clicking a school that was not nearly full did nothing at all. Fixed: the close button on a window was black on a black bar. Fixed: in Workers, the Kids column read zero at the education levels where adults are studying. Fixed: "Nothing to report" was drawn below its window instead of inside it, and the traffic window opened blank in a city with no jams.
-
-The bar is shorter and sits level with the buttons along the top of the HUD; dragging it near that line now snaps it flush.
-
-Less work while you play: the grouped problem list is only rebuilt while its window is open, rather than twice a second for the whole game.
+Fixed a UI error introduced in 1.0.4 that could prevent the Seety bar from appearing: "Cannot read properties of undefined (reading 'Metric')". The bar and its detail windows now read the game's unit setting correctly, preserving both metric and imperial units.
 	</ChangeLog>
 </Publish>
