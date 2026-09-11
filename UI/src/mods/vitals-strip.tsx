@@ -1,8 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
-import { useLocalization, UnitSystem } from "cs2/l10n";
+import { useLocalization } from "cs2/l10n";
 import styles from "./vitals-strip.module.scss";
+
+// The game declares UnitSystem in its types but does not export it from cs2/l10n at runtime.
+// Match its serialized option value (Metric = 0, Freedom = 1) without importing the enum.
+const METRIC_UNIT_SYSTEM = 0;
 
 /** Mirrors the record written by SeetyUISystem.WriteVitals. Keep the two in step. */
 interface Vital {
@@ -604,7 +608,7 @@ function fillStyle(row: BreakdownRow): React.CSSProperties | undefined {
 const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
   const t = useT();
   const { unitSettings } = useLocalization();
-  const metric = unitSettings.unitSystem === UnitSystem.Metric;
+  const metric = unitSettings.unitSystem === METRIC_UNIT_SYSTEM;
   const classes = [styles.panelRow];
   if (row.level === VitalLevel.Critical) {
     classes.push(styles.critical);
@@ -1487,7 +1491,7 @@ const PollutionList = () => {
 const ReadingRow = ({ vital }: { vital: Vital }) => {
   const t = useT();
   const { unitSettings } = useLocalization();
-  const metric = unitSettings.unitSystem === UnitSystem.Metric;
+  const metric = unitSettings.unitSystem === METRIC_UNIT_SYSTEM;
   const draw = (value: number, level: VitalLevel) => {
     const classes = [styles.panelRow];
     if (level === VitalLevel.Critical) {
@@ -1571,7 +1575,7 @@ const VanillaEntry = ({
 export const VitalsStrip = () => {
   const t = useT();
   const { unitSettings } = useLocalization();
-  const metric = unitSettings.unitSystem === UnitSystem.Metric;
+  const metric = unitSettings.unitSystem === METRIC_UNIT_SYSTEM;
   const vitals = useValue(vitals$);
   const visible = useValue(visible$);
   const savedX = useValue(posX$);
