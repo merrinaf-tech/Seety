@@ -3,6 +3,7 @@ import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
 import { useLocalization } from "cs2/l10n";
 import styles from "./vitals-strip.module.scss";
+import { clampPosition } from "./position";
 
 // The game declares UnitSystem in its types but does not export it from cs2/l10n at runtime.
 // Match its serialized option value (Metric = 0, Freedom = 1) without importing the enum.
@@ -443,32 +444,88 @@ function trim(value: number): string {
  *
  * The player's own unit system is respected, because vanilla respects it.
  */
-function formatUnit(value: number, unit: string, metric: boolean): string {
-  const n = (v: number, digits: number) =>
-    v.toLocaleString(undefined, { maximumFractionDigits: digits });
+interface UnitTier {
+  divisor: number;
+  suffix: string;
+  digits: number;
+}
+
+function digits(value: number, count: number): string {
+  return value.toLocaleString(undefined, { maximumFractionDigits: count });
+}
+
+/**
+ * Which scale a value should be shown at, using vanilla's own thresholds.
+ *
+ * Split out from formatUnit so that two numbers shown together can share one scale. Formatting
+ * them separately gave rows like "280.19 t / 24.3 kt", where working out that the first is about
+ * one per cent of the second means converting in your head - which is the arithmetic the row
+ * exists to save.
+ */
+function unitTier(value: number, unit: string, metric: boolean): UnitTier {
+  const size = Math.abs(value);
 
   if (unit === "power") {
     // Watts are watts: vanilla has no imperial variant for this one.
-    return Math.abs(value) < 1e4
-      ? `${n(value / 10, 1)} kW`
-      : `${n(value / 1e4, 2)} MW`;
+    return size < 1e4
+      ? { divisor: 10, suffix: " kW", digits: 1 }
+      : { divisor: 1e4, suffix: " MW", digits: 2 };
   }
 
   if (unit === "weight") {
     if (metric) {
-      if (Math.abs(value) < 100) return `${n(value, 1)} kg`;
-      if (Math.abs(value) < 1e6) return `${n(value / 1e3, 2)} t`;
-      return `${n(value / 1e6, 2)} kt`;
+      if (size < 100) return { divisor: 1, suffix: " kg", digits: 1 };
+      if (size < 1e6) return { divisor: 1e3, suffix: " t", digits: 2 };
+      return { divisor: 1e6, suffix: " kt", digits: 2 };
     }
 
-    const pounds = value * 2.204622621848776;
-    const shortTons = value / 907.1847;
-    if (Math.abs(value) < 100) return `${n(pounds, 1)} lb`;
-    if (Math.abs(value) < 9071847.4) return `${n(shortTons, 2)} tn`;
-    return `${n(shortTons / 1e3, 2)} ktn`;
+    // The game stores kilograms either way; only the presentation changes.
+    if (size < 100) return { divisor: 1 / 2.204622621848776, suffix: " lb", digits: 1 };
+    if (size < 9071847.4) return { divisor: 907.1847, suffix: " tn", digits: 2 };
+    return { divisor: 907184.7, suffix: " ktn", digits: 2 };
   }
 
-  return abbreviate(Math.round(value));
+  return { divisor: 1, suffix: "", digits: 0 };
+}
+
+/**
+ * Turns one of the game's internal units into the text the game itself would show.
+ *
+ * The game stores several figures in units that mean nothing on screen - electricity in tenths of
+ * a kilowatt, freight in kilograms - and converts at the point of display. These are vanilla's own
+ * thresholds and divisors, read out of its compiled UI, so a number here reads the same as the
+ * same number anywhere else in the game: 6000000 is "600 MW", not an abbreviated "6M" that is not
+ * a quantity of anything.
+ *
+ * The player's own unit system is respected, because vanilla respects it.
+ */
+function formatUnit(value: number, unit: string, metric: boolean): string {
+  const tier = unitTier(value, unit, metric);
+  return tier.suffix
+    ? digits(value / tier.divisor, tier.digits) + tier.suffix
+    : abbreviate(Math.round(value));
+}
+
+/**
+ * A value against its ceiling, both at the same scale, with the unit named once.
+ *
+ * The ceiling picks the scale, because it is the half that does not move: a mode's capacity is
+ * fixed by the vehicles running it while the load swings all day, so tying the scale to the load
+ * would make the row's units flicker as you watch it.
+ *
+ * Built as one string rather than as neighbouring pieces of markup. Adjacent text in this renderer
+ * loses its leading space, which turned "0 / 960" into "0/ 960".
+ */
+function formatPair(value: number, total: number, unit: string, metric: boolean): string {
+  if (!unit) {
+    return `${value.toLocaleString()} / ${total.toLocaleString()}`;
+  }
+
+  const tier = unitTier(total, unit, metric);
+  return (
+    `${digits(value / tier.divisor, tier.digits)} / ` +
+    `${digits(total / tier.divisor, tier.digits)}${tier.suffix}`
+  );
 }
 
 function formatValue(vital: Vital, value: number, metric = true): string {
@@ -643,20 +700,17 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
         <RowIcon src={row.icon} />
         <span className={styles.panelName}>{row.id}</span>
         <span className={styles.value} style={fillStyle(row)}>
-          {/* row.suffix, not a "%" hardcoded for school rows. The special case existed because
-              suffix used to arrive shuffled - two C# writers emitted this type in different
-              field orders - and hardcoding it here is what hid that from view. One writer now,
-              so the value sent is the value shown.
+          {/* One string, not a row of neighbouring expressions: this renderer drops the leading
+              space of adjacent text, which is what made "0 / 960" render as "0/ 960".
 
-              A row with a denominator shows both halves; the unit, when there is one, is applied
-              to each by formatUnit rather than pasted on in C#. */}
-          {row.unit
-            ? formatUnit(row.count, row.unit, metric)
-            : row.count.toLocaleString()}
-          {row.suffix}
+              row.suffix rather than a "%" hardcoded for school rows. That special case existed
+              because suffix used to arrive shuffled - two C# writers emitted this type with the
+              fields in different orders - and hardcoding it here is what hid that from view. */}
           {row.total > 0
-            ? ` / ${row.unit ? formatUnit(row.total, row.unit, metric) : row.total.toLocaleString()}`
-            : ""}
+            ? formatPair(row.count, row.total, row.unit, metric)
+            : (row.unit
+                ? formatUnit(row.count, row.unit, metric)
+                : row.count.toLocaleString()) + row.suffix}
         </span>
       </div>
     </Tooltip>
@@ -918,11 +972,32 @@ const FloatingWindow = ({
 }) => {
   const [pos, setPos] = useState({ x: 320, y: 160 });
   const [dragging, setDragging] = useState(false);
+  const windowRef = useRef<HTMLDivElement | null>(null);
   const grab = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, scale: 1 });
+
+  const constrain = useCallback((position: { x: number; y: number }, scale: number) =>
+    clampPosition(position,
+      { width: window.innerWidth / scale, height: window.innerHeight / scale },
+      { width: (windowRef.current?.offsetWidth ?? 0) / scale,
+        height: (windowRef.current?.offsetHeight ?? 0) / scale }), []);
+
+  useEffect(() => {
+    const keepOnScreen = () => {
+      const scale = pxPerRem();
+      setPos((current) => {
+        const next = constrain(current, scale);
+        return next.x === current.x && next.y === current.y ? current : next;
+      });
+    };
+    keepOnScreen();
+    window.addEventListener("resize", keepOnScreen);
+    return () => window.removeEventListener("resize", keepOnScreen);
+  }, [constrain]);
 
   const onMouseDown = useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation();
+      if (event.button !== 0) return;
       grab.current = {
         pointerX: event.clientX,
         pointerY: event.clientY,
@@ -942,10 +1017,10 @@ const FloatingWindow = ({
     }
     const onMove = (event: MouseEvent) => {
       const scale = grab.current.scale;
-      setPos({
-        x: Math.max(0, grab.current.originX + (event.clientX - grab.current.pointerX) / scale),
-        y: Math.max(0, grab.current.originY + (event.clientY - grab.current.pointerY) / scale),
-      });
+      setPos(constrain({
+        x: grab.current.originX + (event.clientX - grab.current.pointerX) / scale,
+        y: grab.current.originY + (event.clientY - grab.current.pointerY) / scale,
+      }, scale));
     };
     const onUp = () => setDragging(false);
     window.addEventListener("mousemove", onMove);
@@ -954,11 +1029,12 @@ const FloatingWindow = ({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging]);
+  }, [dragging, constrain]);
 
   return (
     <div
       className={styles.window}
+      ref={windowRef}
       style={{ left: `${pos.x}rem`, top: `${pos.y}rem` }}
       // The strip below is draggable too; without this a drag inside the window moves both.
       onMouseDown={(e) => e.stopPropagation()}
@@ -966,7 +1042,7 @@ const FloatingWindow = ({
       <div className={styles.windowBar} onMouseDown={onMouseDown}>
         <span className={styles.windowTitle}>{title}</span>
         {action}
-        <span className={styles.windowClose} onClick={onClose}>
+        <span className={styles.windowClose} onMouseDown={(e) => e.stopPropagation()} onClick={onClose}>
           {/* A plain capital X: not a multiplication sign, and no longer an SVG.
 
               The multiplication sign came out as an empty rectangle - the game's font has no
@@ -1592,11 +1668,19 @@ export const VitalsStrip = () => {
   const [dragging, setDragging] = useState(false);
   // Which row is expanded, or null. One at a time: two open panels would overlap.
   const [expanded, setExpanded] = useState<string | null>(null);
+  const activeExpanded = visible && !configMode && vitals?.some((v) => v.id === expanded && v.enabled)
+    ? expanded : null;
 
   // C# only fetches a series for the row that is actually open, so it has to be told.
   useEffect(() => {
-    trigger("seety", "expand", expanded ?? "");
-  }, [expanded]);
+    trigger("seety", "expand", activeExpanded ?? "");
+  }, [activeExpanded]);
+
+  useEffect(() => {
+    if (expanded && !activeExpanded) setExpanded(null);
+  }, [expanded, activeExpanded]);
+
+  useEffect(() => () => trigger("seety", "expand", ""), []);
 
   const drag = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, moved: false, scale: 1 });
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -1611,6 +1695,7 @@ export const VitalsStrip = () => {
 
   const onMouseDown = useCallback(
     (event: React.MouseEvent) => {
+      if (event.button !== 0) return;
       drag.current = {
         pointerX: event.clientX,
         pointerY: event.clientY,
@@ -1653,9 +1738,9 @@ export const VitalsStrip = () => {
       const maxY = Math.max(0, window.innerHeight / scale - height);
 
       setPos({
-        x: snapToGrid(Math.min(Math.max(0, drag.current.originX + dx), maxX)),
+        x: Math.min(maxX, Math.max(0, snapToGrid(drag.current.originX + dx))),
         // Horizontal keeps the plain grid; only the vertical has a line worth locking onto.
-        y: snapY(Math.min(Math.max(0, drag.current.originY + dy), maxY)),
+        y: Math.min(maxY, Math.max(0, snapY(drag.current.originY + dy))),
       });
     };
 
@@ -1683,9 +1768,9 @@ export const VitalsStrip = () => {
     return null;
   }
 
-  const openVital = expanded ? vitals.find((v) => v.id === expanded) : undefined;
-  const openBreakdown = expanded
-    ? (breakdowns ?? []).find((b) => b.id === expanded)
+  const openVital = activeExpanded ? vitals.find((v) => v.id === activeExpanded) : undefined;
+  const openBreakdown = activeExpanded
+    ? (breakdowns ?? []).find((b) => b.id === activeExpanded)
     : undefined;
 
   return (

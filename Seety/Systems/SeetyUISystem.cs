@@ -483,6 +483,12 @@ namespace Seety.Systems
             {
                 _visibleBinding.Update(visible);
             }
+
+            if (!visible && !string.IsNullOrEmpty(_expandedId))
+            {
+                OnExpand(string.Empty);
+            }
+            _nextRefresh = 0.0;
         }
 
         protected override void OnUpdate()
@@ -496,6 +502,13 @@ namespace Seety.Systems
             }
 
             _nextRefresh = now + RefreshIntervalSeconds;
+
+            // Keep the player's icon visibility choice, but do not scan the city for a hidden HUD.
+            _iconVisibility.KeepUp();
+            if (!_visibleBinding.value)
+            {
+                return;
+            }
 
             if (ReadValues())
             {
@@ -521,9 +534,6 @@ namespace Seety.Systems
             // Cheap once it has succeeded, and retried until the prefabs exist, so the strip
             // knows which entries are genuinely clickable rather than assuming they all are.
             ResolveInfoviews();
-
-            // New icons appear all the time; while hidden they have to be caught as they arrive.
-            _iconVisibility.KeepUp();
 
             var hasCitizens = _reader.HasCitizens;
             if (hasCitizens != _hasCitizens)
@@ -708,7 +718,7 @@ namespace Seety.Systems
             writer.PropertyName("lowIsBad");
             writer.Write(threshold != null && threshold.LowIsBad);
             writer.PropertyName("hasThreshold");
-            writer.Write(threshold != null && HighlightingEnabled());
+            writer.Write(threshold != null && _hasCitizens && HighlightingEnabled());
             writer.PropertyName("hasHistory");
             writer.Write(vital.History.HasValue);
             writer.PropertyName("invert");
@@ -796,7 +806,8 @@ namespace Seety.Systems
             // One entry per expandable row. Keyed by vital id so the UI needs no table of its
             // own: adding another expandable row later means writing another entry here.
             var schools = _schools.Entries;
-            var hasSchools = schools.Count > 0;
+            // An open school panel needs an empty array too, so the UI can explain an empty list.
+            var hasSchools = Vitals.SchoolBreakdown.LevelFor(_expandedId) >= 0;
             var cemeteries = _cemeteries.Entries;
             var hasCemeteries = _expandedId == CemeteryVitalId;
             var jams = _jams.Groups;
@@ -1145,7 +1156,7 @@ namespace Seety.Systems
         /// </summary>
         private void OnExpand(string id)
         {
-            _expandedId = id ?? string.Empty;
+            _expandedId = _visibleBinding.value && !_configMode ? id ?? string.Empty : string.Empty;
             _historyBinding.Update();
 
             if (_expandedId == DemandVitalId)
@@ -1177,6 +1188,7 @@ namespace Seety.Systems
 
             RefreshSchools();
             RefreshCemeteries();
+            _notificationsBinding.Update();
         }
 
         /// <summary>
@@ -1191,14 +1203,12 @@ namespace Seety.Systems
         private void RefreshCemeteries()
         {
             _cemeteries.Refresh(EntityManager, _cemeteryQuery, _names, _expandedId == CemeteryVitalId);
-            _notificationsBinding.Update();
         }
 
         private void RefreshSchools()
         {
             var level = Vitals.SchoolBreakdown.LevelFor(_expandedId);
             _schools.Refresh(EntityManager, _schoolQuery, _names, level);
-            _notificationsBinding.Update();
         }
 
         /// <summary>
@@ -1564,6 +1574,10 @@ namespace Seety.Systems
         {
             _configMode = on;
             _configModeBinding.Update(on);
+            if (on)
+            {
+                OnExpand(string.Empty);
+            }
             RebuildActiveVitals();
         }
 

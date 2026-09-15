@@ -20,8 +20,8 @@
   // several of its round interface buttons, so it is a real target rather than an eyeballed one.
   //
   // It went 50 -> 45 -> 40 across two requests. This is the floor without shrinking what the
-  // cell holds: .entry keeps 34.6rem of icon, gap and number pill inside a 35rem content box,
-  // 0.4rem of slack. Take another rem out of the box and the icon's top edge goes past
+  // cell holds: .entry keeps 35rem of icon, gap and number pill inside a 35rem content box.
+  // Take another rem out of the box and the icon's top edge goes past
   // overflow:hidden - the clipping DESIGN 4h already fixed once. Below 40rem the height has to
   // come out of the icon (20rem) or the number pill (13.6rem), which is a legibility decision,
   // not a spacing one.
@@ -33,7 +33,7 @@
   // a colour picked by eye a second time. Not read through var() itself: combining a var() with a
   // separate alpha needs color-mix(), which this renderer's other CSS gaps (see the note on gap
   // above) make too risky to trust without testing in game.
-  background-color: rgba(34, 49, 65, 0.94);
+  background-color: rgba(34, 49, 65, 0.98);
   border-radius: 4rem;
 
   font-size: 15rem;
@@ -45,7 +45,7 @@
 
 .dragging {
   cursor: grabbing;
-  background-color: rgba(0, 0, 0, 0.72);
+  background-color: rgba(0, 0, 0, 0.94);
 }
 
 // Every cell is the same box, whatever it holds. A row of boxes of different widths reads as a
@@ -63,9 +63,10 @@
   justify-content: center;
 
   box-sizing: border-box;
-  width: 35rem;
-  // 37rem holds 34.6rem of stacked content inside a 35rem content box - icon, gap, number pill -
-  // with 0.4rem to spare. See the note on .strip's padding for why that is the floor, and the
+  // A little extra width keeps the larger five-character counts inside their own cell.
+  width: 38rem;
+  // 37rem holds 35rem of stacked content inside a 35rem content box - icon, gap, number pill.
+  // See the note on .strip's padding for why that is the floor, and the
   // note on .entry .value below for what happens when it is not respected.
   height: 37rem;
   // Margin, not gap - see the note on .strip. 4rem a side gives 8rem between neighbours,
@@ -145,6 +146,16 @@
   flex-shrink: 0;
 }
 
+// Follow the SVG silhouette while preserving its colours. Gameface uses drop-shadow in vanilla.
+// Scoped to bar entries so the icons inside detail windows retain their existing appearance.
+.entry .icon {
+  filter:
+    drop-shadow(0.5rem 0 0 rgba(255, 255, 255, 0.9))
+    drop-shadow(-0.5rem 0 0 rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0.5rem 0 rgba(255, 255, 255, 0.9))
+    drop-shadow(0 -0.5rem 0 rgba(255, 255, 255, 0.9));
+}
+
 // The fallback when an icon does not load, and the reason the row is still readable if it does not.
 .label {
   font-size: 12rem;
@@ -179,14 +190,15 @@
 // of flow to fit.
 .entry .value {
   margin: 1rem 0 0;
-  padding: 0.8rem 4rem;
+  padding: 0.5rem 1.5rem;
   border-radius: 6rem;
   text-align: center;
-  font-size: 12rem;
+  font-size: 13rem;
   line-height: 1;
   font-weight: 700;
   white-space: nowrap;
-  background-color: rgba(0, 0, 0, 0.6);
+  color: rgb(255, 255, 255);
+  background-color: rgba(0, 0, 0, 0.85);
 }
 
 // A vital that crossed its threshold. Colour is carried by the value and a faint tint behind the
@@ -209,6 +221,15 @@
 
 .critical {
   background-color: rgba(255, 118, 105, 0.18);
+}
+
+// Pale warning colours keep small HUD counts legible while retaining the severity cue.
+.entry.warning .value {
+  color: rgb(255, 222, 160);
+}
+
+.entry.critical .value {
+  color: rgb(255, 190, 180);
 }
 
 // "Nothing to report", and the same line for an empty factor list or resource table.
@@ -453,6 +474,23 @@
   text-shadow: 0 0 3rem rgba(0, 0, 0, 0.95), 0 0 2rem rgba(0, 0, 0, 0.95);
 }
 
+// School ranks get a solid backing and their own space beside the icon's lower corner.
+.entry .badge {
+  right: -5rem;
+  bottom: -4rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 13rem;
+  height: 14rem;
+  border-radius: 3rem;
+  font-size: 12rem;
+  color: rgb(255, 255, 255);
+  background-color: rgb(12, 18, 25);
+  text-shadow: none;
+}
+
 
 // The line that separates people from posts in the workforce table: everything left of it counts
 // citizens, everything right of it counts jobs.
@@ -493,7 +531,7 @@
 // Configuration mode has to be unmistakable: it changes what a click means, and a player who
 // leaves it on by accident would find the whole strip inert for the rest of the session.
 .stripConfig {
-  background-color: rgba(24, 60, 96, 0.92);
+  background-color: rgba(24, 60, 96, 0.98);
   border: 2rem solid rgb(130, 190, 255);
 }
 
