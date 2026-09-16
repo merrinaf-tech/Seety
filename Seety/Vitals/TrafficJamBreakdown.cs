@@ -13,7 +13,21 @@ namespace Seety.Vitals
     public sealed class TrafficJamGroup
     {
         public string Name;
+
+        /// <summary>
+        /// How many of this kind are stuck together in the worst single knot - the one clicking
+        /// the row flies to.
+        ///
+        /// This is the row's headline figure rather than the city-wide tally, because the row
+        /// promises a place. A tally answers "how many taxis are held up somewhere", which is a
+        /// different question from "where is the jam", and the two were being shown as one: a
+        /// hundred-odd taxis held up one at a time across a large city would rank top of a list
+        /// whose click then landed on whichever three of them happened to be nearest each other.
+        /// </summary>
         public int Count;
+
+        /// <summary>The same kind held up anywhere on the map. The denominator beside Count.</summary>
+        public int Total;
 
         /// <summary>
         /// Where the actual pile-up of this kind is - see ClusterCenter. Not just wherever the
@@ -93,21 +107,29 @@ namespace Seety.Vitals
 
             foreach (var entry in _positions)
             {
+                int knot;
+                float3 centre = ClusterCenter(entry.Value, out knot);
+
                 var group = new TrafficJamGroup
                 {
                     Name = entry.Key,
-                    Count = entry.Value.Count,
-                    Position = ClusterCenter(entry.Value)
+                    Count = knot,
+                    Total = entry.Value.Count,
+                    Position = centre
                 };
 
                 _byName.Add(entry.Key, group);
                 _groups.Add(group);
             }
 
-            // Worst first: the top of the list is the jam doing the most damage right now.
+            // Worst first, and worst now means the biggest single knot rather than the largest
+            // scattered tally - the list is of jams, and a jam is vehicles in one place. The
+            // city-wide count breaks ties, since between two equal knots the kind with more held
+            // up elsewhere is the one having the worse time of it.
             _groups.Sort(delegate(TrafficJamGroup a, TrafficJamGroup b)
             {
-                return b.Count.CompareTo(a.Count);
+                int byKnot = b.Count.CompareTo(a.Count);
+                return byKnot != 0 ? byKnot : b.Total.CompareTo(a.Total);
             });
 
             if (_groups.Count > MaxGroups)
@@ -167,10 +189,11 @@ namespace Seety.Vitals
         /// straggler stuck for an unrelated reason, so the busiest cell is the jam - a single
         /// blocked car, wherever it is, only wins when there is no real cluster to beat it.
         /// </summary>
-        private static float3 ClusterCenter(List<float3> positions)
+        private static float3 ClusterCenter(List<float3> positions, out int size)
         {
             if (positions.Count == 1)
             {
+                size = 1;
                 return positions[0];
             }
 
@@ -204,6 +227,7 @@ namespace Seety.Vitals
                 }
             }
 
+            size = bestCount;
             return firstInCell[bestKey];
         }
 
