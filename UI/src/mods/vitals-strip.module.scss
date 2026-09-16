@@ -437,15 +437,16 @@
   margin-top: 6rem;
   padding: 0 4rem;
 
-  // A window sizes itself to its widest child, so a long note used to drag panels out to the
-  // 860rem maximum. The old fix was a 360rem cap, which worked but left the note wrapping into a
-  // narrow column inside a wide window - plainly short of the right-hand edge with space going
-  // spare.
+  // Capped, or the note decides how wide the window is: a window sizes itself to its widest
+  // child, and one long sentence on one line dragged panels out to the 860rem maximum for no
+  // reason. Narrower than the window's minimum, so it wraps and the rows above set the width.
   //
-  // This says the same thing properly: zero intrinsic width, so the note never votes on how wide
-  // the window is, and 100% of whatever the rows above settled on, so it uses all of it.
-  width: 0;
-  min-width: 100%;
+  // `width: 0; min-width: 100%` was tried here to stretch the note across a wide window without
+  // it voting on that width. It stretches, but this engine then measures the note's HEIGHT at the
+  // zero width - one word per line - while painting the text at the full width. The Workers note
+  // came out one visible line tall with nine lines of reserved space under it, which is the empty
+  // half-window it left behind. Anything that wants the full width states it, as below.
+  max-width: 360rem;
 
   font-size: 11rem;
   line-height: 1.4;
@@ -503,6 +504,14 @@
 
 // The line that separates people from posts in the workforce table: everything left of it counts
 // citizens, everything right of it counts jobs.
+// A note under a table wide enough to need one. 812rem is what the Workers table measures:
+// the 96rem level column, eleven 58rem cells and one 78rem cell, plus the row's own 4rem each
+// side. Stating it as a maximum rather than as a width means the note fills the window it is in
+// and still cannot widen it, because it can never ask for more than the rows already ask for.
+.tableNoteWide {
+  max-width: 812rem;
+}
+
 // Unemployed is two characters longer than the widest head the 58rem column was sized for, and
 // longer again in several languages - "Desempregados", "Безработные". Widened on its own rather
 // than widening every column, which would push the table past the window's 860rem maximum.
