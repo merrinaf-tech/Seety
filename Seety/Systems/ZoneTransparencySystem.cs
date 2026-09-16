@@ -28,20 +28,30 @@ namespace Seety.Systems
     public partial class ZoneTransparencySystem : GameSystemBase
     {
         /// <summary>
-        /// What the alpha is multiplied by when the option is on.
+        /// What the cell edge's alpha is multiplied by when the option is on.
         ///
-        /// A multiplier rather than a fixed alpha, so the game keeps its own relationships: the
-        /// unzoned cells are already fainter than the zoned ones, and the edge is drawn
-        /// differently from the fill. The point is a quieter overlay, not an absent one: enough
-        /// grid left to zone against, but the ground underneath readable through it.
+        /// Multipliers rather than fixed alphas, so the game keeps its own relationships: the
+        /// unzoned cells are already fainter than the zoned ones, and each zone type has its own
+        /// weight. The point is a quieter overlay, not an absent one.
         ///
-        /// A quarter, not the half this started at. Half still drew the cell edges as solid dark
-        /// lines across open grass - visibly a grid laid over the city rather than a guide on it.
-        ///
-        /// Deliberately not configurable. A slider here would be Zone Color Changer with fewer
-        /// features; this is one switch that does one thing.
+        /// A quarter, not the half this started at. Half still drew the edges as solid dark lines
+        /// across open grass - visibly a grid laid over the city rather than a guide on it.
         /// </summary>
-        private const float TransparencyFactor = 0.25f;
+        private const float EdgeFactor = 0.25f;
+
+        /// <summary>
+        /// What the cell fill's alpha is multiplied by. Lower than the edge, deliberately.
+        ///
+        /// The two halves of the overlay do different jobs. The edge is the ruler - it says where
+        /// one lot ends and the next begins, which is what you are actually reading while you
+        /// build. The fill only says which zone type a cell is, and that is a question you ask
+        /// occasionally rather than continuously; it is also the half that covers the ground,
+        /// because it covers whole cells rather than their outlines.
+        ///
+        /// So the wash goes first and the ruler stays. At these values the fill keeps under half
+        /// the presence of the edge.
+        /// </summary>
+        private const float FillFactor = 0.1f;
 
         private PrefabSystem _prefabs;
         private ZoneSystem _zones;
@@ -204,8 +214,8 @@ namespace Seety.Systems
                         continue;
                     }
 
-                    prefab.m_Color = WithAlpha(shipped.Key, transparent);
-                    prefab.m_Edge = WithAlpha(shipped.Value, transparent);
+                    prefab.m_Color = WithAlpha(shipped.Key, transparent, FillFactor);
+                    prefab.m_Edge = WithAlpha(shipped.Value, transparent, EdgeFactor);
                 }
 
                 _applied = transparent;
@@ -222,10 +232,10 @@ namespace Seety.Systems
             }
         }
 
-        private static Color WithAlpha(Color shipped, bool transparent)
+        private static Color WithAlpha(Color shipped, bool transparent, float factor)
         {
             return transparent
-                ? new Color(shipped.r, shipped.g, shipped.b, shipped.a * TransparencyFactor)
+                ? new Color(shipped.r, shipped.g, shipped.b, shipped.a * factor)
                 : shipped;
         }
 
