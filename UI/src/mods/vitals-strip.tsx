@@ -1084,21 +1084,26 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
 
   // Left of the divider every column counts citizens; right of it they count jobs. Mixing the
   // two without a line between them was the single thing that made the table hard to read.
-  const columns: [string, (r: WorkforceRow, i: number) => number, boolean][] = [
-    [t("Seety.WF_TOTAL", "Total"), (r) => r.total, false],
+  // [head, value, rule down its left edge, needs a wider column]
+  const columns: [string, (r: WorkforceRow, i: number) => number, boolean, boolean?][] = [
+    // The third flag draws a rule down the left of the column, so a line "after Education"
+    // belongs to Total. Four groups now: who they are, how many, what they are doing, and the
+    // jobs themselves.
+    [t("Seety.WF_TOTAL", "Total"), (r) => r.total, true],
     // Kids and Student overlapped: a child at school appeared in both. Kids is the ones who are
     // not studying, so the columns add up - but only against the students who are actually
     // children. Subtracting the whole Student column took university students, who are adults,
     // off the children's total and drove Kids to zero on exactly the levels where people study.
-    [t("Seety.WF_KIDS", "Kids"), (r) => Math.max(0, r.children - r.childStudents), false],
+    [t("Seety.WF_KIDS", "Kids"), (r) => Math.max(0, r.children - r.childStudents), true],
     [t("Seety.WF_STUDENT", "Student"), (r) => r.students, false],
     [t("Seety.WF_OLD", "Old"), (r) => r.seniors, false],
     [t("Seety.WF_ADULTS", "Adults"), (r) => r.workingAge, false],
     [t("Seety.WF_EMPLOYED", "Employed"), (r) => r.workers, false],
-    [t("Seety.WF_IDLE", "Idle"), (r) => r.unemployed, false],
+    // Named for what it reads: Field.Unemployed from the census, not an invention of this table.
+    [t("Seety.WF_UNEMPLOYED", "Unemployed"), (r) => r.unemployed, false, true],
     [t("Seety.WF_UNDER", "Under"), (r) => r.under, false],
     [t("Seety.WF_OUT", "Out"), (r) => r.outside, false],
-    [t("Seety.WF_IN", "In"), (r) => r.commuters, false],
+    [t("Seety.WF_IN", "In"), (r) => r.commuters, true],
     // "Posts" was opaque. These are jobs, not people: how many exist at this level, and how many
     // of them nobody is doing.
     [t("Seety.WF_JOBS", "Jobs"), (r) => r.jobs, true],
@@ -1109,8 +1114,13 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
     rows.reduce((sum, r, i) => sum + get(r, i), 0)
   );
 
-  const cellClass = (divider: boolean, highlight: boolean) =>
-    [styles.tableCell, divider ? styles.tableDivider : "", highlight ? styles.tableShort : ""]
+  const cellClass = (divider: boolean, highlight: boolean, wide = false) =>
+    [
+      styles.tableCell,
+      wide ? styles.tableCellWide : "",
+      divider ? styles.tableDivider : "",
+      highlight ? styles.tableShort : "",
+    ]
       .filter(Boolean)
       .join(" ");
 
@@ -1118,8 +1128,8 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
     <div className={styles.table}>
       <div className={`${styles.tableRow} ${styles.tableHead}`}>
         <span className={styles.tableLevel}>{t("Seety.WF_EDUCATION", "Education")}</span>
-        {columns.map(([name, , divider]) => (
-          <span key={name} className={cellClass(divider, false)}>
+        {columns.map(([name, , divider, wide]) => (
+          <span key={name} className={cellClass(divider, false, wide)}>
             {name}
           </span>
         ))}
@@ -1134,10 +1144,10 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
         return (
           <div key={row.level} className={styles.tableRow}>
             <span className={styles.tableLevel}>{row.level}</span>
-            {columns.map(([name, get, divider], c) => (
+            {columns.map(([name, get, divider, wide], c) => (
               <span
                 key={name}
-                className={cellClass(divider, short_ && c === columns.length - 1)}
+                className={cellClass(divider, short_ && c === columns.length - 1, wide)}
               >
                 {get(row, i).toLocaleString()}
               </span>
@@ -1149,19 +1159,14 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
       <div className={`${styles.tableRow} ${styles.tableTotal}`}>
         <span className={styles.tableLevel}>{t("Seety.WF_TOTAL", "Total")}</span>
         {totals.map((value, i) => (
-          <span key={i} className={cellClass(columns[i][2], false)}>
+          <span key={i} className={cellClass(columns[i][2], false, columns[i][3])}>
             {value.toLocaleString()}
           </span>
         ))}
       </div>
 
       <div className={styles.tableNote}>
-        Everything left of the line counts citizens; everything right of it counts jobs. Counted
-        citizen by citizen, tourists excluded. Kids are the ones not at school. Idle is anyone of
-        working age without a job in the city; Under holds a job below their education; Out lives
-        here and works outside; In commutes in from outside and is in no other column. Jobs are
-        counted from the employers themselves; Vacant is the game&apos;s own running count of posts
-        nobody is doing - the same one behind its Workplace Availability panel.
+        Tourists excluded. Kids are the ones not at school.
       </div>
     </div>
   );

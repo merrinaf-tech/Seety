@@ -30,7 +30,7 @@ U = [
  ("WF_OLD", "Old","Senioren","Mayores","Aînés","Anziani","高齢","고령","Seniorzy","Idosos","Пожилые","老年","老年"),
  ("WF_ADULTS", "Adults","Erwachsene","Adultos","Adultes","Adulti","成人","성인","Dorośli","Adultos","Взрослые","成人","成人"),
  ("WF_EMPLOYED", "Employed","Beschäftigt","Empleados","Employés","Occupati","就業","취업","Zatrudnieni","Empregados","Заняты","就业","就業"),
- ("WF_IDLE", "Idle","Ohne Arbeit","Sin empleo","Sans emploi","Inattivi","無職","무직","Bez pracy","Sem emprego","Без работы","无业","無業"),
+ ("WF_UNEMPLOYED", "Unemployed","Arbeitslos","Desempleados","Sans emploi","Disoccupati","失業","실업","Bezrobotni","Desempregados","Безработные","失业","失業"),
  ("WF_UNDER", "Under","Unterqualifiziert","Subempleo","Sous-qualifié","Sottoimpiego","過小就業","하향취업","Poniżej","Subemprego","Ниже уровня","低配","低配"),
  ("WF_OUT", "Out","Auswärts","Fuera","Dehors","Fuori","市外勤務","외부근무","Poza","Fora","Вне города","外出","外出"),
  ("WF_IN", "In","Einpendler","Entran","Entrants","Entranti","流入","유입","Dojazd","Entram","Въезд","流入","流入"),
