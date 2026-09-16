@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "當讀數越過合理界限時將其標為琥珀色或紅色。數字本身永遠不變。" },
                 { "option.desc.IconOutline", "在狀態條的每個圖示周圍繪製白色描邊，讓深色圖示在深色建築上依然清晰。關閉可獲得更扁平的外觀；讀數不會改變。" },
                 { "option.desc.ShowStrip", "顯示或隱藏整個狀態條。點擊任一讀數可開啟對應的資訊檢視。" },
+                { "option.desc.ZoneTransparency", "將道路兩側分區格子的不透明度減半，建造時可以看見地面。關閉時遊戲外觀與發行時完全一致。安裝了 Zone Color Changer 時此項停用：兩者寫入同一組顏色，後寫入的一方會悄悄覆蓋另一方。" },
                 { "option.group.DisplayGroup", "顯示" },
                 { "option.group.FundsGroup", "資金" },
                 { "option.label.AddFunds", "套用到金庫" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "突顯問題" },
                 { "option.label.IconOutline", "圖示白色描邊" },
                 { "option.label.ShowStrip", "顯示狀態條" },
+                { "option.label.ZoneTransparency", "淡化分區網格" },
                 { "option.tab.Main", "主要" },
                 { "option.title", "Seety" },
             };

@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "Färbt einen Eintrag gelb oder rot, wenn er eine sinnvolle Grenze überschreitet. Die Zahlen selbst ändern sich nie." },
                 { "option.desc.IconOutline", "Zeichnet einen weißen Rand um jedes Symbol der Leiste, damit ein dunkles Symbol auch über einem dunklen Gebäude lesbar bleibt. Ausschalten für ein flacheres Bild; an den Werten ändert sich nichts." },
                 { "option.desc.ShowStrip", "Blendet die gesamte Leiste ein oder aus. Ein Klick auf einen Eintrag öffnet die passende Infoansicht." },
+                { "option.desc.ZoneTransparency", "Halbiert die Deckkraft der Bauzellen entlang der Straßen, sodass der Untergrund beim Bauen durchscheint. Aus bedeutet, dass das Spiel genau wie ausgeliefert aussieht. Deaktiviert, solange Zone Color Changer installiert ist: beide schreiben dieselben Farben, und der letzte Schreibvorgang würde unbemerkt gewinnen." },
                 { "option.group.DisplayGroup", "Anzeige" },
                 { "option.group.FundsGroup", "Finanzen" },
                 { "option.label.AddFunds", "Auf Stadtkasse anwenden" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "Probleme hervorheben" },
                 { "option.label.IconOutline", "Weißer Rand um Symbole" },
                 { "option.label.ShowStrip", "Leiste anzeigen" },
+                { "option.label.ZoneTransparency", "Bauraster abschwächen" },
                 { "option.tab.Main", "Allgemein" },
                 { "option.title", "Seety" },
             };

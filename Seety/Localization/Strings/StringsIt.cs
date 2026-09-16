@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "Colora una lettura di ambra o rosso quando supera un limite ragionevole. I numeri non cambiano mai." },
                 { "option.desc.IconOutline", "Disegna un bordo bianco attorno a ogni icona della barra, così un'icona scura resta leggibile sopra un edificio scuro. Disattivalo per un aspetto più piatto; le letture non cambiano." },
                 { "option.desc.ShowStrip", "Mostra o nasconde tutta la barra. Clicca una lettura per aprire la relativa vista informativa." },
+                { "option.desc.ZoneTransparency", "Dimezza l'opacità delle celle di zonizzazione lungo le strade, così il terreno si vede mentre costruisci. Da spento il gioco appare esattamente come è stato pubblicato. Disattivata se è installato Zone Color Changer: entrambi scrivono gli stessi colori e l'ultimo a scrivere vincerebbe senza dirlo." },
                 { "option.group.DisplayGroup", "Visualizzazione" },
                 { "option.group.FundsGroup", "Fondi" },
                 { "option.label.AddFunds", "Applica alle casse" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "Evidenzia i problemi" },
                 { "option.label.IconOutline", "Contorno bianco sulle icone" },
                 { "option.label.ShowStrip", "Mostra la barra" },
+                { "option.label.ZoneTransparency", "Attenua la griglia di zonizzazione" },
                 { "option.tab.Main", "Generale" },
                 { "option.title", "Seety" },
             };

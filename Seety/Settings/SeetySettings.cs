@@ -30,6 +30,7 @@ namespace Seety.Settings
         private bool _showStrip = true;
         private bool _highlightProblems = true;
         private bool _iconOutline = true;
+        private bool _zoneTransparency;
 
         // Default resting place: clear of the vanilla button row along the top edge, so the strip
         // does not land on top of the game's own controls the first time it appears.
@@ -105,6 +106,33 @@ namespace Seety.Settings
 
                 _iconOutline = value;
                 Mod.OnIconOutlineChanged(value);
+            }
+        }
+
+        /// <summary>
+        /// Fade the zoning cells drawn along the roads.
+        ///
+        /// Off by default. This is the only option in Seety that changes something outside
+        /// Seety's own furniture, so it starts in the state where the game looks as it shipped;
+        /// a player who wants the quieter grid asks for it.
+        ///
+        /// Disabled while Zone Color Changer is loaded. Both write the same field on the same
+        /// prefabs, and whichever writes last wins without either noticing - see InstalledMods.
+        /// </summary>
+        [SettingsUISection(MainSection, DisplayGroup)]
+        [SettingsUIDisableByCondition(typeof(InstalledMods), nameof(InstalledMods.ZoneTransparencyUnavailable))]
+        public bool ZoneTransparency
+        {
+            get { return _zoneTransparency; }
+            set
+            {
+                if (_zoneTransparency == value)
+                {
+                    return;
+                }
+
+                _zoneTransparency = value;
+                Mod.OnZoneTransparencyChanged(value);
             }
         }
 
@@ -248,6 +276,7 @@ namespace Seety.Settings
             _showStrip = true;
             _highlightProblems = true;
             _iconOutline = true;
+            _zoneTransparency = false;
             _seededDefaults = false;
             _stripX = DefaultStripX;
             _stripY = DefaultStripY;

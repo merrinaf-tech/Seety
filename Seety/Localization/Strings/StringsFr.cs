@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "Colore une lecture en orange ou en rouge lorsqu'elle dépasse une limite raisonnable. Les chiffres ne changent jamais." },
                 { "option.desc.IconOutline", "Trace un contour blanc autour de chaque icône de la barre, pour qu'une icône sombre reste lisible sur un bâtiment sombre. Désactivez-le pour un rendu plus plat ; les valeurs ne changent pas." },
                 { "option.desc.ShowStrip", "Affiche ou masque toute la barre. Cliquez sur une lecture pour ouvrir la vue d'information correspondante." },
+                { "option.desc.ZoneTransparency", "Réduit de moitié l'opacité des cases de zonage le long des routes, pour voir le sol pendant la construction. Désactivé, le jeu a exactement son apparence d'origine. Désactivé tant que Zone Color Changer est installé : les deux écrivent les mêmes couleurs, et le dernier à écrire l'emporterait sans prévenir." },
                 { "option.group.DisplayGroup", "Affichage" },
                 { "option.group.FundsGroup", "Fonds" },
                 { "option.label.AddFunds", "Appliquer au trésor" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "Mettre en évidence les problèmes" },
                 { "option.label.IconOutline", "Contour blanc sur les icônes" },
                 { "option.label.ShowStrip", "Afficher la barre" },
+                { "option.label.ZoneTransparency", "Atténuer la grille de zonage" },
                 { "option.tab.Main", "Général" },
                 { "option.title", "Seety" },
             };

@@ -119,5 +119,24 @@ add("option.desc.IconOutline",
     "在状态条的每个图标周围绘制白色描边，让深色图标在深色建筑上依然清晰。关闭可获得更扁平的外观；读数不会改变。",
     "在狀態條的每個圖示周圍繪製白色描邊，讓深色圖示在深色建築上依然清晰。關閉可獲得更扁平的外觀；讀數不會改變。")
 
+add("option.label.ZoneTransparency",
+    "Fade the zoning grid", "Bauraster abschwächen", "Atenuar la cuadrícula de zonificación",
+    "Atténuer la grille de zonage", "Attenua la griglia di zonizzazione", "区画グリッドを薄く",
+    "구획 격자 흐리게", "Przygaś siatkę stref", "Esmaecer a grade de zoneamento",
+    "Приглушить сетку зон", "淡化分区网格", "淡化分區網格")
+add("option.desc.ZoneTransparency",
+    "Halves the opacity of the zoning cells drawn along the roads, so the ground shows through while you build. Off means the game looks exactly as it shipped. Disabled while Zone Color Changer is installed: both write the same colours, and the last one to write would silently win.",
+    "Halbiert die Deckkraft der Bauzellen entlang der Straßen, sodass der Untergrund beim Bauen durchscheint. Aus bedeutet, dass das Spiel genau wie ausgeliefert aussieht. Deaktiviert, solange Zone Color Changer installiert ist: beide schreiben dieselben Farben, und der letzte Schreibvorgang würde unbemerkt gewinnen.",
+    "Reduce a la mitad la opacidad de las celdas de zonificación junto a las carreteras, para que el terreno se vea al construir. Desactivado, el juego se ve tal y como se publicó. Se desactiva si Zone Color Changer está instalado: ambos escriben los mismos colores y el último en escribir ganaría sin avisar.",
+    "Réduit de moitié l'opacité des cases de zonage le long des routes, pour voir le sol pendant la construction. Désactivé, le jeu a exactement son apparence d'origine. Désactivé tant que Zone Color Changer est installé : les deux écrivent les mêmes couleurs, et le dernier à écrire l'emporterait sans prévenir.",
+    "Dimezza l'opacità delle celle di zonizzazione lungo le strade, così il terreno si vede mentre costruisci. Da spento il gioco appare esattamente come è stato pubblicato. Disattivata se è installato Zone Color Changer: entrambi scrivono gli stessi colori e l'ultimo a scrivere vincerebbe senza dirlo.",
+    "道路沿いの区画セルの不透明度を半分にし、建設中も地面が透けて見えるようにします。オフなら発売時のままの見た目です。Zone Color Changer が導入されている間は無効です。どちらも同じ色を書き換えるため、後から書いた方が黙って勝ってしまいます。",
+    "도로변 구획 칸의 불투명도를 절반으로 낮춰 건설 중에도 지면이 비쳐 보이게 합니다. 끄면 출시 당시 그대로의 모습입니다. Zone Color Changer가 설치된 동안에는 비활성화됩니다. 둘 다 같은 색을 쓰기 때문에 나중에 쓴 쪽이 조용히 이깁니다.",
+    "Zmniejsza o połowę krycie komórek stref przy drogach, dzięki czemu podczas budowy widać teren. Wyłączone oznacza wygląd dokładnie taki, jak w wydanej grze. Nieaktywne, gdy zainstalowany jest Zone Color Changer: oba zapisują te same kolory, a ten, który zapisze później, wygrałby po cichu.",
+    "Reduz à metade a opacidade das células de zoneamento ao longo das vias, para que o terreno apareça enquanto você constrói. Desligado, o jogo fica exatamente como foi lançado. Desativado enquanto o Zone Color Changer estiver instalado: ambos escrevem as mesmas cores, e o último a escrever venceria silenciosamente.",
+    "Уменьшает непрозрачность ячеек зонирования вдоль дорог вдвое, чтобы во время строительства была видна земля. Выключено - игра выглядит ровно так, как вышла. Недоступно, пока установлен Zone Color Changer: оба записывают одни и те же цвета, и последний записавший победил бы незаметно.",
+    "将道路两侧分区格子的不透明度减半，建造时可以看见地面。关闭时游戏外观与发行时完全一致。安装了 Zone Color Changer 时此项停用：两者写入同一组颜色，后写入的一方会悄悄覆盖另一方。",
+    "將道路兩側分區格子的不透明度減半，建造時可以看見地面。關閉時遊戲外觀與發行時完全一致。安裝了 Zone Color Changer 時此項停用：兩者寫入同一組顏色，後寫入的一方會悄悄覆蓋另一方。")
+
 io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "_stage1_ok"), "w").write("ok")
 print("stage 1:", len(D), "chiavi")

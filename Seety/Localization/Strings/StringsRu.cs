@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "Окрашивает показатель в жёлтый или красный при выходе за разумный предел. Сами числа не меняются." },
                 { "option.desc.IconOutline", "Рисует белый контур вокруг каждого значка на панели, чтобы тёмный значок оставался различим на фоне тёмного здания. Выключите для более плоского вида; показатели не меняются." },
                 { "option.desc.ShowStrip", "Показывает или скрывает всю панель. Нажмите на любой показатель, чтобы открыть соответствующий режим информации." },
+                { "option.desc.ZoneTransparency", "Уменьшает непрозрачность ячеек зонирования вдоль дорог вдвое, чтобы во время строительства была видна земля. Выключено - игра выглядит ровно так, как вышла. Недоступно, пока установлен Zone Color Changer: оба записывают одни и те же цвета, и последний записавший победил бы незаметно." },
                 { "option.group.DisplayGroup", "Отображение" },
                 { "option.group.FundsGroup", "Средства" },
                 { "option.label.AddFunds", "Применить к казне" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "Выделять проблемы" },
                 { "option.label.IconOutline", "Белый контур значков" },
                 { "option.label.ShowStrip", "Показывать панель" },
+                { "option.label.ZoneTransparency", "Приглушить сетку зон" },
                 { "option.tab.Main", "Основное" },
                 { "option.title", "Seety" },
             };
