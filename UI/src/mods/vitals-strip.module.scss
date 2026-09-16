@@ -437,11 +437,15 @@
   margin-top: 6rem;
   padding: 0 4rem;
 
-  // Capped, or the note decides how wide the window is. It already wraps, but a window sizes
-  // itself to its widest child, so one long sentence on one line dragged panels out to the
-  // 860rem maximum for no reason. Narrower than the window's minimum, so it wraps to two or
-  // three lines and the rows above are what set the width.
-  max-width: 360rem;
+  // A window sizes itself to its widest child, so a long note used to drag panels out to the
+  // 860rem maximum. The old fix was a 360rem cap, which worked but left the note wrapping into a
+  // narrow column inside a wide window - plainly short of the right-hand edge with space going
+  // spare.
+  //
+  // This says the same thing properly: zero intrinsic width, so the note never votes on how wide
+  // the window is, and 100% of whatever the rows above settled on, so it uses all of it.
+  width: 0;
+  min-width: 100%;
 
   font-size: 11rem;
   line-height: 1.4;
@@ -499,6 +503,13 @@
 
 // The line that separates people from posts in the workforce table: everything left of it counts
 // citizens, everything right of it counts jobs.
+// Unemployed is two characters longer than the widest head the 58rem column was sized for, and
+// longer again in several languages - "Desempregados", "Безработные". Widened on its own rather
+// than widening every column, which would push the table past the window's 860rem maximum.
+.tableCellWide {
+  width: 78rem;
+}
+
 .tableDivider {
   border-left: 1rem solid rgba(255, 255, 255, 0.22);
   padding-left: 6rem;
