@@ -1165,8 +1165,9 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
         ))}
       </div>
 
-      <div className={styles.tableNote}>
-        Tourists excluded. Kids are the ones not at school.
+      <div className={`${styles.tableNote} ${styles.tableNoteWide}`}>
+        Tourists excluded. Kids are the ones not at school. Out lives here and works outside the
+        city; In works here and lives outside it.
       </div>
     </div>
   );
