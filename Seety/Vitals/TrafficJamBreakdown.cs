@@ -66,7 +66,8 @@ namespace Seety.Vitals
             get { return _groups; }
         }
 
-        public void Refresh(EntityQuery query, EntityManager entities, PrefabSystem prefabs, NameSystem names)
+        public void Refresh(EntityQuery query, EntityManager entities, PrefabSystem prefabs,
+            NameSystem names, Game.Simulation.TerrainSystem terrain)
         {
             _groups.Clear();
             _byName.Clear();
@@ -77,11 +78,16 @@ namespace Seety.Vitals
                 return;
             }
 
+            UnityEngine.Bounds map = terrain != null
+                ? terrain.GetTerrainBounds()
+                : new UnityEngine.Bounds();
+            bool bounded = map.size.x > 0f && map.size.z > 0f;
+
             using (var vehicles = query.ToEntityArray(Allocator.Temp))
             {
                 for (var i = 0; i < vehicles.Length; i++)
                 {
-                    Collect(vehicles[i], entities, prefabs, names);
+                    Collect(vehicles[i], entities, prefabs, names, map, bounded);
                 }
             }
 
@@ -110,7 +116,8 @@ namespace Seety.Vitals
             }
         }
 
-        private void Collect(Entity vehicle, EntityManager entities, PrefabSystem prefabs, NameSystem names)
+        private void Collect(Entity vehicle, EntityManager entities, PrefabSystem prefabs,
+            NameSystem names, UnityEngine.Bounds map, bool bounded)
         {
             if (!entities.HasComponent<PrefabRef>(vehicle) || !entities.HasComponent<Game.Objects.Transform>(vehicle))
             {
@@ -121,6 +128,16 @@ namespace Seety.Vitals
             var name = SafeName(names, prefab, prefabs);
             var position = entities.GetComponentData<Game.Objects.Transform>(vehicle).m_Position;
 
+            if (bounded && !OnMap(position, map))
+            {
+                // Not traffic in this city. Vehicles queue at the outside connections in dense
+                // stacks, and density is exactly what picks the place to fly to below, so those
+                // stacks beat any real jam and sent the camera off the edge of the world. They
+                // were inflating the counts for the same reason: a hundred taxis waiting to be
+                // let in is not a hundred taxis stuck in your streets.
+                return;
+            }
+
             List<float3> positions;
             if (!_positions.TryGetValue(name, out positions))
             {
@@ -129,6 +146,19 @@ namespace Seety.Vitals
             }
 
             positions.Add(position);
+        }
+
+        /// <summary>
+        /// Whether a position is on the map at all.
+        ///
+        /// Width and depth only: the bounds' vertical extent describes the terrain, and a vehicle
+        /// on an elevated road sits above it. Testing height too would quietly drop every jam on
+        /// a flyover, which is where a good few of them are.
+        /// </summary>
+        private static bool OnMap(float3 position, UnityEngine.Bounds map)
+        {
+            return position.x >= map.min.x && position.x <= map.max.x
+                && position.z >= map.min.z && position.z <= map.max.z;
         }
 
         /// <summary>

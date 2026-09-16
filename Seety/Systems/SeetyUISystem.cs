@@ -28,6 +28,9 @@ namespace Seety.Systems
         private const double RefreshIntervalSeconds = 0.5;
 
         private PrefabSystem _prefabs;
+
+        /// <summary>Asked for the map's extent, so stuck vehicles off it can be ignored.</summary>
+        private Game.Simulation.TerrainSystem _terrain;
         private InfoviewsUISystem _infoviews;
 
         /// <summary>Resolved once and kept, purely so AddFunds does not create a system on a click.</summary>
@@ -225,6 +228,7 @@ namespace Seety.Systems
 
             _camera = World.GetOrCreateSystemManaged<Game.Rendering.CameraUpdateSystem>();
             _names = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
+            _terrain = World.GetOrCreateSystemManaged<Game.Simulation.TerrainSystem>();
             _census = World.GetOrCreateSystemManaged<CitizenCensusSystem>();
 
             // Building required, matching Game.Buildings.InitializeSchoolSystem's own
@@ -590,7 +594,7 @@ namespace Seety.Systems
 
             if (_expandedId == TrafficVitalId)
             {
-                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names);
+                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names, _terrain);
                 _notificationsBinding.Update();
             }
 
@@ -1189,7 +1193,7 @@ namespace Seety.Systems
 
             if (_expandedId == TrafficVitalId)
             {
-                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names);
+                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names, _terrain);
             }
 
             // Built here as well as on the tick, because the tick only keeps it up to date while
