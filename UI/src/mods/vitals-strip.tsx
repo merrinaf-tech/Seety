@@ -718,6 +718,26 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
   );
 };
 
+/**
+ * The stuck-vehicle list, which needs a sentence the other breakdowns do not.
+ *
+ * Its rows carry two numbers meaning different things, and without saying so the first one reads
+ * as a total and disappoints: a row saying 115 that flies you to four cars looks broken, because
+ * the number and the place were answering different questions.
+ */
+const JamRows = ({ rows }: { rows: BreakdownRow[] }) => (
+  <>
+    <BreakdownRows rows={rows} />
+    {rows.length > 0 ? (
+      <div className={styles.tableNote}>
+        Vehicles held up right now. The first number is the worst single knot of that kind - the
+        one clicking the row flies to; the second is how many of them are held up anywhere on the
+        map. Queues waiting outside the city are not counted.
+      </div>
+    ) : null}
+  </>
+);
+
 const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
   const t = useT();
   if (rows.length === 0) {
@@ -1970,6 +1990,8 @@ export const VitalsStrip = () => {
           {openBreakdown ? (
             openBreakdown.id === "transport" ? (
               <TransportRows rows={openBreakdown.rows} />
+            ) : openBreakdown.id === TRAFFIC_ID ? (
+              <JamRows rows={openBreakdown.rows} />
             ) : (
               <BreakdownRows rows={openBreakdown.rows} />
             )

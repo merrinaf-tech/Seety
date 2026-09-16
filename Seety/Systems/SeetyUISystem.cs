@@ -1005,8 +1005,10 @@ namespace Seety.Systems
 
             foreach (var group in jams)
             {
+                // count is the knot the click flies to; total is the kind held up anywhere.
+                // Shown together so the number on the row is the number you arrive at.
                 WriteRow(writer, group.Name, "Media/Game/Icons/Traffic.svg", group.Count,
-                    Vitals.VitalLevel.Normal, true, "jam:" + group.Name);
+                    Vitals.VitalLevel.Normal, true, "jam:" + group.Name, "", group.Total);
             }
 
             writer.ArrayEnd();
