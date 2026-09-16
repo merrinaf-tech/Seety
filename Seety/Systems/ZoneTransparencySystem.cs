@@ -32,14 +32,16 @@ namespace Seety.Systems
         ///
         /// A multiplier rather than a fixed alpha, so the game keeps its own relationships: the
         /// unzoned cells are already fainter than the zoned ones, and the edge is drawn
-        /// differently from the fill. Half is enough to read the ground through the grid while
-        /// leaving the grid legible enough to zone with - the point is a quieter overlay, not an
-        /// absent one.
+        /// differently from the fill. The point is a quieter overlay, not an absent one: enough
+        /// grid left to zone against, but the ground underneath readable through it.
+        ///
+        /// A quarter, not the half this started at. Half still drew the cell edges as solid dark
+        /// lines across open grass - visibly a grid laid over the city rather than a guide on it.
         ///
         /// Deliberately not configurable. A slider here would be Zone Color Changer with fewer
         /// features; this is one switch that does one thing.
         /// </summary>
-        private const float TransparencyFactor = 0.5f;
+        private const float TransparencyFactor = 0.25f;
 
         private PrefabSystem _prefabs;
         private ZoneSystem _zones;
