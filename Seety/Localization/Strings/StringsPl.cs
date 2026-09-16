@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "Koloruje odczyt na bursztynowo lub czerwono po przekroczeniu rozsądnej granicy. Same liczby nigdy się nie zmieniają." },
                 { "option.desc.IconOutline", "Rysuje biały kontur wokół każdej ikony na pasku, dzięki czemu ciemna ikona pozostaje czytelna na tle ciemnego budynku. Wyłącz, aby uzyskać płaszczy wygląd; odczyty się nie zmieniają." },
                 { "option.desc.ShowStrip", "Pokazuje lub ukrywa cały pasek. Kliknij dowolny odczyt, aby otworzyć powiązany widok informacji." },
+                { "option.desc.ZoneTransparency", "Zmniejsza o połowę krycie komórek stref przy drogach, dzięki czemu podczas budowy widać teren. Wyłączone oznacza wygląd dokładnie taki, jak w wydanej grze. Nieaktywne, gdy zainstalowany jest Zone Color Changer: oba zapisują te same kolory, a ten, który zapisze później, wygrałby po cichu." },
                 { "option.group.DisplayGroup", "Wyświetlanie" },
                 { "option.group.FundsGroup", "Fundusze" },
                 { "option.label.AddFunds", "Zastosuj do skarbca" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "Podświetlaj problemy" },
                 { "option.label.IconOutline", "Biały kontur ikon" },
                 { "option.label.ShowStrip", "Pokaż pasek" },
+                { "option.label.ZoneTransparency", "Przygaś siatkę stref" },
                 { "option.tab.Main", "Główne" },
                 { "option.title", "Seety" },
             };

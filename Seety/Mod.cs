@@ -38,6 +38,9 @@ namespace Seety
 
         private static SeetyUISystem _uiSystem;
 
+        /// <summary>Held so the options page can reach it. See OnZoneTransparencyChanged.</summary>
+        private static ZoneTransparencySystem _zoneSystem;
+
         /// <summary>One source per language, kept so they can be removed again on unload.</summary>
         private static readonly List<Localization.LocaleSource> _locales = new List<Localization.LocaleSource>();
 
@@ -60,6 +63,11 @@ namespace Seety
 
             updateSystem.UpdateAt<SeetyUISystem>(SystemUpdatePhase.UIUpdate);
 
+            // Modification1 is where prefab edits belong: late enough that the zone prefabs are
+            // loaded, early enough that the renderer picks the colours up the same frame.
+            updateSystem.UpdateAt<ZoneTransparencySystem>(SystemUpdatePhase.Modification1);
+            _zoneSystem = updateSystem.World.GetOrCreateSystemManaged<ZoneTransparencySystem>();
+
             _ready = true;
             Log.Info("Seety loaded.");
         }
@@ -69,6 +77,7 @@ namespace Seety
             Log.Info("Seety disposing.");
             _ready = false;
             _uiSystem = null;
+            _zoneSystem = null;
 
             RemoveLocaleSources();
 
@@ -169,6 +178,16 @@ namespace Seety
             }
 
             _uiSystem.SetIconOutline(outlined);
+        }
+
+        internal static void OnZoneTransparencyChanged(bool transparent)
+        {
+            if (!_ready || _zoneSystem == null)
+            {
+                return;
+            }
+
+            _zoneSystem.SetTransparent(transparent);
         }
 
         internal static void OnVitalsChanged()

@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "妥当な限度を超えた項目を黄色や赤で表示します。数値そのものは変わりません。" },
                 { "option.desc.IconOutline", "バーの各アイコンに白いフチを描き、暗い建物の上でも暗いアイコンが読み取れるようにします。オフにするとフラットな見た目になります。数値は変わりません。" },
                 { "option.desc.ShowStrip", "バー全体の表示を切り替えます。項目をクリックすると対応するインフォビューが開きます。" },
+                { "option.desc.ZoneTransparency", "道路沿いの区画セルの不透明度を半分にし、建設中も地面が透けて見えるようにします。オフなら発売時のままの見た目です。Zone Color Changer が導入されている間は無効です。どちらも同じ色を書き換えるため、後から書いた方が黙って勝ってしまいます。" },
                 { "option.group.DisplayGroup", "表示" },
                 { "option.group.FundsGroup", "資金" },
                 { "option.label.AddFunds", "財政に反映" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "問題を強調表示" },
                 { "option.label.IconOutline", "アイコンの白フチ" },
                 { "option.label.ShowStrip", "バーを表示" },
+                { "option.label.ZoneTransparency", "区画グリッドを薄く" },
                 { "option.tab.Main", "メイン" },
                 { "option.title", "Seety" },
             };

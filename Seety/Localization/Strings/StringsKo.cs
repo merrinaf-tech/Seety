@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "적절한 한계를 넘으면 항목을 주황색이나 빨간색으로 표시합니다. 수치 자체는 바뀌지 않습니다." },
                 { "option.desc.IconOutline", "바의 각 아이콘에 흰색 테두리를 그려 어두운 건물 위에서도 어두운 아이콘이 잘 보이게 합니다. 끄면 더 평평한 모습이 됩니다. 수치는 바뀌지 않습니다." },
                 { "option.desc.ShowStrip", "바 전체를 표시하거나 숨깁니다. 항목을 클릭하면 해당 정보 보기가 열립니다." },
+                { "option.desc.ZoneTransparency", "도로변 구획 칸의 불투명도를 절반으로 낮춰 건설 중에도 지면이 비쳐 보이게 합니다. 끄면 출시 당시 그대로의 모습입니다. Zone Color Changer가 설치된 동안에는 비활성화됩니다. 둘 다 같은 색을 쓰기 때문에 나중에 쓴 쪽이 조용히 이깁니다." },
                 { "option.group.DisplayGroup", "표시" },
                 { "option.group.FundsGroup", "자금" },
                 { "option.label.AddFunds", "재정에 적용" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "문제 강조" },
                 { "option.label.IconOutline", "아이콘 흰색 테두리" },
                 { "option.label.ShowStrip", "바 표시" },
+                { "option.label.ZoneTransparency", "구획 격자 흐리게" },
                 { "option.tab.Main", "기본" },
                 { "option.title", "Seety" },
             };

@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "Colorea una lectura en ámbar o rojo cuando cruza un límite razonable. Los números nunca cambian." },
                 { "option.desc.IconOutline", "Dibuja un borde blanco alrededor de cada icono de la barra, para que un icono oscuro siga siendo legible sobre un edificio oscuro. Desactívalo para un aspecto más plano; las lecturas no cambian." },
                 { "option.desc.ShowStrip", "Muestra u oculta toda la barra. Haz clic en cualquier lectura para abrir su vista de información." },
+                { "option.desc.ZoneTransparency", "Reduce a la mitad la opacidad de las celdas de zonificación junto a las carreteras, para que el terreno se vea al construir. Desactivado, el juego se ve tal y como se publicó. Se desactiva si Zone Color Changer está instalado: ambos escriben los mismos colores y el último en escribir ganaría sin avisar." },
                 { "option.group.DisplayGroup", "Visualización" },
                 { "option.group.FundsGroup", "Fondos" },
                 { "option.label.AddFunds", "Aplicar a la tesorería" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "Resaltar problemas" },
                 { "option.label.IconOutline", "Contorno blanco en los iconos" },
                 { "option.label.ShowStrip", "Mostrar la barra" },
+                { "option.label.ZoneTransparency", "Atenuar la cuadrícula de zonificación" },
                 { "option.tab.Main", "General" },
                 { "option.title", "Seety" },
             };

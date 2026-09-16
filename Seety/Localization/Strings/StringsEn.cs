@@ -143,6 +143,7 @@ namespace Seety.Localization.Strings
                 { "option.desc.HighlightProblems", "Colour an entry amber or red when it crosses a sensible limit. The numbers themselves never change." },
                 { "option.desc.IconOutline", "Draws a white edge around each icon on the bar, so a dark icon stays legible over a dark building. Turn it off for a flatter look; the readings do not change either way." },
                 { "option.desc.ShowStrip", "Show or hide the whole bar. Click any entry on it to open the matching in-game info view." },
+                { "option.desc.ZoneTransparency", "Halves the opacity of the zoning cells drawn along the roads, so the ground shows through while you build. Off means the game looks exactly as it shipped. Disabled while Zone Color Changer is installed: both write the same colours, and the last one to write would silently win." },
                 { "option.group.DisplayGroup", "Display" },
                 { "option.group.FundsGroup", "Funds" },
                 { "option.label.AddFunds", "Apply to treasury" },
@@ -150,6 +151,7 @@ namespace Seety.Localization.Strings
                 { "option.label.HighlightProblems", "Highlight problems" },
                 { "option.label.IconOutline", "White outline on icons" },
                 { "option.label.ShowStrip", "Show the strip" },
+                { "option.label.ZoneTransparency", "Fade the zoning grid" },
                 { "option.tab.Main", "Main" },
                 { "option.title", "Seety" },
             };
