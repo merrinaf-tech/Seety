@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Colossal.UI.Binding;
 using Game.City;
@@ -36,6 +36,9 @@ namespace Seety.Systems
 
         private RawValueBinding _vitalsBinding;
         private ValueBinding<bool> _visibleBinding;
+
+        /// <summary>Whether the bar's icons carry a white edge. See SeetySettings.IconOutline.</summary>
+        private ValueBinding<bool> _iconOutlineBinding;
         private ValueBinding<int> _posXBinding;
         private ValueBinding<int> _posYBinding;
 
@@ -300,6 +303,12 @@ namespace Seety.Systems
                 settings == null || settings.ShowStrip);
             AddBinding(_visibleBinding);
 
+            // Seeded from the stored setting rather than from a hardcoded default - see the note
+            // on the visible binding above, which is the same mistake this avoids.
+            _iconOutlineBinding = new ValueBinding<bool>(Group, "iconOutline",
+                settings == null || settings.IconOutline);
+            AddBinding(_iconOutlineBinding);
+
             _posXBinding = new ValueBinding<int>(Group, "posX",
                 settings == null ? Settings.SeetySettings.DefaultStripX : settings.StripX);
             _posYBinding = new ValueBinding<int>(Group, "posY",
@@ -475,6 +484,15 @@ namespace Seety.Systems
             }
 
             return long.MinValue;
+        }
+
+        /// <summary>Called by the settings when the icon outline is switched on or off.</summary>
+        public void SetIconOutline(bool outlined)
+        {
+            if (_iconOutlineBinding != null)
+            {
+                _iconOutlineBinding.Update(outlined);
+            }
         }
 
         public void SetVisible(bool visible)

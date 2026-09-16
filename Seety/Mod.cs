@@ -161,6 +161,16 @@ namespace Seety
             _uiSystem.SetVisible(visible);
         }
 
+        internal static void OnIconOutlineChanged(bool outlined)
+        {
+            if (!_ready || _uiSystem == null)
+            {
+                return;
+            }
+
+            _uiSystem.SetIconOutline(outlined);
+        }
+
         internal static void OnVitalsChanged()
         {
             if (!_ready || _uiSystem == null)

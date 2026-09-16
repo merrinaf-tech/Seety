@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Colossal.IO.AssetDatabase;
 using Game.Modding;
@@ -29,6 +29,7 @@ namespace Seety.Settings
 
         private bool _showStrip = true;
         private bool _highlightProblems = true;
+        private bool _iconOutline = true;
 
         // Default resting place: clear of the vanilla button row along the top edge, so the strip
         // does not land on top of the game's own controls the first time it appears.
@@ -80,6 +81,30 @@ namespace Seety.Settings
 
                 _highlightProblems = value;
                 Mod.OnVitalsChanged();
+            }
+        }
+
+        /// <summary>
+        /// Draw a white edge around each icon on the bar.
+        ///
+        /// On by default, because the bar sits over the city and a dark icon on a dark building is
+        /// the case that made the outline necessary. It is a matter of taste rather than of
+        /// legibility everywhere else, so it can be switched off for a flatter look; nothing about
+        /// the readings changes either way.
+        /// </summary>
+        [SettingsUISection(MainSection, DisplayGroup)]
+        public bool IconOutline
+        {
+            get { return _iconOutline; }
+            set
+            {
+                if (_iconOutline == value)
+                {
+                    return;
+                }
+
+                _iconOutline = value;
+                Mod.OnIconOutlineChanged(value);
             }
         }
 
@@ -222,6 +247,7 @@ namespace Seety.Settings
         {
             _showStrip = true;
             _highlightProblems = true;
+            _iconOutline = true;
             _seededDefaults = false;
             _stripX = DefaultStripX;
             _stripY = DefaultStripY;

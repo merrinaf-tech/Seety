@@ -216,6 +216,7 @@ const posX$ = bindValue<number>("seety", "posX", 10);
 const posY$ = bindValue<number>("seety", "posY", 90);
 const iconsHidden$ = bindValue<boolean>("seety", "iconsHidden", false);
 const configMode$ = bindValue<boolean>("seety", "configMode", false);
+const iconOutline$ = bindValue<boolean>("seety", "iconOutline", true);
 
 /** One age band, split across the five education levels. */
 interface AgeRow {
@@ -1663,6 +1664,7 @@ export const VitalsStrip = () => {
   const demographics = useValue(demographics$);
   const iconsHidden = useValue(iconsHidden$);
   const configMode = useValue(configMode$);
+  const outlined = useValue(iconOutline$);
 
   const [pos, setPos] = useState({ x: savedX, y: savedY });
   const [dragging, setDragging] = useState(false);
@@ -1780,6 +1782,7 @@ export const VitalsStrip = () => {
         styles.strip,
         dragging ? styles.dragging : "",
         configMode ? styles.stripConfig : "",
+        outlined ? styles.outlined : "",
       ]
         .filter(Boolean)
         .join(" ")}

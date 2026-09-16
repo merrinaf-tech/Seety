@@ -100,5 +100,24 @@ add("option.desc.AddFunds",
     "这是 Seety 中唯一会改变城市而非报告城市的控件。",
     "這是 Seety 中唯一會改變城市而非報告城市的控制項。")
 
+add("option.label.IconOutline",
+    "White outline on icons", "Weißer Rand um Symbole", "Contorno blanco en los iconos",
+    "Contour blanc sur les icônes", "Contorno bianco sulle icone", "アイコンの白フチ",
+    "아이콘 흰색 테두리", "Biały kontur ikon", "Contorno branco nos ícones",
+    "Белый контур значков", "图标白色描边", "圖示白色描邊")
+add("option.desc.IconOutline",
+    "Draws a white edge around each icon on the bar, so a dark icon stays legible over a dark building. Turn it off for a flatter look; the readings do not change either way.",
+    "Zeichnet einen weißen Rand um jedes Symbol der Leiste, damit ein dunkles Symbol auch über einem dunklen Gebäude lesbar bleibt. Ausschalten für ein flacheres Bild; an den Werten ändert sich nichts.",
+    "Dibuja un borde blanco alrededor de cada icono de la barra, para que un icono oscuro siga siendo legible sobre un edificio oscuro. Desactívalo para un aspecto más plano; las lecturas no cambian.",
+    "Trace un contour blanc autour de chaque icône de la barre, pour qu'une icône sombre reste lisible sur un bâtiment sombre. Désactivez-le pour un rendu plus plat ; les valeurs ne changent pas.",
+    "Disegna un bordo bianco attorno a ogni icona della barra, così un'icona scura resta leggibile sopra un edificio scuro. Disattivalo per un aspetto più piatto; le letture non cambiano.",
+    "バーの各アイコンに白いフチを描き、暗い建物の上でも暗いアイコンが読み取れるようにします。オフにするとフラットな見た目になります。数値は変わりません。",
+    "바의 각 아이콘에 흰색 테두리를 그려 어두운 건물 위에서도 어두운 아이콘이 잘 보이게 합니다. 끄면 더 평평한 모습이 됩니다. 수치는 바뀌지 않습니다.",
+    "Rysuje biały kontur wokół każdej ikony na pasku, dzięki czemu ciemna ikona pozostaje czytelna na tle ciemnego budynku. Wyłącz, aby uzyskać płaszczy wygląd; odczyty się nie zmieniają.",
+    "Desenha uma borda branca em volta de cada ícone da barra, para que um ícone escuro continue legível sobre um edifício escuro. Desative para um visual mais plano; as leituras não mudam.",
+    "Рисует белый контур вокруг каждого значка на панели, чтобы тёмный значок оставался различим на фоне тёмного здания. Выключите для более плоского вида; показатели не меняются.",
+    "在状态条的每个图标周围绘制白色描边，让深色图标在深色建筑上依然清晰。关闭可获得更扁平的外观；读数不会改变。",
+    "在狀態條的每個圖示周圍繪製白色描邊，讓深色圖示在深色建築上依然清晰。關閉可獲得更扁平的外觀；讀數不會改變。")
+
 io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "_stage1_ok"), "w").write("ok")
 print("stage 1:", len(D), "chiavi")
