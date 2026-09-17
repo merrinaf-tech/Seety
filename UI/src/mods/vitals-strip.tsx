@@ -721,18 +721,17 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
 /**
  * The stuck-vehicle list, which needs a sentence the other breakdowns do not.
  *
- * Its rows carry two numbers meaning different things, and without saying so the first one reads
- * as a total and disappoints: a row saying 115 that flies you to four cars looks broken, because
- * the number and the place were answering different questions.
+ * Its rows are places rather than categories, which is worth saying once: the reader has to know
+ * that "Cranberry Street" is where a jam is and not what kind of thing was counted.
  */
 const JamRows = ({ rows }: { rows: BreakdownRow[] }) => (
   <>
     <BreakdownRows rows={rows} />
     {rows.length > 0 ? (
       <div className={styles.tableNote}>
-        Vehicles held up right now. The first number is the worst single knot of that kind - the
-        one clicking the row flies to; the second is how many of them are held up anywhere on the
-        map. Queues waiting outside the city are not counted.
+        The worst pile-ups on the map right now, named after the street they are on, with the
+        number of vehicles stopped in each. Click one to go there. Queues waiting outside the city
+        are not counted, and a handful of cars giving way is not a jam.
       </div>
     ) : null}
   </>
