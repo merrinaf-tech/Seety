@@ -22,10 +22,16 @@ namespace Seety.Systems
         private const string Group = "seety";
 
         /// <summary>
-        /// City-wide figures move slowly and the strip is glanceable, not an instrument.
-        /// Refreshing twice a second is plenty and keeps this off the per-frame budget.
+        /// City-wide figures move slowly and the strip is glanceable, not an instrument, so this
+        /// stays well off the per-frame budget.
+        ///
+        /// Two seconds rather than the half-second it started at. Twice a second was defensible
+        /// for a number that ticks, but the detail windows are lists, and a list that reorders
+        /// itself four times while you are reading it is harder to use than a slightly stale one:
+        /// the traffic window reshuffles its rows as jams form and clear, and a row can move out
+        /// from under the cursor between deciding to click it and clicking it.
         /// </summary>
-        private const double RefreshIntervalSeconds = 0.5;
+        private const double RefreshIntervalSeconds = 2.0;
 
         private PrefabSystem _prefabs;
 
