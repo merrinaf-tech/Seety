@@ -85,7 +85,11 @@ namespace Seety.Vitals
             bool bounded = map.size.x > 0f && map.size.z > 0f;
 
             var positions = new List<float3>();
-            var vehicleEntities = new List<Entity>();
+            var roads = new List<Entity>();
+
+            // Many cars share a lane, and resolving one means several component lookups, so the
+            // answer is remembered for the length of this refresh.
+            var laneRoads = new Dictionary<Entity, Entity>();
 
             using (var vehicles = query.ToEntityArray(Allocator.Temp))
             {
@@ -107,12 +111,22 @@ namespace Seety.Vitals
                         continue;
                     }
 
+                    Entity road = RoadOf(vehicle, entities, laneRoads);
+                    if (road == Entity.Null)
+                    {
+                        // Standing somewhere that is not a road: the car parks inside buildings,
+                        // mostly. They are stationary and packed tighter than any queue, so they
+                        // won every round of the search below, and they are the one place a
+                        // player can do nothing about - you cannot widen a garage.
+                        continue;
+                    }
+
                     positions.Add(position);
-                    vehicleEntities.Add(vehicle);
+                    roads.Add(road);
                 }
             }
 
-            FindJams(positions, vehicleEntities, entities, names);
+            FindJams(positions, roads, entities, names);
         }
 
         /// <summary>
@@ -130,7 +144,7 @@ namespace Seety.Vitals
         /// vehicles - a number that names nowhere. A jam bounded to roughly ninety metres is a
         /// junction and its approaches, which is a place you can be sent to.
         /// </summary>
-        private void FindJams(List<float3> positions, List<Entity> vehicles,
+        private void FindJams(List<float3> positions, List<Entity> roads,
             EntityManager entities, NameSystem names)
         {
             var cells = new Dictionary<long, List<int>>();
@@ -201,7 +215,7 @@ namespace Seety.Vitals
 
                 _groups.Add(new TrafficJamGroup
                 {
-                    Name = Unique(StreetName(vehicles[bestMembers[0]], entities, names), used),
+                    Name = Unique(StreetName(roads[bestMembers[0]], entities, names), used),
                     Count = bestMembers.Count,
                     Position = centre
                 });
@@ -299,41 +313,58 @@ namespace Seety.Vitals
         }
 
         /// <summary>
-        /// What to call a jam: the street its vehicles are standing on.
+        /// The road a car is standing on, or Entity.Null if it is not standing on one.
         ///
-        /// A car knows its lane; a lane belongs to the road edge it was cut from; and an edge
-        /// belongs to an aggregate, which is the thing the game itself calls a street and the only
-        /// one of the four that carries the name a player would recognise.
+        /// A car knows its lane, and a lane belongs to whatever it was cut from by way of
+        /// Game.Common.Owner: a road edge out in the city, or a building, for the lanes inside a
+        /// car park. That distinction is the whole point of asking. Cars inside a building's
+        /// parking are stationary and packed closer than any queue on any street, so they took
+        /// every round of the search and sent the camera to a garage - a place with no visible
+        /// traffic, and the one place where knowing about it changes nothing, since a lot inside
+        /// a building is not a road anyone can widen.
         ///
-        /// The aggregate is the point. Naming the first entity up that chain that answered to a
-        /// name gave rows called "Car Drive Lane 3" and "Highway Drive Lane 4" - lane prefabs have
-        /// names too, they are simply the wrong ones, and being non-empty they satisfied a check
-        /// that was only ever asking whether something was there.
+        /// The test is for a net edge rather than for a named street, deliberately. A slip road
+        /// or a piece of an interchange often belongs to no named street at all, and those carry
+        /// some of the worst queues in a city; asking for a name would have thrown them out with
+        /// the car parks.
+        ///
+        /// Bounded rather than a while loop, for the reason BuildingLocator gives: an unexpected
+        /// cycle in the ownership chain would hang the UI thread.
         /// </summary>
-        private static string StreetName(Entity vehicle, EntityManager entities, NameSystem names)
+        private static Entity RoadOf(Entity vehicle, EntityManager entities,
+            Dictionary<Entity, Entity> cache)
         {
-            const string Fallback = "Traffic jam";
-
             if (!entities.HasComponent<Game.Vehicles.CarCurrentLane>(vehicle))
             {
-                return Fallback;
+                return Entity.Null;
             }
 
-            Entity current = entities.GetComponentData<Game.Vehicles.CarCurrentLane>(vehicle).m_Lane;
+            Entity lane = entities.GetComponentData<Game.Vehicles.CarCurrentLane>(vehicle).m_Lane;
+            if (lane == Entity.Null)
+            {
+                return Entity.Null;
+            }
 
-            // Bounded rather than a while loop, for the reason BuildingLocator gives: an
-            // unexpected cycle in the ownership chain would hang the UI thread.
+            Entity known;
+            if (cache.TryGetValue(lane, out known))
+            {
+                return known;
+            }
+
+            Entity found = Entity.Null;
+            Entity current = lane;
+
             for (int depth = 0; depth < 4 && current != Entity.Null; depth++)
             {
-                if (entities.HasComponent<Game.Net.Aggregated>(current))
+                if (entities.HasComponent<Game.Buildings.Building>(current))
                 {
-                    Entity street = entities.GetComponentData<Game.Net.Aggregated>(current).m_Aggregate;
-                    string label = SafeName(names, street);
+                    break;
+                }
 
-                    if (!string.IsNullOrEmpty(label))
-                    {
-                        return label;
-                    }
+                if (entities.HasComponent<Game.Net.Edge>(current))
+                {
+                    found = current;
+                    break;
                 }
 
                 if (!entities.HasComponent<Game.Common.Owner>(current))
@@ -350,8 +381,38 @@ namespace Seety.Vitals
                 current = owner;
             }
 
-            // Roads with no aggregate behind them - a lone slip road, a piece of interchange -
-            // keep the generic name. Better an honest "Traffic jam" than the name of a lane.
+            cache[lane] = found;
+            return found;
+        }
+
+        /// <summary>
+        /// What to call a jam: the street the road it sits on belongs to.
+        ///
+        /// An edge belongs to an aggregate, which is the thing the game itself calls a street and
+        /// the only link in the chain carrying a name a player would recognise.
+        ///
+        /// Naming the first entity up the chain that answered to a name gave rows called "Car
+        /// Drive Lane 3" and "Highway Drive Lane 4" - lane prefabs have names too, they are simply
+        /// the wrong ones, and being non-empty they satisfied a check that was only ever asking
+        /// whether something was there.
+        /// </summary>
+        private static string StreetName(Entity road, EntityManager entities, NameSystem names)
+        {
+            const string Fallback = "Traffic jam";
+
+            if (road != Entity.Null && entities.HasComponent<Game.Net.Aggregated>(road))
+            {
+                Entity street = entities.GetComponentData<Game.Net.Aggregated>(road).m_Aggregate;
+                string label = SafeName(names, street);
+
+                if (!string.IsNullOrEmpty(label))
+                {
+                    return label;
+                }
+            }
+
+            // Roads belonging to no named street - a lone slip road, a piece of interchange - keep
+            // the generic name. Better an honest "Traffic jam" than the name of a lane.
             return Fallback;
         }
 
