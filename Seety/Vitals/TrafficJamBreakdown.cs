@@ -299,12 +299,16 @@ namespace Seety.Vitals
         }
 
         /// <summary>
-        /// What to call a jam: the street the vehicle representing it is standing on.
+        /// What to call a jam: the street its vehicles are standing on.
         ///
-        /// A car knows its lane, and a lane belongs to the road it was cut from, so the name comes
-        /// from walking up Game.Common.Owner until something answers to a name - the same climb
-        /// BuildingLocator makes for a service inside a signature building, and bounded for the
-        /// same reason.
+        /// A car knows its lane; a lane belongs to the road edge it was cut from; and an edge
+        /// belongs to an aggregate, which is the thing the game itself calls a street and the only
+        /// one of the four that carries the name a player would recognise.
+        ///
+        /// The aggregate is the point. Naming the first entity up that chain that answered to a
+        /// name gave rows called "Car Drive Lane 3" and "Highway Drive Lane 4" - lane prefabs have
+        /// names too, they are simply the wrong ones, and being non-empty they satisfied a check
+        /// that was only ever asking whether something was there.
         /// </summary>
         private static string StreetName(Entity vehicle, EntityManager entities, NameSystem names)
         {
@@ -317,12 +321,19 @@ namespace Seety.Vitals
 
             Entity current = entities.GetComponentData<Game.Vehicles.CarCurrentLane>(vehicle).m_Lane;
 
+            // Bounded rather than a while loop, for the reason BuildingLocator gives: an
+            // unexpected cycle in the ownership chain would hang the UI thread.
             for (int depth = 0; depth < 4 && current != Entity.Null; depth++)
             {
-                string label = SafeName(names, current);
-                if (!string.IsNullOrEmpty(label))
+                if (entities.HasComponent<Game.Net.Aggregated>(current))
                 {
-                    return label;
+                    Entity street = entities.GetComponentData<Game.Net.Aggregated>(current).m_Aggregate;
+                    string label = SafeName(names, street);
+
+                    if (!string.IsNullOrEmpty(label))
+                    {
+                        return label;
+                    }
                 }
 
                 if (!entities.HasComponent<Game.Common.Owner>(current))
@@ -339,6 +350,8 @@ namespace Seety.Vitals
                 current = owner;
             }
 
+            // Roads with no aggregate behind them - a lone slip road, a piece of interchange -
+            // keep the generic name. Better an honest "Traffic jam" than the name of a lane.
             return Fallback;
         }
 
