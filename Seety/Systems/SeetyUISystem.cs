@@ -594,7 +594,7 @@ namespace Seety.Systems
 
             if (_expandedId == TrafficVitalId)
             {
-                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names, _terrain);
+                _jams.Refresh(_jamQuery, EntityManager, _names, _terrain);
                 _notificationsBinding.Update();
             }
 
@@ -995,7 +995,7 @@ namespace Seety.Systems
         }
 
         /// <summary>
-        /// The stuck vehicles behind the traffic row, worst kind first. One icon for all of them
+        /// The city's jams behind the traffic row, worst first. One icon for all of them
         /// - the traffic row's own, already verified - since there is no reliable way to find a
         /// per-vehicle-kind icon file the way a notification's name can be turned into one.
         /// </summary>
@@ -1005,10 +1005,10 @@ namespace Seety.Systems
 
             foreach (var group in jams)
             {
-                // count is the knot the click flies to; total is the kind held up anywhere.
-                // Shown together so the number on the row is the number you arrive at.
+                // One number, because there is only one thing to say: how many vehicles are
+                // stuck in the place this row flies to.
                 WriteRow(writer, group.Name, "Media/Game/Icons/Traffic.svg", group.Count,
-                    Vitals.VitalLevel.Normal, true, "jam:" + group.Name, "", group.Total);
+                    Vitals.VitalLevel.Normal, true, "jam:" + group.Name);
             }
 
             writer.ArrayEnd();
@@ -1195,7 +1195,7 @@ namespace Seety.Systems
 
             if (_expandedId == TrafficVitalId)
             {
-                _jams.Refresh(_jamQuery, EntityManager, _prefabs, _names, _terrain);
+                _jams.Refresh(_jamQuery, EntityManager, _names, _terrain);
             }
 
             // Built here as well as on the tick, because the tick only keeps it up to date while
