@@ -729,9 +729,7 @@ const JamRows = ({ rows }: { rows: BreakdownRow[] }) => (
     <BreakdownRows rows={rows} />
     {rows.length > 0 ? (
       <div className={styles.tableNote}>
-        The worst pile-ups on the map right now, named after the street they are on, with the
-        number of vehicles stopped in each. Click one to go there. Queues waiting outside the city
-        are not counted, and a handful of cars giving way is not a jam.
+        Vehicles stopped close together, worst spot first. Queues outside the city do not count.
       </div>
     ) : null}
   </>
