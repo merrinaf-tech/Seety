@@ -29,7 +29,7 @@ namespace Seety
         /// line below is the only one a player ever sees - so a stale value here means every
         /// bug report names the wrong build.
         /// </summary>
-        public const string Version = "1.0.6";
+        public const string Version = "1.0.7";
 
 
         public static readonly ILog Log = LogManager.GetLogger(Id).SetShowsErrorsInUI(false);
