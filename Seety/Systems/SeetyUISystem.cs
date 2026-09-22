@@ -147,7 +147,25 @@ namespace Seety.Systems
         private Notifications.NotificationIconVisibility _iconVisibility;
         private ValueBinding<bool> _iconsHiddenBinding;
 
+        /// <summary>The journey of whatever is selected, while the traffic window's switch is on.</summary>
+        private readonly Vitals.JourneyTrace _journey = new Vitals.JourneyTrace();
+        private ValueBinding<bool> _journeyOnBinding;
+        private RawValueBinding _journeyBinding;
+
+        /// <summary>
+        /// The game's own selection, which is what the journey window follows. Also how a click on
+        /// a transit leg opens that line: SelectedInfoUISystem reads this same property, so
+        /// writing it is the whole of "open the line" - no panel of Seety's own to keep in step.
+        /// </summary>
+        private Game.Tools.ToolSystem _tools;
+        private SelectedInfoUISystem _selectedInfo;
+
+        /// <summary>Selection changes refresh immediately; moving subjects also refresh twice a second.</summary>
+        private Entity _lastSelected;
+        private double _nextJourneyRefresh;
+
         private double _nextRefresh;
+        private double _nextIconRefresh;
 
         protected override void OnCreate()
         {
@@ -277,20 +295,11 @@ namespace Seety.Systems
                     All = new[] { ComponentType.ReadOnly<NotificationIconDisplayData>() },
                     Options = EntityQueryOptions.IgnoreComponentEnabledState
                 }),
-                // Icons still on screen, and icons already hidden. Two queries so both directions
-                // are a single batched structural change rather than a walk.
+                // Only visible icons are ours to hide. Restoration uses the recorded entities.
                 GetEntityQuery(new EntityQueryDesc
                 {
                     All = new[] { ComponentType.ReadOnly<Game.Notifications.Icon>() },
                     None = new[] { ComponentType.ReadOnly<Game.Tools.Hidden>() }
-                }),
-                GetEntityQuery(new EntityQueryDesc
-                {
-                    All = new[]
-                    {
-                        ComponentType.ReadOnly<Game.Notifications.Icon>(),
-                        ComponentType.ReadOnly<Game.Tools.Hidden>()
-                    }
                 }));
 
             // Without this the settings have no way to reach the strip.
@@ -349,6 +358,14 @@ namespace Seety.Systems
             _iconsHiddenBinding = new ValueBinding<bool>(Group, "iconsHidden", false);
             AddBinding(_iconsHiddenBinding);
             AddBinding(new TriggerBinding<bool>(Group, "setIconsHidden", OnSetIconsHidden));
+
+            _journeyOnBinding = new ValueBinding<bool>(Group, "journeyOn", false);
+            AddBinding(_journeyOnBinding);
+            _journeyBinding = new RawValueBinding(Group, "journey", WriteJourney);
+            AddBinding(_journeyBinding);
+            AddBinding(new TriggerBinding<bool>(Group, "setJourneyOn", OnSetJourneyOn));
+            AddBinding(new TriggerBinding<string>(Group, "openJourneyLine", OnOpenJourneyLine));
+            AddBinding(new TriggerBinding<string>(Group, "flyToJourneyPlace", OnFlyToJourneyPlace));
 
             _historyBinding = new RawValueBinding(Group, "history", WriteHistory);
             AddBinding(_historyBinding);
@@ -524,6 +541,22 @@ namespace Seety.Systems
             base.OnUpdate();
 
             var now = UnityEngine.Time.realtimeSinceStartupAsDouble;
+            if (_journeyOnBinding.value)
+            {
+                var selected = JourneySelection();
+                if (selected != _lastSelected || now >= _nextJourneyRefresh)
+                {
+                    RefreshJourney(selected);
+                    _nextJourneyRefresh = now + 0.5;
+                }
+            }
+            // Catch new notification icons independently of the five-second readings refresh,
+            // even when the strip itself is hidden.
+            if (now >= _nextIconRefresh)
+            {
+                _nextIconRefresh = now + 0.25;
+                _iconVisibility.KeepUp();
+            }
             if (now < _nextRefresh)
             {
                 return;
@@ -531,8 +564,7 @@ namespace Seety.Systems
 
             _nextRefresh = now + RefreshIntervalSeconds;
 
-            // Keep the player's icon visibility choice, but do not scan the city for a hidden HUD.
-            _iconVisibility.KeepUp();
+            // Do not scan the city for readings when the HUD is hidden.
             if (!_visibleBinding.value)
             {
                 return;
@@ -1014,7 +1046,7 @@ namespace Seety.Systems
                 // One number, because there is only one thing to say: how many vehicles are
                 // stuck in the place this row flies to.
                 WriteRow(writer, group.Name, "Media/Game/Icons/Traffic.svg", group.Count,
-                    Vitals.VitalLevel.Normal, true, "jam:" + group.Name);
+                    Vitals.VitalLevel.Normal, true, "jam:" + group.Id);
             }
 
             writer.ArrayEnd();
@@ -1187,6 +1219,7 @@ namespace Seety.Systems
         private void OnExpand(string id)
         {
             _expandedId = _visibleBinding.value && !_configMode ? id ?? string.Empty : string.Empty;
+            if (_expandedId != TrafficVitalId && _journeyOnBinding.value) OnSetJourneyOn(false);
             _historyBinding.Update();
 
             if (_expandedId == DemandVitalId)
@@ -1553,14 +1586,14 @@ namespace Seety.Systems
             }
         }
 
-        /// <summary>Jumps to the first stuck vehicle of one kind - see TrafficJamBreakdown.Jump.</summary>
-        private void OnJumpToJam(string name)
+        /// <summary>Jumps to the grid location selected in the traffic list.</summary>
+        private void OnJumpToJam(string id)
         {
             try
             {
-                if (!_jams.Jump(name, _camera))
+                if (!_jams.Jump(id, _camera))
                 {
-                    Mod.Log.Info("Nothing to jump to for jam '" + name + "'.");
+                    Mod.Log.Info("Nothing to jump to for jam '" + id + "'.");
                 }
             }
             catch (Exception e)
@@ -1591,9 +1624,113 @@ namespace Seety.Systems
         }
 
         /// <summary>
-        /// Hide or show the notification icons over the city. Lives in the Active problems window
-        /// because that is where you are when they are in your way.
+        /// Enables journey polling only while the traffic window is being viewed.
         /// </summary>
+        private void OnSetJourneyOn(bool on)
+        {
+            on = on && _visibleBinding.value && !_configMode && _expandedId == TrafficVitalId;
+            _journeyOnBinding.Update(on);
+            RefreshJourney(on ? JourneySelection() : Entity.Null);
+            _nextJourneyRefresh = 0;
+        }
+
+        private Entity JourneySelection()
+        {
+            // SelectedInfo resolves a pedestrian model back to its citizen, matching the name
+            // and subject the player sees. Resolve lazily: these UI systems may not exist at load.
+            if (_selectedInfo == null) _selectedInfo = World.GetExistingSystemManaged<SelectedInfoUISystem>();
+            return _selectedInfo == null ? Entity.Null : _selectedInfo.selectedEntity;
+        }
+
+        private void RefreshJourney(Entity selected)
+        {
+            _lastSelected = selected;
+            try
+            {
+                _journey.Refresh(selected, EntityManager, _names);
+            }
+            catch (Exception e)
+            {
+                _journey.Refresh(Entity.Null, EntityManager, _names);
+                Mod.Log.Warn("Could not read the selected journey: " + e.Message);
+            }
+            _journeyBinding.Update();
+        }
+
+        private void WriteJourney(IJsonWriter writer)
+        {
+            writer.TypeBegin("seety.Journey");
+            writer.PropertyName("hasSubject"); writer.Write(_journey.HasSubject);
+            writer.PropertyName("subject"); writer.Write(_journey.Subject ?? string.Empty);
+            writer.PropertyName("here"); writer.Write(_journey.Here ?? string.Empty);
+            writer.PropertyName("hereMetres"); writer.Write(_journey.HereMetres);
+            writer.PropertyName("destination"); writer.Write(_journey.Destination ?? string.Empty);
+            writer.PropertyName("destinationRef"); writer.Write(_journey.DestinationRef ?? string.Empty);
+            writer.PropertyName("truncated"); writer.Write(_journey.Truncated);
+            writer.PropertyName("legs"); writer.ArrayBegin((uint)_journey.Legs.Count);
+            foreach (var leg in _journey.Legs)
+            {
+                writer.TypeBegin("seety.JourneyLeg");
+                writer.PropertyName("kind"); writer.Write(leg.Kind);
+                writer.PropertyName("name"); writer.Write(leg.Name);
+                writer.PropertyName("route"); writer.Write(leg.Route);
+                writer.PropertyName("metres"); writer.Write(leg.Metres);
+                writer.PropertyName("colour"); writer.Write(leg.Colour ?? string.Empty);
+                writer.PropertyName("number"); writer.Write(leg.Number);
+                writer.TypeEnd();
+            }
+            writer.ArrayEnd();
+            writer.TypeEnd();
+        }
+
+        /// <summary>
+        /// Takes the camera to the place a journey ends.
+        ///
+        /// The same versioned reference the transit rows use, for the same reason: a destination
+        /// can be demolished while the panel is open, and an index on its own would send the
+        /// camera to whatever has since been given that slot.
+        /// </summary>
+        private void OnFlyToJourneyPlace(string reference)
+        {
+            try
+            {
+                var place = Vitals.JourneyTrace.Resolve(reference);
+
+                if (place == Entity.Null || !EntityManager.Exists(place)
+                    || !EntityManager.HasComponent<Game.Objects.Transform>(place))
+                {
+                    return;
+                }
+
+                if (_camera == null || _camera.activeCameraController == null)
+                {
+                    return;
+                }
+
+                var at = EntityManager.GetComponentData<Game.Objects.Transform>(place).m_Position;
+                _camera.activeCameraController.pivot = new UnityEngine.Vector3(at.x, at.y, at.z);
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Error(e, "Could not fly to a journey destination.");
+            }
+        }
+
+        private void OnOpenJourneyLine(string reference)
+        {
+            if (!_journeyOnBinding.value || _expandedId != TrafficVitalId) return;
+            // Only lines in the current trace can be opened; versioned IDs reject stale clicks.
+            bool listed = false;
+            foreach (var leg in _journey.Legs)
+                if (leg.Kind == "transit" && leg.Route == reference) { listed = true; break; }
+            var line = Vitals.JourneyTrace.Resolve(reference);
+            if (!listed || line == Entity.Null || !EntityManager.Exists(line)
+                || !EntityManager.HasComponent<Game.Routes.Route>(line)) return;
+            if (_tools == null) _tools = World.GetExistingSystemManaged<Game.Tools.ToolSystem>();
+            if (_tools != null) _tools.selected = line;
+        }
+
+        /// <summary>Hide or show the notification icons over the city.</summary>
         private void OnSetIconsHidden(bool hidden)
         {
             _iconVisibility.Set(hidden);

@@ -136,6 +136,19 @@ namespace Seety.Systems
         {
         }
 
+        /// <summary>
+        /// The worst pass seen this session, in milliseconds, and whether anything has been timed.
+        ///
+        /// This is the heaviest thing the mod does and it happens on the thread that draws the
+        /// frame, so whether it is worth moving off that thread is a question about a number. The
+        /// clock is here to produce that number from a real city rather than from an estimate.
+        /// Only a new worst case is reported, so the log settles within a minute and then stays
+        /// quiet for the rest of the session.
+        /// </summary>
+        private double _worstMilliseconds;
+
+        private bool _timed;
+
         /// <summary>Recounts now. Called only while the workforce window is open.</summary>
         public void Recount()
         {
@@ -143,6 +156,8 @@ namespace Seety.Systems
             {
                 return;
             }
+
+            var clock = System.Diagnostics.Stopwatch.StartNew();
 
             for (var i = 0; i < _results.Length; i++)
             {
@@ -179,6 +194,33 @@ namespace Seety.Systems
             };
 
             JobChunkExtensions.Run(workplaces, _workplaceQuery);
+
+            clock.Stop();
+            Report(clock.Elapsed.TotalMilliseconds);
+        }
+
+        /// <summary>
+        /// Says how long a pass took, the first time and on every new worst case.
+        ///
+        /// The entity counts are read here rather than kept, because they cost a walk of their own
+        /// and this runs only on the handful of passes that are worth reporting.
+        /// </summary>
+        private void Report(double milliseconds)
+        {
+            if (_timed && milliseconds <= _worstMilliseconds)
+            {
+                return;
+            }
+
+            _timed = true;
+            _worstMilliseconds = milliseconds;
+
+            var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+            Mod.Log.Info("Seety census: " + milliseconds.ToString("F2", culture)
+                + " ms on the main thread, for "
+                + _query.CalculateEntityCount().ToString(culture) + " citizens and "
+                + _workplaceQuery.CalculateEntityCount().ToString(culture) + " workplaces.");
         }
 
         /// <summary>

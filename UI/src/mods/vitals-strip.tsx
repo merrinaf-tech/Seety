@@ -217,6 +217,27 @@ const posY$ = bindValue<number>("seety", "posY", 90);
 const iconsHidden$ = bindValue<boolean>("seety", "iconsHidden", false);
 const configMode$ = bindValue<boolean>("seety", "configMode", false);
 const iconOutline$ = bindValue<boolean>("seety", "iconOutline", true);
+const journeyOn$ = bindValue<boolean>("seety", "journeyOn", false);
+interface Journey {
+  hasSubject: boolean;
+  subject: string;
+  here: string;
+  /** Distance still to run on `here`, in metres. Zero when the path does not say. */
+  hereMetres: number;
+  destination: string;
+  /** The destination entity, for the click that flies there. Empty when it has no position. */
+  destinationRef: string;
+  truncated: boolean;
+  /**
+   * `metres` is always metric: the player's own unit is applied where it is drawn.
+   * `colour` is the line's own "#rrggbb" and `number` its line number, both empty/zero on roads.
+   */
+  legs: { kind: string; name: string; route: string; metres: number; colour: string; number: number }[];
+}
+const journey$ = bindValue<Journey>("seety", "journey", {
+  hasSubject: false, subject: "", here: "", hereMetres: 0, destination: "", destinationRef: "",
+  truncated: false, legs: [],
+});
 
 /** One age band, split across the five education levels. */
 interface AgeRow {
@@ -473,6 +494,21 @@ function unitTier(value: number, unit: string, metric: boolean): UnitTier {
       : { divisor: 1e4, suffix: " MW", digits: 2 };
   }
 
+  if (unit === "length") {
+    // Distances arrive from C# in metres whatever the player has chosen, because the choice can
+    // change while a panel is open. Whole metres and whole feet: a journey leg is not measured to
+    // a tenth of a metre by anything, and the spare digit would only add width.
+    if (metric) {
+      if (size < 1000) return { divisor: 1, suffix: " m", digits: 0 };
+      return { divisor: 1000, suffix: " km", digits: 1 };
+    }
+
+    // Switching at exactly one mile, so the two scales meet where the larger unit starts being
+    // worth using rather than at a round number of feet that means nothing.
+    if (size < 1609.344) return { divisor: 0.3048, suffix: " ft", digits: 0 };
+    return { divisor: 1609.344, suffix: " mi", digits: 1 };
+  }
+
   if (unit === "weight") {
     if (metric) {
       if (size < 100) return { divisor: 1, suffix: " kg", digits: 1 };
@@ -724,6 +760,111 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
  * Its rows are places rather than categories, which is worth saying once: the reader has to know
  * that "Cranberry Street" is where a jam is and not what kind of thing was counted.
  */
+/**
+ * Black or white, whichever can be read on the given line colour.
+ *
+ * Line colours are the player's own and span the whole range: a number in white sits fine on a
+ * dark blue metro line and disappears on a yellow one. The weights are the usual perceptual ones -
+ * the eye is far more sensitive to green than to blue - and the threshold is the conventional
+ * midpoint rather than anything tuned here.
+ */
+function inkOn(colour: string): string {
+  const hex = colour.replace("#", "");
+  if (hex.length !== 6) {
+    return "rgb(255, 255, 255)";
+  }
+
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return "rgb(255, 255, 255)";
+  }
+
+  return (r * 299 + g * 587 + b * 114) / 1000 > 140 ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)";
+}
+
+const JourneyPanel = () => {
+  const t = useT();
+  const { unitSettings } = useLocalization();
+  const metric = unitSettings.unitSystem === METRIC_UNIT_SYSTEM;
+  const journey = useValue(journey$);
+  const length = (metres: number) => formatUnit(metres, "length", metric);
+
+  /**
+   * A place name as the game itself would print it.
+   *
+   * NameSystem hands back a finished string for anything the player named, and a localization key
+   * for everything else - which is why the panel was showing rows reading "Assets.NAME[Pathway]".
+   * Passing every name through the dictionary resolves those and leaves player-given names alone,
+   * since a name that is not a key simply does not match one.
+   */
+  const place = (name: string) => t(name, name);
+  if (!journey?.hasSubject) {
+    return <div className={styles.panelEmpty}>
+      {t("Seety.JOURNEY_EMPTY", "Select a citizen or vehicle with an active journey.")}
+    </div>;
+  }
+  return <div className={styles.journey}>
+    {journey.subject ? <div className={styles.journeySubject}>{journey.subject}</div> : null}
+    <div className={styles.journeySummary}>
+      <span>{t("Seety.JOURNEY_HERE", "Now")}</span>
+      {/* Built as one string: this renderer drops the leading space between adjacent pieces of
+          text, which is why the distance is not its own element here. The figure is what is left
+          to run on this street, and it only appears when the path actually said. */}
+      <span>{journey.here
+        ? (journey.hereMetres > 0
+            ? `${place(journey.here)} (${length(journey.hereMetres)})`
+            : place(journey.here))
+        : t("Seety.JOURNEY_UNKNOWN", "Unavailable")}</span>
+    </div>
+    <div className={styles.journeySubject}>{t("Seety.JOURNEY_REMAINING", "Remaining journey")}</div>
+    {journey.legs.length === 0 ? <div className={styles.tableNote}>
+      {t("Seety.JOURNEY_NO_PATH", "No remaining route is available.")}
+    </div> : journey.legs.map((leg, index) => <div className={styles.journeyLeg} key={`${index}:${leg.route}:${leg.name}`}>
+      <span className={styles.journeyNumber}>{index + 1}</span>
+      {/* The line's own colour, with its number in it, exactly as the game marks that line
+          everywhere else. It does more work than the name does: an unnamed line falls back to the
+          name of the tool that built it, so several lines can read alike while no two are drawn
+          alike. Inline style because the colour is data, not one of a fixed set of classes. */}
+      {leg.kind === "transit" && leg.colour
+        ? <span className={styles.journeyDot}
+            style={{ backgroundColor: leg.colour, color: inkOn(leg.colour) }}>
+            {leg.number > 0 ? leg.number : ""}
+          </span>
+        : null}
+      {leg.kind === "transit" && leg.route ? <button type="button" className={styles.journeyLine}
+        title={t("Seety.JOURNEY_OPEN_LINE", "Open transport line")}
+        onClick={() => trigger("seety", "openJourneyLine", leg.route)}>{place(leg.name)}</button>
+        : <span className={styles.journeyName}>{place(leg.name)}</span>}
+      {leg.metres > 0
+        ? <span className={styles.journeyMetres}>{length(leg.metres)}</span>
+        : null}
+    </div>)}
+    {journey.truncated ? <div className={styles.tableNote}>
+      {t("Seety.JOURNEY_TRUNCATED", "Only the first part of this journey is shown.")}
+    </div> : null}
+    {/* Last, because the panel reads as a journey: where it is, the steps it will take, and only
+        then where all of that ends. Sitting under "Now" it was the second thing read and the list
+        below it then arrived with its conclusion already given away. */}
+    <div className={styles.journeySummary}>
+      <span>{t("Seety.JOURNEY_DESTINATION", "Destination")}</span>
+      {/* Clickable only when the destination has a position to fly to. A pathfind can end
+          somewhere with no place of its own, and a button that does nothing when pressed is
+          worse than plain text. */}
+      {journey.destination && journey.destinationRef
+        ? <button type="button" className={styles.journeyLine}
+            title={t("Seety.JOURNEY_GO", "Go to the destination")}
+            onClick={() => trigger("seety", "flyToJourneyPlace", journey.destinationRef)}>
+            {place(journey.destination)}
+          </button>
+        : <span>{journey.destination
+            ? place(journey.destination)
+            : t("Seety.JOURNEY_UNKNOWN", "Unavailable")}</span>}
+    </div>
+  </div>;
+};
+
 const JamRows = ({ rows }: { rows: BreakdownRow[] }) => (
   <>
     <BreakdownRows rows={rows} />
@@ -748,7 +889,7 @@ const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
   return (
     <>
       {rows.map((row) => (
-        <BreakdownRowItem key={row.id} row={row} />
+        <BreakdownRowItem key={row.action.startsWith("jam:") ? row.action : row.id} row={row} />
       ))}
     </>
   );
@@ -1686,6 +1827,7 @@ export const VitalsStrip = () => {
   const workforce = useValue(workforce$);
   const demographics = useValue(demographics$);
   const iconsHidden = useValue(iconsHidden$);
+  const journeyOn = useValue(journeyOn$);
   const configMode = useValue(configMode$);
   const outlined = useValue(iconOutline$);
 
@@ -1721,6 +1863,9 @@ export const VitalsStrip = () => {
   const onMouseDown = useCallback(
     (event: React.MouseEvent) => {
       if (event.button !== 0) return;
+      // A new click must work even after the previous gesture moved the strip.
+      drag.current.moved = false;
+      if (!configMode || !visible) return;
       drag.current = {
         pointerX: event.clientX,
         pointerY: event.clientY,
@@ -1732,11 +1877,16 @@ export const VitalsStrip = () => {
       };
       setDragging(true);
     },
-    [pos.x, pos.y]
+    [pos.x, pos.y, configMode, visible]
   );
 
   useEffect(() => {
     if (!dragging) {
+      return;
+    }
+    // Leaving configuration (or hiding the HUD) cancels an unfinished move.
+    if (!configMode || !visible) {
+      setDragging(false);
       return;
     }
 
@@ -1787,7 +1937,7 @@ export const VitalsStrip = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging]);
+  }, [dragging, configMode, visible]);
 
   if (!visible || !vitals || vitals.length === 0) {
     return null;
@@ -1803,7 +1953,7 @@ export const VitalsStrip = () => {
       ref={elementRef}
       className={[
         styles.strip,
-        dragging ? styles.dragging : "",
+        configMode && dragging ? styles.dragging : "",
         configMode ? styles.stripConfig : "",
         outlined ? styles.outlined : "",
       ]
@@ -1814,7 +1964,7 @@ export const VitalsStrip = () => {
     >
       {configMode ? (
         <span className={styles.configBanner}>
-          {t("Seety.CONFIG_BANNER", "Choosing what to show")}
+          {t("Seety.CONFIG_BANNER", "Choose readings or move the bar")}
         </span>
       ) : null}
 
@@ -1967,6 +2117,14 @@ export const VitalsStrip = () => {
                     : t("Seety.ICONS_HIDE", "Hide icons")}
                 </span>
               </Tooltip>
+            ) : openVital.id === TRAFFIC_ID ? (
+              <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
+                aria-pressed={journeyOn}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => trigger("seety", "setJourneyOn", !journeyOn)}>
+                {journeyOn ? t("Seety.JOURNEY_JAMS", "Show traffic jams")
+                  : t("Seety.JOURNEY_SHOW", "Selected journey")}
+              </button>
             ) : undefined
           }
         >
@@ -1984,7 +2142,7 @@ export const VitalsStrip = () => {
           {openVital.companions.length > 0 ? (
             <MergedReadings vital={openVital} />
           ) : null}
-          {openBreakdown ? (
+          {openVital.id === TRAFFIC_ID && journeyOn ? <JourneyPanel /> : openBreakdown ? (
             openBreakdown.id === "transport" ? (
               <TransportRows rows={openBreakdown.rows} />
             ) : openBreakdown.id === TRAFFIC_ID ? (
