@@ -8,6 +8,14 @@ window appears: the city's problems grouped by type with the camera jumping to e
 against the jobs that exist, who lives here by age and education, why zone demand is stuck, which
 school is about to overflow, which cemetery is about to fill.
 
+Use the gear to enter configuration mode to choose readings and move the bar. Outside that
+mode the bar stays locked in place.
+
+In the Traffic window, choose **Selected journey** and select a citizen or vehicle in the game.
+The panel shows its current street or transport line, destination and remaining route. Click a
+transport line in the route to open its game panel; choose **Show traffic jams** to return to
+the congestion list. Journey tracking stops when the window closes.
+
 ## What it shows
 
 Twenty-six readings, each switched on or off by clicking the thing itself rather than a

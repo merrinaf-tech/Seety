@@ -6,7 +6,7 @@
   },
   "scripts": {
     "build": "webpack",
-    "test": "npm run build && node tools/unit-settings.test.cjs && node tools/position.test.cjs",
+    "test": "npm run build && node tools/unit-settings.test.cjs && node tools/position.test.cjs && node tools/config-drag.test.cjs && node tools/journey.test.cjs",
     "dev": "webpack --watch",
     "update": "npx create-csii-ui-mod update",
     "clean": "npx create-csii-ui-mod clean"

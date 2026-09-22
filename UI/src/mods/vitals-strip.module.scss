@@ -39,7 +39,7 @@
   font-size: 15rem;
   color: rgba(255, 255, 255, 0.92);
   pointer-events: auto;
-  cursor: grab;
+  cursor: default;
   user-select: none;
 }
 
@@ -337,6 +337,11 @@
 }
 
 .windowTitle {
+  // Takes the bar's spare width, so anything after it sits against the right edge as a group
+  // rather than being spaced out across the bar. The alternative - an auto left margin on the
+  // action - is the usual way to do this and does not work here: see the note on .windowAction.
+  flex-grow: 1;
+
   font-size: 13rem;
   white-space: nowrap;
 }
@@ -378,6 +383,91 @@
   max-height: 520rem;
   overflow-y: auto;
   padding: 8rem;
+}
+
+.journey {
+  width: 400rem;
+  max-width: 100%;
+  font-size: 13rem;
+}
+
+.journeySubject {
+  margin: 6rem 0;
+  font-weight: 700;
+}
+
+.journeySummary, .journeyLeg {
+  display: flex;
+  align-items: flex-start;
+  padding: 4rem 0;
+}
+
+// The value half of a summary line fills what the label leaves.
+.journeySummary > span:last-child { flex: 1; }
+
+// On a leg row it is the name that grows, not the last child: the distance sits after it and is
+// the one part that should keep its own width. Stated on the name rather than pushing the
+// distance over with an auto margin - this renderer ignores auto margins in a flex line, which is
+// what once left a title-bar button stranded mid-bar.
+.journeyName { flex: 1; }
+
+// The line's colour, carrying its number. A circle rather than a swatch, because it is standing
+// in for the line itself rather than labelling a colour.
+.journeyDot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+  width: 18rem;
+  height: 18rem;
+  flex-shrink: 0;
+  margin-right: 6rem;
+  border-radius: 9rem;
+
+  font-size: 10rem;
+  font-weight: 700;
+  // The ink is set inline, per line, because it depends on how light that line's colour is: a
+  // number in white on a yellow line cannot be read. A dark rim would not rescue that case the
+  // way it rescues the badge below, where the ground is an icon rather than a chosen colour -
+  // white on yellow stays white on yellow however it is outlined.
+}
+
+.journeyMetres {
+  flex-shrink: 0;
+  margin-left: 8rem;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.journeySummary > span:first-child {
+  width: 110rem;
+  flex-shrink: 0;
+  margin-right: 8rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.journeyNumber {
+  width: 22rem;
+  flex-shrink: 0;
+  margin-right: 6rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.journeyToggle, .journeyLine {
+  border: 0;
+  font-family: inherit;
+}
+
+.journeyLine {
+  flex: 1;
+  padding: 0;
+  font-size: inherit;
+  text-align: left;
+  color: rgb(150, 208, 255);
+  background-color: transparent;
+  cursor: pointer;
+  &:hover, &:focus { text-decoration: underline; color: white; }
 }
 
 // The workforce table. Columns are fixed so the numbers line up down the page.
@@ -525,8 +615,14 @@
 }
 
 // A control in a window title bar, such as the notification-icon switch.
+// The optional control in a window's title bar - currently only "Hide icons", on active problems.
+//
+// It used to carry `margin-left: auto`, the usual way to push one flex child to the right. This
+// renderer does not resolve an auto margin into a flex line's free space, so the declaration did
+// nothing and the bar's `space-between` spread all three children evenly instead - leaving the
+// button stranded mid-bar, level with nothing. The title grows instead, which is plain flexbox
+// the game's own stylesheet uses, and the button lands beside the close.
 .windowAction {
-  margin-left: auto;
   margin-right: 8rem;
   padding: 2rem 8rem;
   border-radius: 3rem;
@@ -558,6 +654,11 @@
 .stripConfig {
   background-color: rgba(24, 60, 96, 0.98);
   border: 2rem solid rgb(130, 190, 255);
+  cursor: grab;
+
+  &.dragging {
+    cursor: grabbing;
+  }
 }
 
 .configBanner {
