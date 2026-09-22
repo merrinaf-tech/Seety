@@ -17,3 +17,7 @@ Pic/*.psd
 AGENTS.md
 DESIGN.md
 TODO.md
+
+# Python bytecode from tools/locale. Generated, and this repo is public.
+__pycache__/
+*.pyc
