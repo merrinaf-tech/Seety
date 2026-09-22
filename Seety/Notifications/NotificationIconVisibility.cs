@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Game.Prefabs;
 using Unity.Collections;
 using Unity.Entities;
@@ -41,39 +42,37 @@ namespace Seety.Notifications
         private bool _hidden;
 
         private readonly EntityQuery _visibleIcons;
-        private readonly EntityQuery _hiddenIcons;
+        // Entity includes its version: a destroyed icon's recycled index is not ours to restore.
+        private readonly HashSet<Entity> _hiddenByUs = new HashSet<Entity>();
+        private readonly HashSet<Entity> _disabledByUs = new HashSet<Entity>();
 
         public NotificationIconVisibility(EntityManager entities, EntityQuery prefabs,
-            EntityQuery visibleIcons, EntityQuery hiddenIcons)
+            EntityQuery visibleIcons)
         {
             _entities = entities;
             _query = prefabs;
             _visibleIcons = visibleIcons;
-            _hiddenIcons = hiddenIcons;
         }
 
         /// <summary>
         /// Icons are created constantly, so while hidden the new ones have to be caught too.
-        /// Both calls are batched over a whole query, which is far cheaper than touching entities
-        /// one at a time, and both are no-ops when the query is empty.
+        /// The visible snapshot is recorded before the batched change. Icons hidden before we
+        /// touched them are never in that snapshot and must remain hidden when we restore it.
         /// </summary>
         public void KeepUp()
         {
-            if (!_hidden)
+            if (!_hidden && _hiddenByUs.Count == 0 && _disabledByUs.Count == 0)
             {
                 return;
             }
 
             try
             {
-                if (!_visibleIcons.IsEmptyIgnoreFilter)
-                {
-                    _entities.AddComponent<Game.Tools.Hidden>(_visibleIcons);
-                }
+                Apply(_hidden);
             }
             catch (Exception e)
             {
-                Mod.Log.Warn("Could not hide new notification icons: " + e.Message);
+                Mod.Log.Warn("Could not maintain notification icon visibility: " + e.Message);
             }
         }
 
@@ -84,57 +83,65 @@ namespace Seety.Notifications
 
         public void Set(bool hidden)
         {
-            if (_hidden == hidden)
-            {
-                return;
-            }
-
-            Apply(hidden);
+            // This is the requested state. If a structural change fails, KeepUp retries the
+            // outstanding work, including restoration, without forgetting the owned entities.
             _hidden = hidden;
+            KeepUp();
         }
 
         /// <summary>Puts the icons back. Called when the mod unloads.</summary>
         public void Restore()
         {
-            if (_hidden)
-            {
-                Apply(false);
-                _hidden = false;
-            }
+            Set(false);
         }
 
         private void Apply(bool hidden)
         {
-            try
+            if (hidden)
             {
-                var prefabCount = 0;
+                // Prune disappeared entities during long sessions instead of retaining every
+                // notification ever seen until the player turns the icons back on.
+                _hiddenByUs.RemoveWhere(entity => !_entities.Exists(entity));
+                _disabledByUs.RemoveWhere(entity => !_entities.Exists(entity));
                 using (var prefabs = _query.ToEntityArray(Allocator.Temp))
                 {
-                    prefabCount = prefabs.Length;
                     for (var i = 0; i < prefabs.Length; i++)
                     {
-                        _entities.SetComponentEnabled<NotificationIconDisplayData>(prefabs[i], !hidden);
+                        if (_entities.IsComponentEnabled<NotificationIconDisplayData>(prefabs[i]))
+                        {
+                            _disabledByUs.Add(prefabs[i]);
+                            _entities.SetComponentEnabled<NotificationIconDisplayData>(prefabs[i], false);
+                        }
                     }
                 }
 
-                if (hidden)
+                using (var icons = _visibleIcons.ToEntityArray(Allocator.Temp))
                 {
-                    if (!_visibleIcons.IsEmptyIgnoreFilter)
+                    for (var i = 0; i < icons.Length; i++)
                     {
-                        _entities.AddComponent<Game.Tools.Hidden>(_visibleIcons);
+                        _hiddenByUs.Add(icons[i]);
                     }
+                    if (icons.Length > 0) _entities.AddComponent<Game.Tools.Hidden>(icons);
                 }
-                else if (!_hiddenIcons.IsEmptyIgnoreFilter)
-                {
-                    _entities.RemoveComponent<Game.Tools.Hidden>(_hiddenIcons);
-                }
-
-                Mod.Log.Info((hidden ? "Hid " : "Restored ") + "the in-world notification icons ("
-                    + prefabCount + " prefabs).");
+                return;
             }
-            catch (Exception e)
+
+            // Remove each entry only after restoring it, so a partial failure can be retried.
+            foreach (var prefab in new List<Entity>(_disabledByUs))
             {
-                Mod.Log.Error(e, "Could not change the notification icon visibility.");
+                if (_entities.Exists(prefab) && _entities.HasComponent<NotificationIconDisplayData>(prefab))
+                {
+                    _entities.SetComponentEnabled<NotificationIconDisplayData>(prefab, true);
+                }
+                _disabledByUs.Remove(prefab);
+            }
+            foreach (var icon in new List<Entity>(_hiddenByUs))
+            {
+                if (_entities.Exists(icon) && _entities.HasComponent<Game.Tools.Hidden>(icon))
+                {
+                    _entities.RemoveComponent<Game.Tools.Hidden>(icon);
+                }
+                _hiddenByUs.Remove(icon);
             }
         }
     }
