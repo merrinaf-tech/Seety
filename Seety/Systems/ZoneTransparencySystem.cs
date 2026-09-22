@@ -28,7 +28,8 @@ namespace Seety.Systems
     public partial class ZoneTransparencySystem : GameSystemBase
     {
         /// <summary>
-        /// What the cell edge's alpha is multiplied by when the option is on.
+        /// What the edge's alpha is multiplied by on an unzoned cell - the bare grid drawn beside
+        /// every road, whether or not anything has been painted there.
         ///
         /// Multipliers rather than fixed alphas, so the game keeps its own relationships: the
         /// unzoned cells are already fainter than the zoned ones, and each zone type has its own
@@ -37,7 +38,23 @@ namespace Seety.Systems
         /// A quarter, not the half this started at. Half still drew the edges as solid dark lines
         /// across open grass - visibly a grid laid over the city rather than a guide on it.
         /// </summary>
-        private const float EdgeFactor = 0.25f;
+        private const float UnzonedEdgeFactor = 0.25f;
+
+        /// <summary>
+        /// What the edge's alpha is multiplied by on a zoned cell - one carrying a zone colour.
+        ///
+        /// Twice the unzoned figure, because the two grids are read for different things. The
+        /// unzoned one is scenery: it covers every verge in the city at once and is only consulted
+        /// when something is about to be built there, which is why it goes so quiet. A coloured
+        /// cell is somewhere the player has already decided, and the question then is where one
+        /// lot stops and the next starts - a line the fill cannot answer, since neighbouring cells
+        /// of the same zone are the same colour. At a quarter those lines vanished into their own
+        /// fill and a painted block read as one flat patch.
+        ///
+        /// Still well under the shipped value: the grid over a zoned block should be legible when
+        /// looked at, not insistent.
+        /// </summary>
+        private const float ZonedEdgeFactor = 0.5f;
 
         /// <summary>
         /// What the cell fill's alpha is multiplied by. Lower than the edge, deliberately.
@@ -214,8 +231,14 @@ namespace Seety.Systems
                         continue;
                     }
 
+                    // Read from the prefab rather than from ZoneData: the two agree, and this is
+                    // the object already in hand.
+                    float edgeFactor = prefab.m_AreaType == AreaType.None
+                        ? UnzonedEdgeFactor
+                        : ZonedEdgeFactor;
+
                     prefab.m_Color = WithAlpha(shipped.Key, transparent, FillFactor);
-                    prefab.m_Edge = WithAlpha(shipped.Value, transparent, EdgeFactor);
+                    prefab.m_Edge = WithAlpha(shipped.Value, transparent, edgeFactor);
                 }
 
                 _applied = transparent;
