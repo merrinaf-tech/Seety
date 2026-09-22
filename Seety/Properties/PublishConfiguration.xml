@@ -27,52 +27,44 @@ Maybe the real city was the stats we saw along the way.
 
 1. Enable the mod.
 2. Click the **gear** at the end of the bar.
-3. Click the readings you want to keep. Click the gear again.
+3. Click the readings you want to keep, and drag the bar where you want it.
+4. Click the gear again.
 
-That is the whole configuration. You pick by clicking the thing itself, not by hunting a name in a list of checkboxes.
-
-Drag the bar anywhere. It stays where you put it.
+The bar is locked in place outside configuration mode.
 
 ## The bar
 
-**Twenty-six readings**, all off or on as you like: happiness, health, unemployment, homelessness, workers, tourists, active problems, electricity, water delivered, sewage taken away, crematorium coverage, cemetery space, four school levels, parking, garbage processing, safety, fire safety, environment quality, post, traffic flow, land value, zone demand and public transport.
+**Twenty-six readings**, each on or off as you like: happiness, health, unemployment, homelessness, workers, tourists, active problems, electricity, water, sewage, crematorium coverage, cemetery space, four school levels, parking, garbage, safety, fire safety, environment quality, post, traffic flow, land value, zone demand and public transport.
 
-Three of those carry a second figure rather than a square of their own, because they are one question asked twice: health also holds hospital coverage, garbage also holds landfill space, and safety also holds free jail and prison cells. Open the reading and both are there, each still opening its own info view.
+Three carry a second figure instead of a square of their own, because they are one question asked twice: health also holds hospital coverage, garbage also holds landfill space, and safety also holds free jail and prison cells. Open the reading and both are there, each still opening its own info view.
 
-Two rules decide what is on that list:
+Nothing on the list is already on the vanilla HUD, and every figure mirrors the exact source the game uses for it - a number that disagrees with the game's own panels is worse than no number at all.
 
-- **It is not already on the vanilla HUD.** Population, money and income are on screen permanently, so repeating them buys you nothing and costs width.
-- **It mirrors the exact source the game uses for the same figure.** A number that disagrees with the game's own panels is worse than no number at all.
-
-**More is always better.** Half of what a city reports is naturally negative - pollution, crime, cells occupied, schools filling up. Those are turned around and renamed, so a fuller, greener bar always means better. There is no direction to remember per icon.
-
-Cross a sensible limit and a reading turns amber, then red. Thresholds stay quiet in an empty city, because nobody living there yet is not a crisis.
+**More is always better.** The naturally negative figures - pollution, crime, cells occupied, schools filling up - are turned around and renamed, so a fuller, greener bar always means better, with no direction to remember per icon. Past a sensible limit a reading turns amber, then red; thresholds stay quiet in an empty city.
 
 ## Everything opens something
 
-This is the part that matters. **Click a reading and it takes you to what it is about.**
+**Click a reading and it takes you to what it is about.** Most open the matching in-game info view. The rest open a window of their own - draggable, closeable:
 
-Most open the matching in-game info view. The rest open a window - draggable, closeable, with its own place on screen:
+&gt; **Active problems** - every notification grouped by type and counted, worst first. Click a type and the camera goes to one of them, click again for the next, so you can work through them instead of hunting. A switch in the title bar hides the notification icons over the city.
 
-&gt; **Active problems** - every notification grouped by type and counted, worst first. Click a type and the camera goes to one of them; click again and it goes to the next, so you can work through them instead of hunting. A switch in the title bar hides the notification icons floating over the city.
-
-&gt; **Workers** - your workforce and the jobs that exist, on the same rows. Twelve columns: people by education, who is a child, a student, retired or of working age; who is employed, idle, working below their qualification, working outside the city or commuting in; and beside them the jobs at each level and how many nobody is doing. Every citizen counted one by one.
+&gt; **Workers** - your workforce against the jobs that exist, on the same rows: people by education and age, who is employed, idle, working below their qualification, working outside the city or commuting in, and beside them the jobs at each level and how many nobody is doing. Every citizen counted one by one.
 
 &gt; **Happiness and demographics** - who actually lives here, age against education, with each band's share of the population drawn under it. A wide band of seniors is a wave of retirements coming; a wide band of teenagers is a school problem arriving in a few years.
 
-&gt; **Zone demand** - all six demands, and behind each one the five biggest reasons it sits where it does. Open the commercial, industrial or office one and the bar comes apart per resource: what the city actually wants, how many businesses trade in it, how stocked their shelves are and how staffed they are. The game tracks all of it and never draws it, so a flat commercial bar stops being a mystery. Where a resource has a company behind it, the row is clickable - it names the one losing the most ground and flies you to it.
+&gt; **Zone demand** - all six demands, and the five biggest reasons behind each. Commercial, industrial and office come apart per resource: what the city wants, how many businesses trade in it, how stocked their shelves are and how staffed they are. The game tracks all of it and never draws it, so a flat commercial bar stops being a mystery. Where a resource has a company behind it, the row flies you to the one losing most ground.
 
-&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** each open a list of their own: the fullest schools first, passengers and freight by mode, the worst jams by vehicle kind - click one to fly there - and the parts behind the combined readings. Where the game has its own panel for one of them, clicking goes there.
+&gt; **Selected journey** - a switch in the traffic window turns the jam list into the journey of whatever you have selected. Click a citizen or a vehicle and you get the street or transport line it is on now, every street and line still ahead of it with the distance along each, and where it all ends. It reads the route the game has already worked out, so nothing here is guessed. A step on public transport carries that line's own colour and number, and clicking it opens the line. Clicking the destination takes the camera there.
+
+&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** - the fullest schools first, passengers and freight by mode, the worst jams by street, and the parts behind the combined readings. Where the game has its own panel for one of them, clicking goes there.
 
 Some readings also carry a chart of how they got here.
 
 ## What it never does
 
-Seety reads. It does not govern.
+Seety reads. It does not govern. Clicking a reading changes only which info view is showing and where the camera is pointing.
 
-The bar itself writes nothing: the only things clicking a reading changes are which info view is showing and where the camera is pointing.
-
-There are two exceptions, both on the options page and nowhere near the bar. One is a field to add (or remove) money from your treasury, City Watchdog style - off to the side, typed in on purpose. The other fades the zoning cells drawn along your roads, for anyone who finds them loud; it is off unless you turn it on, it changes how those cells are drawn and nothing else, and switching it back off restores exactly the colours the game shipped. Everything described above this line still reads and only reads.
+Two exceptions, both on the options page and nowhere near the bar. One is a field to add or remove money from your treasury, City Watchdog style - off to the side, typed in on purpose. The other fades the zoning cells drawn along your roads, for anyone who finds them loud: off unless you turn it on, it changes how those cells are drawn and nothing else, and switching it back off restores exactly the colours the game shipped.
 
 ## Before you install
 
@@ -101,7 +93,7 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.0.7" />
+	<ModVersion Value="1.0.8" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
@@ -111,16 +103,18 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	  only what changed since 1.0.7. See AGENTS.md - letting this accumulate is the repeat offender.
 	-->
 	<ChangeLog>
-The traffic window now lists jams instead of vehicle models.
+Select a citizen or a vehicle and see where it is going.
 
-It used to group stuck vehicles by model, which tore every jam apart: a queue of thirty cars is a mix of models, so it arrived as ten rows of two or three, under names like "EU_TruckTractor01". A jam is a place, so rows are now places - named after the street they are on, worst first, with the number of vehicles stopped in each. Clicking one still takes you there.
+A switch in the traffic window turns the jam list into a journey: the street or transport line it is on right now, every street and line still ahead of it with the distance along each, and the place it all ends. It reads the route the game has already worked out, so nothing here is guessed - the list changes the moment the game changes its mind. A step on public transport carries that line's own colour and number, and clicking it opens the line's own panel. Clicking the destination takes the camera there.
 
-Three things that are not traffic no longer count, and each of them used to win. Vehicles queued outside the city at an outside connection, which stack tighter than any real queue and sent the camera off the edge of the map. Cars inside buildings' parking, which are packed tighter still and are the one place where knowing changes nothing. And a handful of cars giving way at a junction, which is what every quiet city is full of.
+The zoning grid, if you have chosen to fade it, now keeps the lines inside a zoned block twice as visible as the bare grid along an empty verge. The fill is unchanged. Inside a block you have already painted, those lines are the only thing that says where one lot ends and the next begins, because neighbouring cells of one zone share a colour.
 
-New option, off by default: fade the zoning cells drawn along the roads, for anyone who finds them loud. It is disabled while Zone Color Changer is installed, since both set the same colours.
+Jams no longer lose track of which one you clicked. A queue was identified by its street label, so two queues on the same street swapped names as their congestion ranking changed, and a click could land on the other one. Each queue is now tied to its place instead.
 
-The readings now refresh every two seconds rather than twice a second. A list that reorders itself while you are reading it is harder to use than a slightly stale one.
+Hiding the notification icons puts back only what Seety hid. An icon you had already hidden yourself stays hidden when you switch them back on.
 
-Also: the Workers window explains what its In and Out columns mean, and no longer leaves half the window empty below the table.
+The readings refresh every five seconds rather than every two. A list that reorders itself while you are reading it is harder to use than a slightly stale one.
+
+Also: the configuration banner is one short line, and a window's "Hide icons" button now sits beside its close button instead of floating in the middle of the title bar.
 	</ChangeLog>
 </Publish>
