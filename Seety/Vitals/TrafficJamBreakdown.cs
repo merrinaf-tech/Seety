@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Game.Rendering;
 using Game.UI;
 using Unity.Collections;
@@ -10,6 +11,11 @@ namespace Seety.Vitals
     /// <summary>One pile-up: where it is, how big it is, and what street to call it.</summary>
     public sealed class TrafficJamGroup
     {
+        /// <summary>The grid location, independent of the street label and list order.</summary>
+        public string Id;
+
+        internal long Cell;
+
         /// <summary>The street it is on, made unique if two jams share a name. Shown as the row.</summary>
         public string Name;
 
@@ -61,7 +67,7 @@ namespace Seety.Vitals
         private const int MinJamSize = 5;
 
         private readonly List<TrafficJamGroup> _groups = new List<TrafficJamGroup>();
-        private readonly Dictionary<string, TrafficJamGroup> _byName = new Dictionary<string, TrafficJamGroup>();
+        private readonly Dictionary<string, TrafficJamGroup> _byId = new Dictionary<string, TrafficJamGroup>();
 
         public IReadOnlyList<TrafficJamGroup> Groups
         {
@@ -72,7 +78,7 @@ namespace Seety.Vitals
             NameSystem names, Game.Simulation.TerrainSystem terrain)
         {
             _groups.Clear();
-            _byName.Clear();
+            _byId.Clear();
 
             if (query.IsEmptyIgnoreFilter)
             {
@@ -164,7 +170,6 @@ namespace Seety.Vitals
             }
 
             var claimed = new HashSet<long>();
-            var used = new HashSet<string>();
 
             while (_groups.Count < MaxGroups)
             {
@@ -183,7 +188,8 @@ namespace Seety.Vitals
                     }
 
                     int count = NeighbourCount(cells, claimed, cell.Key);
-                    if (count > bestCount)
+                    // A tie must not depend on the order the ECS query returned the cars in.
+                    if (count > bestCount || (count == bestCount && cell.Key < bestKey))
                     {
                         bestKey = cell.Key;
                         bestCount = count;
@@ -215,15 +221,23 @@ namespace Seety.Vitals
 
                 _groups.Add(new TrafficJamGroup
                 {
-                    Name = Unique(StreetName(roads[bestMembers[0]], entities, names), used),
+                    Id = bestKey.ToString(CultureInfo.InvariantCulture),
+                    Cell = bestKey,
+                    Name = StreetName(roads[bestMembers[0]], entities, names),
                     Count = bestMembers.Count,
                     Position = centre
                 });
             }
 
-            foreach (var group in _groups)
+            // Number duplicate labels by location, not by congestion ranking. Keep the displayed
+            // list worst-first, but changing counts must not exchange two streets' suffixes.
+            var byLocation = new List<TrafficJamGroup>(_groups);
+            byLocation.Sort((a, b) => a.Cell.CompareTo(b.Cell));
+            var used = new HashSet<string>();
+            foreach (var group in byLocation)
             {
-                _byName[group.Name] = group;
+                group.Name = Unique(group.Name, used);
+                _byId[group.Id] = group;
             }
         }
 
@@ -417,11 +431,7 @@ namespace Seety.Vitals
         }
 
         /// <summary>
-        /// Keeps two jams on the same street from sharing a row.
-        ///
-        /// The name is the row's identity as well as its label - it is the key the click comes
-        /// back with - so a long street with two separate queues on it would otherwise send the
-        /// camera to whichever of them was recorded last, whichever row was clicked.
+        /// Keeps the labels distinguishable. Clicks use the location ID, never this label.
         /// </summary>
         private static string Unique(string name, HashSet<string> used)
         {
@@ -446,10 +456,12 @@ namespace Seety.Vitals
         /// Moves the camera to a jam. Not a cycling tour like NotificationBreakdown's: a jam is
         /// one place, and the row already names it.
         /// </summary>
-        public bool Jump(string name, CameraUpdateSystem camera)
+        public bool Jump(string id, CameraUpdateSystem camera)
         {
             TrafficJamGroup group;
-            if (string.IsNullOrEmpty(name) || !_byName.TryGetValue(name, out group))
+            // If this location has fallen out of the list, ignore an old click rather than
+            // redirecting it to whichever queue has inherited its former street label.
+            if (string.IsNullOrEmpty(id) || !_byId.TryGetValue(id, out group))
             {
                 return false;
             }
