@@ -5,7 +5,9 @@
 // part of the figure it belongs to. Colour and size do all the work.
 
 .delta {
-  flex-shrink: 0;
+  flex-shrink: 1;
+  max-width: 80rem;
+  coh-font-fit-mode: shrink;
   // Margin rather than gap: the game renders through Gameface, which ignores flexbox gap. The
   // same note is on .strip in vitals-strip.module.scss and it applies to every file here.
   margin-left: 4rem;

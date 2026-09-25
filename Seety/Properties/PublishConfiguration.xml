@@ -95,7 +95,7 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.0.10" />
+	<ModVersion Value="1.0.11" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
@@ -105,6 +105,7 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	  only what changed since the version now live. See AGENTS.md - letting this accumulate is the repeat offender.
 	-->
 	<ChangeLog>
-Nothing you can see: the UI module was reporting version 1.0.7 in the game's own modding log, which made it awkward to tell which build was actually loaded. It reports the real version now.
+Fixed population and money trends in the bottom bar.
+Fixed other mods' toolbar buttons disappearing during UI loading.
 	</ChangeLog>
 </Publish>
