@@ -1,0 +1,32 @@
+// The delta beside a vanilla bottom-bar field.
+//
+// Deliberately quiet: this sits inside the game's own toolbar, next to numbers the game drew, so
+// anything with a background or a border would read as a second thing bolted on rather than as
+// part of the figure it belongs to. Colour and size do all the work.
+
+.delta {
+  flex-shrink: 0;
+  // Margin rather than gap: the game renders through Gameface, which ignores flexbox gap. The
+  // same note is on .strip in vitals-strip.module.scss and it applies to every file here.
+  margin-left: 4rem;
+
+  font-size: 12rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+// Green for growth and red for loss, matching the direction the vanilla arrow already points
+// rather than judging whether the change is good: a shrinking population and a falling balance
+// are both drawn the same way by the game, and disagreeing with it here would be confusing.
+.up {
+  color: rgb(126, 214, 148);
+}
+
+.down {
+  color: rgb(255, 118, 105);
+}
+
+// Unchanged: stated rather than coloured, so a steady city does not read as good news or bad.
+.flat {
+  color: rgba(255, 255, 255, 0.55);
+}

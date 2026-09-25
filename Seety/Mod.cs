@@ -63,6 +63,10 @@ namespace Seety
 
             updateSystem.UpdateAt<SeetyUISystem>(SystemUpdatePhase.UIUpdate);
 
+            // Follows the player's Tool / Cancel binding so the key that backs out of a tool also
+            // closes Seety's windows. UIUpdate because it only reads input and writes a binding.
+            updateSystem.UpdateAt<Systems.CancelKeyUISystem>(SystemUpdatePhase.UIUpdate);
+
             // Modification1 is where prefab edits belong: late enough that the zone prefabs are
             // loaded, early enough that the renderer picks the colours up the same frame.
             updateSystem.UpdateAt<ZoneTransparencySystem>(SystemUpdatePhase.Modification1);
@@ -178,6 +182,16 @@ namespace Seety
             }
 
             _uiSystem.SetIconOutline(outlined);
+        }
+
+        internal static void OnToolbarTrendsChanged(bool show)
+        {
+            if (!_ready || _uiSystem == null)
+            {
+                return;
+            }
+
+            _uiSystem.SetToolbarTrends(show);
         }
 
         internal static void OnZoneTransparencyChanged(bool transparent)

@@ -48,6 +48,14 @@ namespace Seety.Systems
 
         /// <summary>Whether the bar's icons carry a white edge. See SeetySettings.IconOutline.</summary>
         private ValueBinding<bool> _iconOutlineBinding;
+        private ValueBinding<bool> _toolbarTrendsBinding;
+
+        /// <summary>Public transport standing still: the other half of the traffic window.</summary>
+        private readonly Vitals.StoppedTransitList _transit = new Vitals.StoppedTransitList();
+        private EntityQuery _transitQuery;
+
+        /// <summary>True while the traffic window lists transit rather than road jams.</summary>
+        private ValueBinding<bool> _transitModeBinding;
         private ValueBinding<int> _posXBinding;
         private ValueBinding<int> _posYBinding;
 
@@ -208,6 +216,15 @@ namespace Seety.Systems
                 ComponentType.Exclude<Game.Common.Deleted>(),
                 ComponentType.Exclude<Game.Tools.Temp>());
 
+            // Every mode in one query: PublicTransport marks the role, not the movement, so a
+            // bus, a tram, a metro and a ferry all arrive here. No Blocker filter, unlike the jam
+            // query above - see StoppedTransitList for which kinds the game answers for.
+            _transitQuery = GetEntityQuery(
+                ComponentType.ReadOnly<Game.Vehicles.PublicTransport>(),
+                ComponentType.ReadOnly<Game.Objects.Transform>(),
+                ComponentType.Exclude<Game.Common.Deleted>(),
+                ComponentType.Exclude<Game.Tools.Temp>());
+
             // Deleted excluded so a vehicle already on its way out is not still counted as
             // carrying people, the same exclusion the jam query makes.
             _passengerVehicleQuery = GetEntityQuery(new EntityQueryDesc
@@ -328,6 +345,10 @@ namespace Seety.Systems
                 settings == null || settings.IconOutline);
             AddBinding(_iconOutlineBinding);
 
+            _toolbarTrendsBinding = new ValueBinding<bool>(Group, "toolbarTrends",
+                settings != null && settings.ToolbarTrends);
+            AddBinding(_toolbarTrendsBinding);
+
             _posXBinding = new ValueBinding<int>(Group, "posX",
                 settings == null ? Settings.SeetySettings.DefaultStripX : settings.StripX);
             _posYBinding = new ValueBinding<int>(Group, "posY",
@@ -345,6 +366,10 @@ namespace Seety.Systems
 
             AddBinding(new TriggerBinding<string>(Group, "jumpToProblem", OnJumpToProblem));
             AddBinding(new TriggerBinding<string>(Group, "jumpToJam", OnJumpToJam));
+
+            _transitModeBinding = new ValueBinding<bool>(Group, "transitMode", false);
+            AddBinding(_transitModeBinding);
+            AddBinding(new TriggerBinding<bool>(Group, "setTransitMode", OnSetTransitMode));
             AddBinding(new TriggerBinding<int>(Group, "jumpToSchool", OnJumpToSchool));
             AddBinding(new TriggerBinding<int>(Group, "jumpToCemetery", OnJumpToCemetery));
             AddBinding(new TriggerBinding<string, int>(Group, "jumpToResource", OnJumpToResource));
@@ -513,6 +538,15 @@ namespace Seety.Systems
             return long.MinValue;
         }
 
+        /// <summary>Called by the settings when the bottom-bar trends are switched on or off.</summary>
+        public void SetToolbarTrends(bool show)
+        {
+            if (_toolbarTrendsBinding != null)
+            {
+                _toolbarTrendsBinding.Update(show);
+            }
+        }
+
         /// <summary>Called by the settings when the icon outline is switched on or off.</summary>
         public void SetIconOutline(bool outlined)
         {
@@ -632,7 +666,18 @@ namespace Seety.Systems
 
             if (_expandedId == TrafficVitalId)
             {
-                _jams.Refresh(_jamQuery, EntityManager, _names, _terrain);
+                // Only the list on screen is read. Scanning both every five seconds to keep the
+                // hidden one warm would double the cost of the window for a list nobody is
+                // looking at, which is the mistake the problems list already made once.
+                if (_transitModeBinding.value)
+                {
+                    _transit.Refresh(_transitQuery, EntityManager, _names);
+                }
+                else
+                {
+                    _jams.Refresh(_jamQuery, EntityManager, _names, _terrain);
+                }
+
                 _notificationsBinding.Update();
             }
 
@@ -899,7 +944,7 @@ namespace Seety.Systems
                 writer.PropertyName("id");
                 writer.Write(TrafficVitalId);
                 writer.PropertyName("rows");
-                WriteJamRows(writer, jams);
+                WriteJamRows(writer, _transitModeBinding.value ? _transit.Groups : jams);
                 writer.TypeEnd();
             }
 
@@ -1587,10 +1632,56 @@ namespace Seety.Systems
         }
 
         /// <summary>Jumps to the grid location selected in the traffic list.</summary>
+        /// <summary>
+        /// Switches the traffic window between road jams and stopped public transport.
+        ///
+        /// The lists are cleared rather than kept: the rows carry ids that only the list that
+        /// built them can resolve, so a click arriving right after a switch would otherwise be
+        /// looked up in the wrong table. Zeroing the refresh clock makes the new list appear at
+        /// once instead of up to five seconds later.
+        /// </summary>
+        private void OnSetTransitMode(bool transit)
+        {
+            try
+            {
+                _transitModeBinding.Update(transit);
+
+                if (_expandedId == TrafficVitalId)
+                {
+                    if (transit)
+                    {
+                        _transit.Refresh(_transitQuery, EntityManager, _names);
+                    }
+                    else
+                    {
+                        _jams.Refresh(_jamQuery, EntityManager, _names, _terrain);
+                    }
+
+                    _notificationsBinding.Update();
+                }
+
+                _nextRefresh = 0.0;
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Error(e, "Could not switch the traffic list.");
+            }
+        }
+
         private void OnJumpToJam(string id)
         {
             try
             {
+                if (_transitModeBinding.value)
+                {
+                    if (!_transit.Jump(id, _camera))
+                    {
+                        Mod.Log.Info("Nothing to jump to for stopped transit '" + id + "'.");
+                    }
+
+                    return;
+                }
+
                 if (!_jams.Jump(id, _camera))
                 {
                     Mod.Log.Info("Nothing to jump to for jam '" + id + "'.");

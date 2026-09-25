@@ -68,7 +68,9 @@ test("the built strip only moves in configuration mode and cancels interrupted d
   try {
     const bundle = await import(pathToFileURL(path.resolve(__dirname, "../dist/Seety.mjs")));
     let Strip;
-    bundle.default({ append: (_anchor, component) => { Strip = component; } });
+    // extend is stubbed because index.tsx now wraps two vanilla toolbar fields. The registry the
+    // game passes has it; a stub without it made every suite fail with "e.extend is not a function".
+    bundle.default({ append: (_anchor, component) => { Strip = component; }, extend: () => {} });
     const render = () => {
       let passes = 0;
       do {
@@ -85,7 +87,14 @@ test("the built strip only moves in configuration mode and cancels interrupted d
     const move = () => { listeners.get("mousemove")?.({ clientX: 240, clientY: 240 }); render(); };
     const up = () => { listeners.get("mouseup")?.(); render(); };
     const saved = () => calls.filter((call) => call[1] === "setPosition");
-    const entry = () => tree.props.children[1][0].props.children.props.children;
+    // Found by shape rather than by index: the strip's children have shifted twice now when
+    // something new was added in front of them, and each time this test failed for a reason that
+    // had nothing to do with dragging.
+    const kids = () => tree.props.children.filter(Boolean);
+    const rows = () => kids().find((child) => Array.isArray(child));
+    const banner = () => kids().find(
+      (child) => !Array.isArray(child) && typeof child?.props?.children === "string");
+    const entry = () => rows()[0].props.children.props.children;
 
     render();
     const original = { ...tree.props.style };
@@ -97,7 +106,7 @@ test("the built strip only moves in configuration mode and cancels interrupted d
     assert.deepEqual(calls.at(-1), ["seety", "activate", "test"]);
 
     bindings["seety.configMode"] = true; render();
-    assert.match(tree.props.children[0].props.children, /Choose readings or move the bar/);
+    assert.match(banner().props.children, /Choose readings or move the bar/);
     down(2);
     assert.equal(listeners.size, 0, "right button does not drag");
     down(); up(); entry().props.onClick();

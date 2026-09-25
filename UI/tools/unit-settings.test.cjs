@@ -55,10 +55,20 @@ test("built UI renders metric and imperial readings without a runtime UnitSystem
   try {
     const bundle = await import(pathToFileURL(path.resolve(__dirname, "../dist/Seety.mjs")));
     let Strip;
-    bundle.default({ append: (anchor, component) => {
-      assert.equal(anchor, "Game");
-      Strip = component;
-    } });
+    const extended = [];
+    bundle.default({
+      append: (anchor, component) => {
+        assert.equal(anchor, "Game");
+        Strip = component;
+      },
+      // The mod also wraps two vanilla toolbar fields. Recorded rather than ignored so the paths
+      // it depends on are asserted somewhere: they are its only tie to the game's own UI layout.
+      extend: (modulePath, exportName) => { extended.push(modulePath + "#" + exportName); },
+    });
+    assert.deepEqual(extended, [
+      "game-ui/game/components/toolbar/bottom/population-field/population-field.tsx#PopulationField",
+      "game-ui/game/components/toolbar/bottom/money-field/money-field.tsx#MoneyField",
+    ]);
     assert.equal(typeof Strip, "function");
     for (const system of [0, 1]) {
       unitSystem = system;

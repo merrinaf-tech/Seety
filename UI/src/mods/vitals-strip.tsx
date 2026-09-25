@@ -4,6 +4,8 @@ import { Tooltip } from "cs2/ui";
 import { useLocalization } from "cs2/l10n";
 import styles from "./vitals-strip.module.scss";
 import { clampPosition } from "./position";
+import { DismissInput } from "./dismiss-input";
+import { DismissPriority, useDismissOnCancel } from "./use-dismiss";
 
 // The game declares UnitSystem in its types but does not export it from cs2/l10n at runtime.
 // Match its serialized option value (Metric = 0, Freedom = 1) without importing the enum.
@@ -218,6 +220,7 @@ const iconsHidden$ = bindValue<boolean>("seety", "iconsHidden", false);
 const configMode$ = bindValue<boolean>("seety", "configMode", false);
 const iconOutline$ = bindValue<boolean>("seety", "iconOutline", true);
 const journeyOn$ = bindValue<boolean>("seety", "journeyOn", false);
+const transitMode$ = bindValue<boolean>("seety", "transitMode", false);
 interface Journey {
   hasSubject: boolean;
   subject: string;
@@ -1828,6 +1831,8 @@ export const VitalsStrip = () => {
   const demographics = useValue(demographics$);
   const iconsHidden = useValue(iconsHidden$);
   const journeyOn = useValue(journeyOn$);
+  const transitMode = useValue(transitMode$);
+
   const configMode = useValue(configMode$);
   const outlined = useValue(iconOutline$);
 
@@ -1848,6 +1853,11 @@ export const VitalsStrip = () => {
   }, [expanded, activeExpanded]);
 
   useEffect(() => () => trigger("seety", "expand", ""), []);
+  // Cancel closes the open window first, and only backs out of configuration mode once there is
+  // no window left - the same order the game itself backs out of things.
+  useDismissOnCancel(!!activeExpanded, () => setExpanded(null), DismissPriority.Window);
+  useDismissOnCancel(configMode, () => trigger("seety", "setConfigMode", false),
+    DismissPriority.ConfigMode);
 
   const drag = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, moved: false, scale: 1 });
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -1962,6 +1972,10 @@ export const VitalsStrip = () => {
       style={{ left: `${pos.x}rem`, top: `${pos.y}rem` }}
       onMouseDown={onMouseDown}
     >
+      {/* Listens for the Cancel binding while anything of Seety's is open, and renders nothing
+          otherwise. Inside the strip because the strip is what is always mounted. */}
+      <DismissInput />
+
       {configMode ? (
         <span className={styles.configBanner}>
           {t("Seety.CONFIG_BANNER", "Choose readings or move the bar")}
@@ -2118,13 +2132,26 @@ export const VitalsStrip = () => {
                 </span>
               </Tooltip>
             ) : openVital.id === TRAFFIC_ID ? (
-              <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
-                aria-pressed={journeyOn}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={() => trigger("seety", "setJourneyOn", !journeyOn)}>
-                {journeyOn ? t("Seety.JOURNEY_JAMS", "Show traffic jams")
-                  : t("Seety.JOURNEY_SHOW", "Selected journey")}
-              </button>
+              <>
+                {/* Only while a list is showing: in journey mode there is no list for it to
+                    switch, and a button that does nothing to what is on screen reads as broken. */}
+                {journeyOn ? null : (
+                  <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
+                    aria-pressed={transitMode}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={() => trigger("seety", "setTransitMode", !transitMode)}>
+                    {transitMode ? t("Seety.TRAFFIC_ROAD", "Road")
+                      : t("Seety.TRAFFIC_TRANSIT", "Public transport")}
+                  </button>
+                )}
+                <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
+                  aria-pressed={journeyOn}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={() => trigger("seety", "setJourneyOn", !journeyOn)}>
+                  {journeyOn ? t("Seety.JOURNEY_JAMS", "Show traffic jams")
+                    : t("Seety.JOURNEY_SHOW", "Selected journey")}
+                </button>
+              </>
             ) : undefined
           }
         >
