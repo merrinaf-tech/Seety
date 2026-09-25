@@ -30,6 +30,7 @@ namespace Seety.Settings
         private bool _showStrip = true;
         private bool _highlightProblems = true;
         private bool _iconOutline = true;
+        private bool _toolbarTrends;
         private bool _zoneTransparency;
 
         // Default resting place: clear of the vanilla button row along the top edge, so the strip
@@ -82,6 +83,35 @@ namespace Seety.Settings
 
                 _highlightProblems = value;
                 Mod.OnVitalsChanged();
+            }
+        }
+
+        /// <summary>
+        /// Print the change beside the population and money figures on the vanilla bottom bar.
+        ///
+        /// The game already knows this number - it publishes it as toolbarBottom.populationDelta
+        /// and toolbarBottom.moneyDelta, and its own tooltip shows it when you hover. All this
+        /// does is stop it being hidden behind a hover. Nothing is computed here, so the figure
+        /// cannot disagree with the one the game shows.
+        ///
+        /// Off by default, and the only thing in Seety that draws outside its own bar: it extends
+        /// two vanilla components rather than adding to the strip. That ties it to their module
+        /// paths, which a game update can change - if a patch ever empties these, this is the
+        /// switch to turn off.
+        /// </summary>
+        [SettingsUISection(MainSection, DisplayGroup)]
+        public bool ToolbarTrends
+        {
+            get { return _toolbarTrends; }
+            set
+            {
+                if (_toolbarTrends == value)
+                {
+                    return;
+                }
+
+                _toolbarTrends = value;
+                Mod.OnToolbarTrendsChanged(value);
             }
         }
 
@@ -276,6 +306,7 @@ namespace Seety.Settings
             _showStrip = true;
             _highlightProblems = true;
             _iconOutline = true;
+            _toolbarTrends = false;
             _zoneTransparency = false;
             _seededDefaults = false;
             _stripX = DefaultStripX;

@@ -28,12 +28,30 @@ test("built traffic panel toggles journeys, renders empty states and opens versi
   };
   try {
     const bundle = await import(pathToFileURL(path.resolve(__dirname, "../dist/Seety.mjs")));
-    let Strip; bundle.default({ append: (_anchor, component) => { Strip = component; } });
+    let Strip; bundle.default({ append: (_anchor, component) => { Strip = component; }, extend: () => {} });
     const panel = () => Strip().props.children.at(-1);
-    let action = panel().props.action;
-    assert.equal(action.props.children, "Selected journey");
-    action.props.onClick();
-    assert.deepEqual(calls.pop(), ["seety", "setJourneyOn", true]);
+    // The action slot holds two buttons now - the road/trains switch and the journey toggle -
+    // so they are picked out by the trigger each one sends rather than by position.
+    const actions = () => {
+      const slot = panel().props.action;
+      const kids = slot.props.children;
+      return (Array.isArray(kids) ? kids : [kids]).filter(Boolean);
+    };
+    const buttonFor = (name) => {
+      for (const node of actions()) {
+        calls.length = 0;
+        node.props.onClick();
+        const sent = calls.pop();
+        if (sent && sent[1] === name) return { node, sent };
+      }
+      throw new Error("no button sends " + name);
+    };
+    const transit = buttonFor("setTransitMode");
+    assert.equal(transit.node.props.children, "Public transport");
+    assert.deepEqual(transit.sent, ["seety", "setTransitMode", true]);
+    const journey = buttonFor("setJourneyOn");
+    assert.equal(journey.node.props.children, "Selected journey");
+    assert.deepEqual(journey.sent, ["seety", "setJourneyOn", true]);
     bindings["seety.journeyOn"] = true;
     const journeyTree = () => {
       const child = panel().props.children.at(-1);
@@ -64,9 +82,11 @@ test("built traffic panel toggles journeys, renders empty states and opens versi
     assert.ok(!partial.includes("Jane") && !partial.includes("School"));
     bindings["seety.journey"] = { hasSubject: false, subject: "", here: "", destination: "", legs: [], truncated: false };
     assert.match(renderToStaticMarkup(journeyTree()), /Select a citizen/);
-    action = panel().props.action;
-    assert.equal(action.props.children, "Show traffic jams"); action.props.onClick();
-    assert.deepEqual(calls.pop(), ["seety", "setJourneyOn", false]);
+    // In journey mode the road/trains switch is not drawn: there is no list for it to switch.
+    assert.equal(actions().length, 1, "no list switch while a journey is showing");
+    const back = buttonFor("setJourneyOn");
+    assert.equal(back.node.props.children, "Show traffic jams");
+    assert.deepEqual(back.sent, ["seety", "setJourneyOn", false]);
   } finally {
     if (previousWindow === undefined) delete global.window; else global.window = previousWindow;
   }
