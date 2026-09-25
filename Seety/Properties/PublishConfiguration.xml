@@ -56,7 +56,7 @@ Nothing on the list is already on the vanilla HUD, and every figure mirrors the 
 
 &gt; **Selected journey** - a switch in the traffic window turns the jam list into the journey of whatever you have selected. Click a citizen or a vehicle and you get the street or transport line it is on now, every street and line still ahead of it with the distance along each, and where it all ends. It reads the route the game has already worked out, so nothing here is guessed. A step on public transport carries that line's own colour and number, and clicking it opens the line. Clicking the destination takes the camera there.
 
-&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** - the fullest schools first, passengers and freight by mode, the worst jams by street, and the parts behind the combined readings. Where the game has its own panel for one of them, clicking goes there.
+&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** - the fullest schools first, passengers and freight by mode, the worst jams by street - or, with a switch, the lines whose buses, trams, metros, trains or ferries are standing still - and the parts behind the combined readings. Where the game has its own panel for one of them, clicking goes there.
 
 Some readings also carry a chart of how they got here.
 
@@ -64,7 +64,9 @@ Some readings also carry a chart of how they got here.
 
 Seety reads. It does not govern. Clicking a reading changes only which info view is showing and where the camera is pointing.
 
-Two exceptions, both on the options page and nowhere near the bar. One is a field to add or remove money from your treasury, City Watchdog style - off to the side, typed in on purpose. The other fades the zoning cells drawn along your roads, for anyone who finds them loud: off unless you turn it on, it changes how those cells are drawn and nothing else, and switching it back off restores exactly the colours the game shipped.
+One option draws outside Seety's own bar: it can print the change beside the population and money figures on the game's bottom bar, which otherwise only shows it while you hover. The numbers are the game's own. It is off unless you turn it on.
+
+Two other exceptions, both on the options page and nowhere near the bar. One is a field to add or remove money from your treasury, City Watchdog style - off to the side, typed in on purpose. The other fades the zoning cells drawn along your roads, for anyone who finds them loud: off unless you turn it on, it changes how those cells are drawn and nothing else, and switching it back off restores exactly the colours the game shipped.
 
 ## Before you install
 
@@ -93,28 +95,20 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.0.8" />
+	<ModVersion Value="1.0.9" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
 	<!--
 	  Replace this whole body and bump ModVersion for the next release. This is NOT a running
 	  history: before the next NewVersion, delete everything between the ChangeLog tags and write
-	  only what changed since 1.0.7. See AGENTS.md - letting this accumulate is the repeat offender.
+	  only what changed since the version now live. See AGENTS.md - letting this accumulate is the repeat offender.
 	-->
 	<ChangeLog>
-Select a citizen or a vehicle and see where it is going.
+The traffic window now switches between road traffic and public transport. The transit list groups buses, trams, metros, trains and ferries that are standing still by the line they run on, worst first, and clicking one takes you there.
 
-A switch in the traffic window turns the jam list into a journey: the street or transport line it is on right now, every street and line still ahead of it with the distance along each, and the place it all ends. It reads the route the game has already worked out, so nothing here is guessed - the list changes the moment the game changes its mind. A step on public transport carries that line's own colour and number, and clicking it opens the line's own panel. Clicking the destination takes the camera there.
+New option, off by default: show the change beside population and money on the game's bottom bar, instead of only while you hover.
 
-The zoning grid, if you have chosen to fade it, now keeps the lines inside a zoned block twice as visible as the bare grid along an empty verge. The fill is unchanged. Inside a block you have already painted, those lines are the only thing that says where one lot ends and the next begins, because neighbouring cells of one zone share a colour.
-
-Jams no longer lose track of which one you clicked. A queue was identified by its street label, so two queues on the same street swapped names as their congestion ranking changed, and a click could land on the other one. Each queue is now tied to its place instead.
-
-Hiding the notification icons puts back only what Seety hid. An icon you had already hidden yourself stays hidden when you switch them back on.
-
-The readings refresh every five seconds rather than every two. A list that reorders itself while you are reading it is harder to use than a slightly stale one.
-
-Also: the configuration banner is one short line, and a window's "Hide icons" button now sits beside its close button instead of floating in the middle of the title bar.
+The key you use to cancel a tool now also closes Seety's windows, whichever key you have bound it to.
 	</ChangeLog>
 </Publish>
