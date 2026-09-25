@@ -68,8 +68,7 @@ test("the built strip only moves in configuration mode and cancels interrupted d
   try {
     const bundle = await import(pathToFileURL(path.resolve(__dirname, "../dist/Seety.mjs")));
     let Strip;
-    // extend is stubbed because index.tsx now wraps two vanilla toolbar fields. The registry the
-    // game passes has it; a stub without it made every suite fail with "e.extend is not a function".
+    // This suite exercises the strip; the shared toolbar extension has its own regression test.
     bundle.default({ append: (_anchor, component) => { Strip = component; }, extend: () => {} });
     const render = () => {
       let passes = 0;

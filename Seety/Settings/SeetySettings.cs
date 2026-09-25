@@ -95,9 +95,8 @@ namespace Seety.Settings
         /// cannot disagree with the one the game shows.
         ///
         /// Off by default, and the only thing in Seety that draws outside its own bar: it extends
-        /// two vanilla components rather than adding to the strip. That ties it to their module
-        /// paths, which a game update can change - if a patch ever empties these, this is the
-        /// switch to turn off.
+        /// the shared vanilla stat field rather than adding to the strip. The optional UI hook
+        /// is guarded so a missing module after a game update does not stop other mods loading.
         /// </summary>
         [SettingsUISection(MainSection, DisplayGroup)]
         public bool ToolbarTrends
