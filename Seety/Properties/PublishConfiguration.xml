@@ -60,11 +60,13 @@ Nothing on the list is already on the vanilla HUD, and every figure mirrors the 
 
 Some readings also carry a chart of how they got here.
 
+Optionally, rest the cursor on a building to see what is holding it back, and by how much.
+
 ## What it never does
 
 Seety reads. It does not govern. Clicking a reading changes only which info view is showing and where the camera is pointing.
 
-One option draws outside Seety's own bar: it can print the change beside the population and money figures on the game's bottom bar, which otherwise only shows it while you hover. The numbers are the game's own. It is off unless you turn it on.
+Two options draw outside Seety's own bar, both off unless you turn them on: one prints the change beside the population and money figures on the bottom bar; the other redraws the game's blue buttons in the bottom bar's colour.
 
 Two other exceptions, both on the options page and nowhere near the bar. One is a field to add or remove money from your treasury, City Watchdog style - off to the side, typed in on purpose. The other fades the zoning cells drawn along your roads, for anyone who finds them loud: off unless you turn it on, it changes how those cells are drawn and nothing else, and switching it back off restores exactly the colours the game shipped.
 
@@ -95,7 +97,7 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.0.11" />
+	<ModVersion Value="1.1.0" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 

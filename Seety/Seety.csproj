@@ -9,9 +9,9 @@
 		<AssemblyName>Seety</AssemblyName>
 		<RootNamespace>Seety</RootNamespace>
 		<Product>Seety</Product>
-		<Version>1.0.11</Version>
-		<AssemblyVersion>1.0.6.0</AssemblyVersion>
-		<FileVersion>1.0.6.0</FileVersion>
+		<Version>1.1.0</Version>
+		<AssemblyVersion>1.1.0.0</AssemblyVersion>
+		<FileVersion>1.1.0.0</FileVersion>
 
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
