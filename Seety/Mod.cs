@@ -184,6 +184,16 @@ namespace Seety
             _uiSystem.SetIconOutline(outlined);
         }
 
+        internal static void OnGameButtonStyleChanged(bool gameStyle)
+        {
+            if (!_ready || _uiSystem == null)
+            {
+                return;
+            }
+
+            _uiSystem.SetGameButtonStyle(gameStyle);
+        }
+
         internal static void OnToolbarTrendsChanged(bool show)
         {
             if (!_ready || _uiSystem == null)

@@ -694,3 +694,81 @@
   border-radius: 2rem;
   background-color: rgba(130, 190, 255, 0.55);
 }
+
+// ---- Game-button style ------------------------------------------------------------------------
+//
+// The option "Draw the bar as game buttons". Every cell becomes one of the game's own floating
+// buttons - the blue squares of the top-left row - by carrying the game's floating-icon-button
+// class next to .entry (see gameButtonClasses in vitals-strip.tsx). Colour, hover, pressed and
+// theme therefore come from the game itself. What is left here is only what the game's class
+// does not know about: no panel behind the row, the spacing between buttons, a width that grows
+// for a number, and the fill and status colours inside a button.
+//
+// Size and corners are the game's own custom properties rather than numbers copied from them,
+// so a game update that resizes its buttons resizes these too.
+.gameStyle {
+  // No panel: the buttons stand on the city like the vanilla row does.
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+// Transparent strip, so dragging needs its own cue.
+.gameStyle.dragging {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.gameStyle.stripConfig {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.gameStyle .entry {
+  // The game class sets width and height to --floatingToggleSize; a count needs room for its
+  // number, so only the minimum is kept square.
+  width: auto;
+  min-width: var(--floatingToggleSize);
+  height: var(--floatingToggleSize);
+  // 6rem between buttons, the spacing of the vanilla row.
+  margin: 0 3rem;
+  padding: 0 4rem;
+  border-radius: var(--floatingToggleBorderRadius);
+  cursor: pointer;
+}
+
+.gameStyle .barEntry {
+  width: var(--floatingToggleSize);
+  padding: 0;
+}
+
+.gameStyle .barEntry .icon {
+  width: 26rem;
+  height: 26rem;
+}
+
+// The fill inside a button: the game's own status colours, not the translucent tints the dark
+// panel uses, which turn muddy over blue.
+.gameStyle .bar {
+  background-color: var(--positiveColor);
+  opacity: 0.8;
+}
+
+.gameStyle .gameWarning .bar {
+  background-color: var(--warningColor);
+}
+
+.gameStyle .gameCritical .bar {
+  background-color: var(--negativeColor);
+}
+
+.gameStyle .gameWarning .value {
+  color: var(--warningColor);
+}
+
+.gameStyle .gameCritical .value {
+  color: var(--negativeColor);
+}
+
+// The gear is a glyph in the dark style; vanilla floating buttons carry white glyphs.
+.gameStyle .gameGlyph {
+  filter: brightness(0) invert(1);
+}

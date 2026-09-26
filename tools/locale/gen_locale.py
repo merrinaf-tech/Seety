@@ -140,6 +140,25 @@ add("option.desc.IconOutline",
     "在状态条的每个图标周围绘制白色描边，让深色图标在深色建筑上依然清晰。关闭可获得更扁平的外观；读数不会改变。",
     "在狀態條的每個圖示周圍繪製白色描邊，讓深色圖示在深色建築上依然清晰。關閉可獲得更扁平的外觀；讀數不會改變。")
 
+add("option.label.GameButtonStyle",
+    "Draw the bar as game buttons", "Leiste als Spielschaltflächen", "Barra con botones del juego",
+    "Barre en boutons du jeu", "Barra con i pulsanti del gioco", "バーをゲームのボタン風に",
+    "바를 게임 버튼 모양으로", "Pasek jako przyciski gry", "Barra com botões do jogo",
+    "Панель в виде кнопок игры", "状态条使用游戏按钮样式", "狀態條使用遊戲按鈕樣式")
+add("option.desc.GameButtonStyle",
+    "Shows each reading as one of the game's own blue buttons, like the row at the top left, instead of on one dark panel. Colour, size and corners come from the game. The readings do not change.",
+    "Zeigt jeden Wert als eine der blauen Schaltflächen des Spiels, wie die Reihe oben links, statt auf einer dunklen Leiste. Farbe, Größe und Ecken stammen vom Spiel. An den Werten ändert sich nichts.",
+    "Muestra cada lectura como uno de los botones azules del juego, como la fila de arriba a la izquierda, en lugar de sobre un panel oscuro. El color, el tamaño y las esquinas vienen del juego. Las lecturas no cambian.",
+    "Affiche chaque valeur comme l'un des boutons bleus du jeu, comme la rangée en haut à gauche, au lieu d'un panneau sombre. La couleur, la taille et les coins viennent du jeu. Les valeurs ne changent pas.",
+    "Mostra ogni lettura come uno dei pulsanti blu del gioco, come la fila in alto a sinistra, invece che su un pannello scuro. Colore, dimensione e angoli vengono dal gioco. Le letture non cambiano.",
+    "各数値を、暗いパネルではなく左上の列と同じゲームの青いボタンとして表示します。色・サイズ・角はゲームのものを使います。数値は変わりません。",
+    "각 수치를 어두운 패널 대신 왼쪽 위 줄과 같은 게임의 파란 버튼으로 표시합니다. 색, 크기, 모서리는 게임에서 가져옵니다. 수치는 바뀌지 않습니다.",
+    "Pokazuje każdy odczyt jako jeden z niebieskich przycisków gry, jak rząd w lewym górnym rogu, zamiast na ciemnym panelu. Kolor, rozmiar i narożniki pochodzą z gry. Odczyty się nie zmieniają.",
+    "Mostra cada leitura como um dos botões azuis do próprio jogo, como a fileira no canto superior esquerdo, em vez de um painel escuro. Cor, tamanho e cantos vêm do jogo. As leituras não mudam.",
+    "Показывает каждый показатель как одну из синих кнопок игры, как ряд в левом верхнем углу, а не на тёмной панели. Цвет, размер и углы берутся из игры. Показатели не меняются.",
+    "将每个读数显示为游戏自带的蓝色按钮，就像左上角那一排，而不是放在深色面板上。颜色、尺寸和圆角都来自游戏。读数不会改变。",
+    "將每個讀數顯示為遊戲內建的藍色按鈕，就像左上角那一排，而不是放在深色面板上。顏色、尺寸和圓角都來自遊戲。讀數不會改變。")
+
 add("option.label.ZoneTransparency",
     "Fade the zoning grid", "Bauraster abschwächen", "Atenuar la cuadrícula de zonificación",
     "Atténuer la grille de zonage", "Attenua la griglia di zonizzazione", "区画グリッドを薄く",
