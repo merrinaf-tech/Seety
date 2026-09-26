@@ -35,13 +35,13 @@ void Crowd(int count, float x)
 }
 var query = new EntityQuery(() => vehicles);
 var jams = new TrafficJamBreakdown();
-Crowd(20, -160); Crowd(10, 320);
+Crowd(20, -160); Crowd(15, 320);
 jams.Refresh(query, entities, names, null);
 Check(jams.Groups.Count == 2, "two distinct queues");
 var west = jams.Groups.Single(jam => jam.Position.x < 0);
 var east = jams.Groups.Single(jam => jam.Position.x > 0);
 Check(west.Id != east.Id, "distinct location IDs");
-vehicles.Clear(); Crowd(6, -160); Crowd(25, 320); vehicles.Reverse();
+vehicles.Clear(); Crowd(16, -160); Crowd(25, 320); vehicles.Reverse();
 jams.Refresh(query, entities, names, null);
 Check(jams.Groups[0].Id == east.Id, "list still sorts worst first");
 Check(jams.Groups[1].Id == west.Id, "identity survives reordered input and ranking");
@@ -51,11 +51,11 @@ Check(jams.Jump(west.Id, camera) && camera.activeCameraController.pivot.x == -16
 names.Names[street] = "Renamed Street";
 jams.Refresh(query, entities, names, null);
 Check(jams.Jump(east.Id, camera) && camera.activeCameraController.pivot.x == 320, "street rename preserves identity");
-vehicles.Clear(); Crowd(12, 320);
+vehicles.Clear(); Crowd(15, 320);
 jams.Refresh(query, entities, names, null);
 Check(!jams.Jump(west.Id, camera), "disappeared queue does not redirect to surviving queue");
 Check(!jams.Jump("Renamed Street", camera), "labels are not action identifiers");
-vehicles.Clear(); Crowd(5, 1); Crowd(5, 33);
+vehicles.Clear(); Crowd(8, 1); Crowd(8, 33);
 jams.Refresh(query, entities, names, null);
 var tiedId = jams.Groups[0].Id;
 vehicles.Reverse(); jams.Refresh(query, entities, names, null);
@@ -63,6 +63,33 @@ Check(jams.Groups.Count == 1 && jams.Groups[0].Id == tiedId, "tied neighbouring 
 vehicles.Clear(); jams.Refresh(query, entities, names, null);
 Check(jams.Groups.Count == 0 && !jams.Jump(tiedId, camera), "empty query clears stale targets");
 Console.WriteLine("PASS: traffic identity, ranking, renaming, stale clicks and tied cells");
+
+// The cutoff is local and absolute: a city can have many blocked cars without any jam worth a
+// row. Test the production grouping, including disappearance and invalidation of old clicks.
+vehicles.Clear();
+for (int i = 0; i < 12; i++) Crowd(14, i * 320);
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 0, "many separate minor queues do not fill the list");
+vehicles.Clear(); Crowd(15, 320);
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 1 && jams.Groups[0].Count == 15, "fifteen blocked vehicles meet the threshold");
+var thresholdId = jams.Groups[0].Id;
+vehicles.RemoveAt(vehicles.Count - 1);
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 0, "a queue falling below fifteen disappears immediately");
+Check(!jams.Jump(thresholdId, camera), "a subthreshold queue has no stale camera target");
+vehicles.Clear(); Crowd(14, -320); Crowd(20, 320);
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 1 && jams.Groups[0].Count == 20 && jams.Groups[0].Position.x == 320,
+    "a real queue is listed without padding with smaller queues");
+vehicles.Clear(); Crowd(7, 1); Crowd(8, 33);
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 1 && jams.Groups[0].Count == 15,
+    "a queue across neighbouring cells reaches the threshold together");
+vehicles.Clear(); Crowd(7, 1); Crowd(8, 320);
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 0, "distant queues cannot combine to reach the threshold");
+Console.WriteLine("PASS: traffic minimum size, empty lists, disappearing queues and local grouping");
 
 var world = new EntityManager();
 Entity Prefab(bool enabled)

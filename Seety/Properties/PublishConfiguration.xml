@@ -105,7 +105,6 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	  only what changed since the version now live. See AGENTS.md - letting this accumulate is the repeat offender.
 	-->
 	<ChangeLog>
-Fixed population and money trends in the bottom bar.
-Fixed other mods' toolbar buttons disappearing during UI loading.
+The traffic list shows only jams of 15 or more vehicles.
 	</ChangeLog>
 </Publish>
