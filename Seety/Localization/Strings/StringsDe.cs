@@ -153,7 +153,7 @@ namespace Seety.Localization.Strings
                 { "Seety.ZONE_RES_LOW", "Wohnen (niedrig)" },
                 { "Seety.ZONE_RES_MED", "Wohnen (mittel)" },
                 { "option.desc.AddFunds", "Dies ist das einzige Element in Seety, das deine Stadt verändert statt nur über sie zu berichten." },
-                { "option.desc.BuildingReasons", "Wenn der Mauszeiger auf einem Gebäude ruht, werden bis zu drei Dinge aufgeführt, die es bremsen: die Probleme, die das Spiel gemeldet hat, dann Effizienzverluste mit ihrem Anteil. Ist nichts falsch, erscheint nichts. Nur mit dem Auswahlwerkzeug." },
+                { "option.desc.BuildingReasons", "Wenn der Mauszeiger auf einem Gebäude ruht, werden bis zu drei Effizienzverluste mit ihrem Anteil aufgeführt. Probleme, die schon als Symbole über dem Gebäude stehen, werden nicht wiederholt, außer du hast diese Symbole ausgeblendet. Ist nichts falsch, erscheint nichts. Nur mit dem Auswahlwerkzeug." },
                 { "option.desc.DarkGameButtons", "Zeichnet die blauen Schaltflächen des Spiels, wie die Reihe oben links, im dunklen Blau der unteren Leiste. Das betrifft jede Schaltfläche, die mit der Spielschaltfläche gebaut ist, auch die anderer Mods; selbst gezeichnete Schaltflächen bleiben unverändert. Ausgewählte Schaltflächen behalten ihre Farbe. Ausschalten stellt das Aussehen des Spiels wieder her." },
                 { "option.desc.FundsAmount", "Wie viel der Stadtkasse hinzugefügt wird. Ein negativer Wert nimmt stattdessen Geld weg." },
                 { "option.desc.GameButtonStyle", "Zeigt jeden Wert als eine der blauen Schaltflächen des Spiels, wie die Reihe oben links, statt auf einer dunklen Leiste. Farbe, Größe und Ecken stammen vom Spiel. An den Werten ändert sich nichts." },

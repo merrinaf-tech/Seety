@@ -153,7 +153,7 @@ namespace Seety.Localization.Strings
                 { "Seety.ZONE_RES_LOW", "Residencial baja" },
                 { "Seety.ZONE_RES_MED", "Residencial media" },
                 { "option.desc.AddFunds", "Este es el único control de Seety que cambia tu ciudad en lugar de informar sobre ella." },
-                { "option.desc.BuildingReasons", "Al dejar el cursor sobre un edificio, enumera hasta tres cosas que lo frenan: los problemas que el juego ha señalado y luego las pérdidas de eficiencia con lo que cuestan. Si no pasa nada, no aparece nada. Solo con la herramienta de selección." },
+                { "option.desc.BuildingReasons", "Al dejar el cursor sobre un edificio, enumera hasta tres pérdidas de eficiencia que lo frenan, con lo que cuesta cada una. Los problemas que ya se ven como iconos sobre el edificio no se repiten, salvo que hayas ocultado esos iconos. Si no pasa nada, no aparece nada. Solo con la herramienta de selección." },
                 { "option.desc.DarkGameButtons", "Dibuja los botones azules del juego, como la fila de arriba a la izquierda, en el azul oscuro de la barra inferior. Cambia todos los botones hechos con el botón del propio juego, también los de otros mods; los que un mod dibuja por su cuenta no cambian. Los botones seleccionados conservan su color. Al desactivarlo vuelve el aspecto del juego." },
                 { "option.desc.FundsAmount", "Cuánto añadir a la tesorería de la ciudad. Un número negativo retira dinero." },
                 { "option.desc.GameButtonStyle", "Muestra cada lectura como uno de los botones azules del juego, como la fila de arriba a la izquierda, en lugar de sobre un panel oscuro. El color, el tamaño y las esquinas vienen del juego. Las lecturas no cambian." },

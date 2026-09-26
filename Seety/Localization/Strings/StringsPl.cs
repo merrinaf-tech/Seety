@@ -153,7 +153,7 @@ namespace Seety.Localization.Strings
                 { "Seety.ZONE_RES_LOW", "Mieszkalna niska" },
                 { "Seety.ZONE_RES_MED", "Mieszkalna średnia" },
                 { "option.desc.AddFunds", "To jedyny element Seety, który zmienia miasto, zamiast tylko o nim informować." },
-                { "option.desc.BuildingReasons", "Gdy kursor zatrzyma się na budynku, wymienia do trzech rzeczy, które go hamują: problemy zgłoszone przez grę, a potem straty wydajności z ich wielkością. Gdy wszystko w porządku, nic się nie pojawia. Tylko z narzędziem wyboru." },
+                { "option.desc.BuildingReasons", "Gdy kursor zatrzyma się na budynku, wymienia do trzech strat wydajności, które go hamują, wraz z ich wielkością. Problemy widoczne już jako ikony nad budynkiem nie są powtarzane, chyba że ukryłeś te ikony. Gdy wszystko w porządku, nic się nie pojawia. Tylko z narzędziem wyboru." },
                 { "option.desc.DarkGameButtons", "Rysuje niebieskie przyciski gry, jak rząd w lewym górnym rogu, w ciemnym błękicie dolnego paska. Zmienia każdy przycisk zbudowany z przycisku gry, także w innych modach; przyciski rysowane przez mod samodzielnie pozostają bez zmian. Zaznaczone przyciski zachowują kolor. Wyłączenie przywraca wygląd gry." },
                 { "option.desc.FundsAmount", "Ile dodać do skarbca miasta. Liczba ujemna zamiast tego odejmuje pieniądze." },
                 { "option.desc.GameButtonStyle", "Pokazuje każdy odczyt jako jeden z niebieskich przycisków gry, jak rząd w lewym górnym rogu, zamiast na ciemnym panelu. Kolor, rozmiar i narożniki pochodzą z gry. Odczyty się nie zmieniają." },
