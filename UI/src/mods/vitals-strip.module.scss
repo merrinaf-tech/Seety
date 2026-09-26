@@ -731,7 +731,12 @@
   // 6rem between buttons, the spacing of the vanilla row.
   margin: 0 3rem;
   padding: 0 4rem;
-  border-radius: var(--floatingToggleBorderRadius);
+  // Four longhands, as the game writes them. The shorthand with var() in it was dropped by the
+  // renderer and .entry's own 16rem radius showed through: rounder than the vanilla buttons.
+  border-top-left-radius: var(--floatingToggleBorderRadius);
+  border-top-right-radius: var(--floatingToggleBorderRadius);
+  border-bottom-left-radius: var(--floatingToggleBorderRadius);
+  border-bottom-right-radius: var(--floatingToggleBorderRadius);
   cursor: pointer;
 }
 
