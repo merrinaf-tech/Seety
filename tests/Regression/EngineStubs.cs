@@ -75,7 +75,12 @@ namespace Unity.Mathematics
         public float x, y;
         public float2(float x, float y) { this.x = x; this.y = y; }
     }
-    public static class math { public static float floor(float value) => MathF.Floor(value); }
+    public static class math
+    {
+        public static float floor(float value) => MathF.Floor(value);
+        public static float abs(float value) => MathF.Abs(value);
+        public static float lengthsq(float3 v) => v.x * v.x + v.y * v.y + v.z * v.z;
+    }
 }
 // Just enough curve maths for JourneyTrace.LaneMetres. A real Bezier4x3 is four control points
 // and its length is an integral; the production code never looks inside one, it only hands the
@@ -133,11 +138,25 @@ namespace Game.Simulation
 {
     public sealed class TerrainSystem { public UnityEngine.Bounds GetTerrainBounds() => default; }
 }
-namespace Game.Objects { public struct Transform { public Unity.Mathematics.float3 m_Position; } }
+namespace Game.Objects
+{
+    public struct Transform { public Unity.Mathematics.float3 m_Position; }
+    public struct Moving { public Unity.Mathematics.float3 m_Velocity; }
+}
 namespace Game.Vehicles
 {
     public struct Blocker { }
     public struct CarCurrentLane { public Unity.Entities.Entity m_Lane; }
+    [Flags]
+    public enum PublicTransportFlags
+    {
+        None = 0, Boarding = 1, Returning = 2, Refueling = 4, AbandonRoute = 8,
+        Disabled = 16, DummyTraffic = 32, Testing = 64
+    }
+    public struct PublicTransport { public PublicTransportFlags m_State; }
+    public struct Train { }
+    public struct TrainNavigation { public float m_Speed; }
+    public struct Controller { public Unity.Entities.Entity m_Controller; }
 }
 namespace Game.Buildings { public struct Building { } }
 namespace Game.Common { public struct Owner { public Unity.Entities.Entity m_Owner; } }

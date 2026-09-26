@@ -91,6 +91,71 @@ jams.Refresh(query, entities, names, null);
 Check(jams.Groups.Count == 0, "distant queues cannot combine to reach the threshold");
 Console.WriteLine("PASS: traffic minimum size, empty lists, disappearing queues and local grouping");
 
+// A train is one entity per carriage, each pointing at the lead one. The list once showed a
+// single moving seven-carriage train as "7": every carriage was counted, and a carriage without
+// Moving was taken to be standing.
+var transitWorld = new EntityManager();
+var transitNames = new Game.UI.NameSystem();
+var redLine = transitWorld.Create();
+transitNames.Names[redLine] = "Red Line";
+var transitVehicles = new List<Entity>();
+var transitQuery = new EntityQuery(() => transitVehicles);
+var transit = new StoppedTransitList();
+Entity Train(int carriages, float speed, float x,
+    Game.Vehicles.PublicTransportFlags state = Game.Vehicles.PublicTransportFlags.None)
+{
+    Entity lead = default;
+    for (int i = 0; i < carriages; i++)
+    {
+        var car = transitWorld.Create();
+        if (i == 0) lead = car;
+        transitWorld.Set(car, new Game.Vehicles.PublicTransport { m_State = state });
+        transitWorld.AddComponent<Game.Vehicles.Train>(car);
+        transitWorld.Set(car, new Game.Vehicles.Controller { m_Controller = lead });
+        transitWorld.Set(car, new Game.Vehicles.TrainNavigation { m_Speed = speed });
+        transitWorld.Set(car, new Game.Routes.CurrentRoute { m_Route = redLine });
+        transitWorld.Set(car, new Game.Objects.Transform { m_Position = new float3(x + i * 12, 0, 0) });
+        transitVehicles.Add(car);
+    }
+    return lead;
+}
+Train(7, 14f, 0);
+transit.Refresh(transitQuery, transitWorld, transitNames);
+Check(transit.Groups.Count == 0, "a moving seven-carriage train is not listed");
+transitVehicles.Clear(); Train(7, 0f, 0);
+transit.Refresh(transitQuery, transitWorld, transitNames);
+Check(transit.Groups.Count == 1 && transit.Groups[0].Count == 1, "a stopped train counts once, not once per carriage");
+transitVehicles.Reverse();
+transit.Refresh(transitQuery, transitWorld, transitNames);
+Check(transit.Groups[0].Count == 1 && transit.Groups[0].Position.x == 0, "carriage order does not change the count or the target");
+transitVehicles.Clear(); Train(7, 0f, 0); Train(4, 0f, 500); Train(5, 20f, 900);
+transit.Refresh(transitQuery, transitWorld, transitNames);
+Check(transit.Groups.Count == 1 && transit.Groups[0].Count == 2, "two stopped trains on a line count as two");
+transitVehicles.Clear(); Train(6, 0f, 0, Game.Vehicles.PublicTransportFlags.Boarding);
+transit.Refresh(transitQuery, transitWorld, transitNames);
+Check(transit.Groups.Count == 0, "a train boarding at a stop is not listed");
+transitVehicles.Clear();
+var mystery = transitWorld.Create();
+transitWorld.Set(mystery, new Game.Vehicles.PublicTransport());
+transitWorld.AddComponent<Game.Vehicles.Train>(mystery);
+transitWorld.Set(mystery, new Game.Routes.CurrentRoute { m_Route = redLine });
+transitVehicles.Add(mystery);
+transit.Refresh(transitQuery, transitWorld, transitNames);
+Check(transit.Groups.Count == 0, "a rail vehicle with no speed to read is not assumed stopped");
+transitVehicles.Clear();
+var bus = transitWorld.Create();
+transitWorld.Set(bus, new Game.Vehicles.PublicTransport());
+transitWorld.AddComponent<Game.Vehicles.Blocker>(bus);
+transitWorld.Set(bus, new Game.Routes.CurrentRoute { m_Route = redLine });
+transitVehicles.Add(bus);
+var freeBus = transitWorld.Create();
+transitWorld.Set(freeBus, new Game.Vehicles.PublicTransport());
+transitWorld.Set(freeBus, new Game.Routes.CurrentRoute { m_Route = redLine });
+transitVehicles.Add(freeBus);
+transit.Refresh(transitQuery, transitWorld, transitNames);
+Check(transit.Groups.Count == 1 && transit.Groups[0].Count == 1, "a blocked bus counts, a free one does not");
+Console.WriteLine("PASS: transit trains counted once, speed from the train, boarding and unknown speed excluded");
+
 var world = new EntityManager();
 Entity Prefab(bool enabled)
 {

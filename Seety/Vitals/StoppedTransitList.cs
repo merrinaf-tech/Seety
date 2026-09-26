@@ -31,6 +31,15 @@ namespace Seety.Vitals
     /// </para>
     ///
     /// <para>
+    /// A train or tram is one vehicle to the player but one entity per carriage to the game, each
+    /// pointing at the lead one through <see cref="Game.Vehicles.Controller"/>. Counting entities
+    /// listed a single seven-carriage train as seven stopped vehicles. Every carriage is resolved
+    /// to its train and each train is counted once, and the train's speed is read from
+    /// <see cref="Game.Vehicles.TrainNavigation"/>. With no speed to read at all, a vehicle is not
+    /// assumed to be standing: that assumption is what put a moving train in the list.
+    /// </para>
+    ///
+    /// <para>
     /// Boarding is excluded for every kind. <see cref="Game.Vehicles.PublicTransportFlags"/>
     /// carries it on all of them, so a vehicle doing its job at a stop is never reported, and
     /// that part is the game talking rather than Seety guessing.
@@ -71,6 +80,9 @@ namespace Seety.Vitals
         private readonly List<TrafficJamGroup> _groups = new List<TrafficJamGroup>();
         private readonly Dictionary<string, TrafficJamGroup> _byId = new Dictionary<string, TrafficJamGroup>();
 
+        /// <summary>Trains already decided on in this refresh. Kept to avoid allocating per call.</summary>
+        private readonly HashSet<Entity> _seenUnits = new HashSet<Entity>();
+
         public IReadOnlyList<TrafficJamGroup> Groups
         {
             get { return _groups; }
@@ -80,6 +92,7 @@ namespace Seety.Vitals
         {
             _groups.Clear();
             _byId.Clear();
+            _seenUnits.Clear();
 
             if (query.IsEmptyIgnoreFilter)
             {
@@ -91,14 +104,22 @@ namespace Seety.Vitals
                 for (var i = 0; i < vehicles.Length; i++)
                 {
                     var vehicle = vehicles[i];
+                    var unit = UnitOf(vehicle, entities);
 
-                    if (!Stopped(vehicle, entities))
+                    // Decided once per train, whichever carriage the query hands over first.
+                    if (!_seenUnits.Add(unit))
+                    {
+                        continue;
+                    }
+
+                    if (!Stopped(vehicle, unit, entities))
                     {
                         continue;
                     }
 
                     string id;
-                    string label = Where(vehicle, entities, names, out id);
+                    string label = Where(vehicle, entities, names, out id)
+                                   ?? Where(unit, entities, names, out id);
 
                     if (string.IsNullOrEmpty(label))
                     {
@@ -113,10 +134,10 @@ namespace Seety.Vitals
                         // The first one found sets where a click goes. Any of them is on the same
                         // line, and averaging their positions can point at a spot between two
                         // vehicles where there is nothing to look at.
-                        if (entities.HasComponent<Game.Objects.Transform>(vehicle))
+                        if (entities.HasComponent<Game.Objects.Transform>(unit))
                         {
                             group.Position = entities
-                                .GetComponentData<Game.Objects.Transform>(vehicle).m_Position;
+                                .GetComponentData<Game.Objects.Transform>(unit).m_Position;
                         }
 
                         _byId[id] = group;
@@ -139,39 +160,61 @@ namespace Seety.Vitals
         /// Held up, rather than doing its job at a stop. See the note on the class for why this
         /// asks a different question of rail than of everything else.
         /// </summary>
-        private static bool Stopped(Entity vehicle, EntityManager entities)
+        private static bool Stopped(Entity vehicle, Entity unit, EntityManager entities)
         {
-            if (entities.HasComponent<Game.Vehicles.PublicTransport>(vehicle))
-            {
-                var state = entities
-                    .GetComponentData<Game.Vehicles.PublicTransport>(vehicle).m_State;
-
-                if ((state & OutOfService) != 0)
-                {
-                    return false;
-                }
-            }
-
-            // The game's own answer, for the three kinds that have one.
-            if (entities.HasComponent<Game.Vehicles.Blocker>(vehicle))
-            {
-                return true;
-            }
-
-            if (!entities.HasComponent<Game.Vehicles.Train>(vehicle))
+            if (OutOfServiceState(vehicle, entities) || OutOfServiceState(unit, entities))
             {
                 return false;
             }
 
-            // Rail only: nothing writes Blocker for it, so speed is all there is to go on. A
-            // missing Moving component is the strongest form of not moving.
-            if (!entities.HasComponent<Game.Objects.Moving>(vehicle))
+            // The game's own answer, for the three kinds that have one.
+            if (entities.HasComponent<Game.Vehicles.Blocker>(vehicle)
+                || entities.HasComponent<Game.Vehicles.Blocker>(unit))
             {
                 return true;
             }
 
-            var velocity = entities.GetComponentData<Game.Objects.Moving>(vehicle).m_Velocity;
-            return Unity.Mathematics.math.lengthsq(velocity) < StoppedSpeed * StoppedSpeed;
+            if (!entities.HasComponent<Game.Vehicles.Train>(vehicle)
+                && !entities.HasComponent<Game.Vehicles.Train>(unit))
+            {
+                return false;
+            }
+
+            // Rail only: nothing writes Blocker for it, so speed is all there is to go on.
+            if (entities.HasComponent<Game.Vehicles.TrainNavigation>(unit))
+            {
+                var speed = entities.GetComponentData<Game.Vehicles.TrainNavigation>(unit).m_Speed;
+                return Unity.Mathematics.math.abs(speed) < StoppedSpeed;
+            }
+
+            if (entities.HasComponent<Game.Objects.Moving>(unit))
+            {
+                var velocity = entities.GetComponentData<Game.Objects.Moving>(unit).m_Velocity;
+                return Unity.Mathematics.math.lengthsq(velocity) < StoppedSpeed * StoppedSpeed;
+            }
+
+            return false;
+        }
+
+        private static bool OutOfServiceState(Entity vehicle, EntityManager entities)
+        {
+            return entities.HasComponent<Game.Vehicles.PublicTransport>(vehicle)
+                && (entities.GetComponentData<Game.Vehicles.PublicTransport>(vehicle).m_State
+                    & OutOfService) != 0;
+        }
+
+        /// <summary>
+        /// The train a carriage belongs to, or the vehicle itself when it is not part of one.
+        /// </summary>
+        private static Entity UnitOf(Entity vehicle, EntityManager entities)
+        {
+            if (!entities.HasComponent<Game.Vehicles.Controller>(vehicle))
+            {
+                return vehicle;
+            }
+
+            var controller = entities.GetComponentData<Game.Vehicles.Controller>(vehicle).m_Controller;
+            return controller != Entity.Null && entities.Exists(controller) ? controller : vehicle;
         }
 
         /// <summary>
