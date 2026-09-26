@@ -21,10 +21,11 @@ const STYLE_ID = "seety-dark-game-buttons";
  * Rules are appended after the game's stylesheet with the same specificity, so they win without
  * !important, and the game's more specific .selected rule still wins over them.
  *
- * The colours are the bottom bar's own custom properties - --toolbarFieldColor and its hover and
- * active shades, which the city name, clock and population fields are drawn with - so the two
- * rows match exactly and follow the game's theme. Tried in game on 2026-09-26: 37 buttons carried
- * the class and all of them changed.
+ * The resting colour is --toolbarBottomBgColor, the bottom bar's own background (#1c2936,
+ * measured on screen to match). --toolbarFieldColor was tried first and is the darker inset of the
+ * bar's fields - near black in the default theme, too dark next to the bar. Hover and pressed are
+ * the game's panel-button shades of the same blue. Tried in game on 2026-09-26: 37 buttons
+ * carried the class and all of them changed.
  */
 export const DarkGameButtons = () => {
   const enabled = useValue(enabled$);
@@ -44,9 +45,9 @@ export const DarkGameButtons = () => {
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent =
-      `${b}{background-color:var(--toolbarFieldColor)}` +
-      `${b}:hover{background-color:var(--toolbarFieldColor-hover)}` +
-      `${b}:active{background-color:var(--toolbarFieldColor-active)}`;
+      `${b}{background-color:var(--toolbarBottomBgColor)}` +
+      `${b}:hover{background-color:var(--panelButtonColor-hover)}` +
+      `${b}:active{background-color:var(--panelButtonColor-active)}`;
     (document.head || document.body).appendChild(style);
   }, [enabled]);
 
