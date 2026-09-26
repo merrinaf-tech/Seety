@@ -2,7 +2,8 @@
 """Generates one C# table per language from a single source of truth."""
 import io, os, sys
 
-OUT = r"C:\Users\merri\Documents\Cities Skylines mods\Seety\Seety\Localization\Strings"
+OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "..", "..", "Seety", "Localization", "Strings"))
 
 LOCALES = [
     ("En", "en-US"), ("De", "de-DE"), ("Es", "es-ES"), ("Fr", "fr-FR"),
