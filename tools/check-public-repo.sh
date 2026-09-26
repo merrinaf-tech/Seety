@@ -14,7 +14,7 @@
 
 set -e
 
-FORBIDDEN='(^|/)(AGENTS|DESIGN|CLAUDE|NOTES|TODO|SESSION)\.md$|(^|/)Library/|\.pid$|(^|/)(bin|obj)/|\.user$|(^|/)UI/dist/|(^|/)node_modules/|(^|/)__pycache__/|\.pyc$'
+FORBIDDEN='(^|/)_dev/|(^|/)(AGENTS|DESIGN|CLAUDE|NOTES|TODO|SESSION)\.md$|(^|/)Library/|\.pid$|(^|/)(bin|obj)/|\.user$|(^|/)UI/dist/|(^|/)node_modules/|(^|/)__pycache__/|\.pyc$'
 
 found=$(git ls-files | grep -Ei "$FORBIDDEN" || true)
 
@@ -24,7 +24,7 @@ if [ -n "$found" ]; then
 	echo "" >&2
 	echo "$found" | sed 's/^/      /' >&2
 	echo "" >&2
-	echo "  Working notes belong outside the repo tree (../_notes/), build output in .gitignore." >&2
+	echo "  Working notes belong in _dev/ (gitignored), build output in .gitignore." >&2
 	echo "  Untrack with:  git rm --cached <file>" >&2
 	echo "" >&2
 	echo "  Override only if you are certain:  git push --no-verify" >&2
