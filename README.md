@@ -53,9 +53,6 @@ reading changes are which info view is active and where the camera is looking. T
 lives on the options page, not the bar: a field to add or remove treasury funds, typed in on
 purpose and confirmed before it does anything.
 
-[`DESIGN.md`](DESIGN.md) has the reasoning behind each decision, including the traps found along
-the way.
-
 ## Building
 
 ```bash
