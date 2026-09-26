@@ -194,6 +194,16 @@ namespace Seety
             _uiSystem.SetGameButtonStyle(gameStyle);
         }
 
+        internal static void OnDarkGameButtonsChanged(bool dark)
+        {
+            if (!_ready || _uiSystem == null)
+            {
+                return;
+            }
+
+            _uiSystem.SetDarkGameButtons(dark);
+        }
+
         internal static void OnToolbarTrendsChanged(bool show)
         {
             if (!_ready || _uiSystem == null)

@@ -159,6 +159,25 @@ add("option.desc.GameButtonStyle",
     "将每个读数显示为游戏自带的蓝色按钮，就像左上角那一排，而不是放在深色面板上。颜色、尺寸和圆角都来自游戏。读数不会改变。",
     "將每個讀數顯示為遊戲內建的藍色按鈕，就像左上角那一排，而不是放在深色面板上。顏色、尺寸和圓角都來自遊戲。讀數不會改變。")
 
+add("option.label.DarkGameButtons",
+    "Dark game buttons", "Dunkle Spielschaltflächen", "Botones del juego oscuros",
+    "Boutons du jeu sombres", "Pulsanti del gioco scuri", "ゲームのボタンを暗く",
+    "게임 버튼 어둡게", "Ciemne przyciski gry", "Botões do jogo escuros",
+    "Тёмные кнопки игры", "深色游戏按钮", "深色遊戲按鈕")
+add("option.desc.DarkGameButtons",
+    "Draws the game's blue buttons, like the row at the top left, in the dark blue of the bottom bar. It changes every button built with the game's own button, including other mods' ones; buttons a mod draws itself stay as they are. Selected buttons keep their colour. Turning it off restores the game's look.",
+    "Zeichnet die blauen Schaltflächen des Spiels, wie die Reihe oben links, im dunklen Blau der unteren Leiste. Das betrifft jede Schaltfläche, die mit der Spielschaltfläche gebaut ist, auch die anderer Mods; selbst gezeichnete Schaltflächen bleiben unverändert. Ausgewählte Schaltflächen behalten ihre Farbe. Ausschalten stellt das Aussehen des Spiels wieder her.",
+    "Dibuja los botones azules del juego, como la fila de arriba a la izquierda, en el azul oscuro de la barra inferior. Cambia todos los botones hechos con el botón del propio juego, también los de otros mods; los que un mod dibuja por su cuenta no cambian. Los botones seleccionados conservan su color. Al desactivarlo vuelve el aspecto del juego.",
+    "Dessine les boutons bleus du jeu, comme la rangée en haut à gauche, dans le bleu foncé de la barre du bas. Cela change tous les boutons construits avec le bouton du jeu, y compris ceux d'autres mods ; ceux qu'un mod dessine lui-même restent tels quels. Les boutons sélectionnés gardent leur couleur. Le désactiver rétablit l'apparence du jeu.",
+    "Disegna i pulsanti blu del gioco, come la fila in alto a sinistra, nel blu scuro della barra in basso. Cambia ogni pulsante costruito con il pulsante del gioco, anche quelli di altre mod; quelli che una mod disegna da sé restano come sono. I pulsanti selezionati mantengono il loro colore. Disattivandola torna l'aspetto del gioco.",
+    "左上の列のようなゲームの青いボタンを、下部バーの濃い青で描きます。ゲーム自身のボタンで作られたボタンはすべて変わり、他の MOD のものも含みます。MOD が独自に描いたボタンは変わりません。選択中のボタンは色を保ちます。オフにするとゲームの見た目に戻ります。",
+    "왼쪽 위 줄 같은 게임의 파란 버튼을 하단 바의 짙은 파랑으로 그립니다. 게임 자체 버튼으로 만든 모든 버튼이 바뀌며 다른 모드의 버튼도 포함됩니다. 모드가 직접 그린 버튼은 그대로입니다. 선택된 버튼은 색을 유지합니다. 끄면 게임 본래 모습으로 돌아갑니다.",
+    "Rysuje niebieskie przyciski gry, jak rząd w lewym górnym rogu, w ciemnym błękicie dolnego paska. Zmienia każdy przycisk zbudowany z przycisku gry, także w innych modach; przyciski rysowane przez mod samodzielnie pozostają bez zmian. Zaznaczone przyciski zachowują kolor. Wyłączenie przywraca wygląd gry.",
+    "Desenha os botões azuis do jogo, como a fileira no canto superior esquerdo, no azul-escuro da barra inferior. Muda todos os botões feitos com o botão do próprio jogo, inclusive os de outros mods; os que um mod desenha por conta própria ficam como estão. Botões selecionados mantêm a cor. Desativar restaura a aparência do jogo.",
+    "Рисует синие кнопки игры, как ряд в левом верхнем углу, в тёмно-синем цвете нижней панели. Меняются все кнопки, созданные на основе кнопки игры, включая кнопки других модов; кнопки, которые мод рисует сам, остаются прежними. Выбранные кнопки сохраняют цвет. Выключение возвращает вид игры.",
+    "将游戏的蓝色按钮（如左上角那一排）改为底部栏的深蓝色。所有使用游戏自带按钮的按钮都会改变，包括其他模组的按钮；模组自行绘制的按钮保持不变。选中的按钮保留原色。关闭后恢复游戏外观。",
+    "將遊戲的藍色按鈕（如左上角那一排）改為底部列的深藍色。所有使用遊戲內建按鈕的按鈕都會改變，包括其他模組的按鈕；模組自行繪製的按鈕保持不變。選取的按鈕保留原色。關閉後恢復遊戲外觀。")
+
 add("option.label.ZoneTransparency",
     "Fade the zoning grid", "Bauraster abschwächen", "Atenuar la cuadrícula de zonificación",
     "Atténuer la grille de zonage", "Attenua la griglia di zonizzazione", "区画グリッドを薄く",
