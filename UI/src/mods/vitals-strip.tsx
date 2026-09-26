@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
-import { useLocalization } from "cs2/l10n";
+import { LocalizedEntityName, Name, useLocalization } from "cs2/l10n";
 import { getModule } from "cs2/modding";
 import styles from "./vitals-strip.module.scss";
 import { clampPosition } from "./position";
@@ -153,6 +153,8 @@ interface BreakdownRow {
   suffix: string;
   /** "jump", "passenger:X", "cargo:X", "school:N", or empty. See SeetyUISystem.WriteRow. */
   action: string;
+  /** A transit line's name as the game binds it; shown instead of id when present. */
+  lineName?: Name;
   /** A denominator, when the row has one. Zero when it does not. */
   total: number;
   /** The game unit `count` and `total` are in, or empty for a plain tally. See formatUnit. */
@@ -744,11 +746,17 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
   if (row.clickable) {
     classes.push(styles.clickable);
   }
+  // The game renders a line's name itself, the same component its own line list uses.
+  const name = row.lineName ? <LocalizedEntityName value={row.lineName} /> : row.id;
 
   return (
     <Tooltip
       tooltip={
-        row.action === "jump" ||
+        row.lineName ? (
+          <>
+            {name} - {t("Seety.TIP_GO_THERE", "click to go there")}
+          </>
+        ) : row.action === "jump" ||
         row.action.startsWith("jam:") ||
         ((row.action.startsWith("school:") || row.action.startsWith("cemetery:")) && row.clickable)
           ? `${row.id} - ${t("Seety.TIP_GO_THERE", "click to go there")}`
@@ -767,7 +775,7 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
         onClick={row.clickable ? () => activateRow(row) : undefined}
       >
         <RowIcon src={row.icon} />
-        <span className={styles.panelName}>{row.id}</span>
+        <span className={styles.panelName}>{name}</span>
         <span className={styles.value} style={fillStyle(row)}>
           {/* One string, not a row of neighbouring expressions: this renderer drops the leading
               space of adjacent text, which is what made "0 / 960" render as "0/ 960".

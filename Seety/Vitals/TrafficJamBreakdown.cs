@@ -24,19 +24,23 @@ namespace Seety.Vitals
 
         /// <summary>Where the camera goes.</summary>
         public float3 Position;
+
+        /// <summary>The transit line, for rows that are one. Its name is bound by the game's own
+        /// NameSystem so the UI can show it the way the vanilla line list does.</summary>
+        public Entity Route;
     }
 
     /// <summary>
     /// The city's traffic jams, worst first.
     ///
-    /// A vehicle carries <see cref="Game.Vehicles.Blocker"/> the moment something else has already
-    /// decided it is not moving - the same component Game.Simulation.StuckMovingObjectSystem acts
-    /// on. Its presence identifies a blocked vehicle, not necessarily a traffic jam.
+    /// <see cref="Game.Vehicles.Blocker"/> does not mean blocked. Game.dll adds it and never removes
+    /// it, so every car on the road carries one; whether something is in the way is in its fields
+    /// (BlockerType has nine values as of 1.6.2f1, None among them). Taking its presence as "stuck"
+    /// made this list count moving traffic, and only the size threshold hid that. So a vehicle
+    /// counts only when it is standing or crawling, read from its own speed.
     ///
-    /// But one stuck vehicle is not a jam, and that is the whole difficulty here. Blocker carries
-    /// no timer and only two types, None and Temporary, so it fires for a car giving way at a
-    /// junction exactly as it does for a car in a half-mile queue. Across a large city hundreds of
-    /// vehicles hold that component at any instant, almost all of them for a second or two.
+    /// And one stopped vehicle is not a jam: a car at a red light or giving way at a junction is
+    /// standing just as still as one in a half-mile queue.
     ///
     /// So a jam is defined by crowding rather than by any flag: vehicles stopped close together,
     /// in numbers. That is what a player means by the word, and it is the only thing in the data
@@ -58,6 +62,12 @@ namespace Seety.Vitals
         /// enough that two unrelated queues either side of a junction stay distinct.
         /// </summary>
         private const float CellSize = 32f;
+
+        /// <summary>
+        /// Metres per second under which a car is part of a queue: standing, or crawling at walking
+        /// pace. Moving traffic, however dense, is not a jam.
+        /// </summary>
+        private const float QueueSpeed = 1f;
 
         /// <summary>
         /// Minimum blocked vehicles in a cell and its neighbours (a 96 m square). Five vehicles
@@ -103,6 +113,13 @@ namespace Seety.Vitals
                 {
                     var vehicle = vehicles[i];
                     if (!entities.HasComponent<Game.Objects.Transform>(vehicle))
+                    {
+                        continue;
+                    }
+
+                    if (entities.HasComponent<Game.Objects.Moving>(vehicle)
+                        && math.lengthsq(entities.GetComponentData<Game.Objects.Moving>(vehicle).m_Velocity)
+                           >= QueueSpeed * QueueSpeed)
                     {
                         continue;
                     }
