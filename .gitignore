@@ -21,3 +21,6 @@ TODO.md
 # Python bytecode from tools/locale. Generated, and this repo is public.
 __pycache__/
 *.pyc
+
+# Development workbench: notes, player feedback, backups, logs. Never published.
+_dev/
