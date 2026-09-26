@@ -48,6 +48,9 @@ namespace Seety.Systems
 
         /// <summary>Whether the bar's icons carry a white edge. See SeetySettings.IconOutline.</summary>
         private ValueBinding<bool> _iconOutlineBinding;
+
+        /// <summary>Whether the bar is drawn as the game's floating buttons. See SeetySettings.GameButtonStyle.</summary>
+        private ValueBinding<bool> _gameButtonStyleBinding;
         private ValueBinding<bool> _toolbarTrendsBinding;
 
         /// <summary>Public transport standing still: the other half of the traffic window.</summary>
@@ -345,6 +348,10 @@ namespace Seety.Systems
                 settings == null || settings.IconOutline);
             AddBinding(_iconOutlineBinding);
 
+            _gameButtonStyleBinding = new ValueBinding<bool>(Group, "gameButtonStyle",
+                settings != null && settings.GameButtonStyle);
+            AddBinding(_gameButtonStyleBinding);
+
             _toolbarTrendsBinding = new ValueBinding<bool>(Group, "toolbarTrends",
                 settings != null && settings.ToolbarTrends);
             AddBinding(_toolbarTrendsBinding);
@@ -553,6 +560,15 @@ namespace Seety.Systems
             if (_iconOutlineBinding != null)
             {
                 _iconOutlineBinding.Update(outlined);
+            }
+        }
+
+        /// <summary>Called by the settings when the game-button style is switched on or off.</summary>
+        public void SetGameButtonStyle(bool gameStyle)
+        {
+            if (_gameButtonStyleBinding != null)
+            {
+                _gameButtonStyleBinding.Update(gameStyle);
             }
         }
 

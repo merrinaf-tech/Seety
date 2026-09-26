@@ -30,6 +30,7 @@ namespace Seety.Settings
         private bool _showStrip = true;
         private bool _highlightProblems = true;
         private bool _iconOutline = true;
+        private bool _gameButtonStyle;
         private bool _toolbarTrends;
         private bool _zoneTransparency;
 
@@ -135,6 +136,29 @@ namespace Seety.Settings
 
                 _iconOutline = value;
                 Mod.OnIconOutlineChanged(value);
+            }
+        }
+
+        /// <summary>
+        /// Draw the bar as a row of the game's own floating buttons instead of one dark panel.
+        ///
+        /// Off by default so nobody's bar changes under them. The buttons take their colour, size,
+        /// corners and hover states from the game's floating-icon-button classes, so they follow
+        /// the vanilla row beside them, theme included. Only the drawing changes.
+        /// </summary>
+        [SettingsUISection(MainSection, DisplayGroup)]
+        public bool GameButtonStyle
+        {
+            get { return _gameButtonStyle; }
+            set
+            {
+                if (_gameButtonStyle == value)
+                {
+                    return;
+                }
+
+                _gameButtonStyle = value;
+                Mod.OnGameButtonStyleChanged(value);
             }
         }
 
@@ -305,6 +329,7 @@ namespace Seety.Settings
             _showStrip = true;
             _highlightProblems = true;
             _iconOutline = true;
+            _gameButtonStyle = false;
             _toolbarTrends = false;
             _zoneTransparency = false;
             _seededDefaults = false;

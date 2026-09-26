@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
 import { useLocalization } from "cs2/l10n";
+import { getModule } from "cs2/modding";
 import styles from "./vitals-strip.module.scss";
 import { clampPosition } from "./position";
 import { DismissInput } from "./dismiss-input";
@@ -219,6 +220,34 @@ const posY$ = bindValue<number>("seety", "posY", 90);
 const iconsHidden$ = bindValue<boolean>("seety", "iconsHidden", false);
 const configMode$ = bindValue<boolean>("seety", "configMode", false);
 const iconOutline$ = bindValue<boolean>("seety", "iconOutline", true);
+const gameButtonStyle$ = bindValue<boolean>("seety", "gameButtonStyle", false);
+
+/**
+ * The game's own floating HUD button - the blue square the top-left row is made of - as the class
+ * names the game registered for it. Used by the "Draw the bar as game buttons" option so colour,
+ * size, corners, hover, pressed and theme are the game's rather than a copy of them. Looked up
+ * once, on first use, because the registry is filled by the game before mods render. Null if a
+ * game update moves or renames the module: the bar then keeps its own dark style.
+ */
+type GameButtonClasses = { button: string; selected: string };
+let gameButtonLookup: GameButtonClasses | null | undefined;
+const gameButtonClasses = (): GameButtonClasses | null => {
+  if (gameButtonLookup === undefined) {
+    try {
+      const classes = getModule(
+        "game-ui/common/input/button/floating-icon-button.module.scss",
+        "classes"
+      );
+      gameButtonLookup =
+        classes && typeof classes.button === "string"
+          ? { button: classes.button, selected: "selected" }
+          : null;
+    } catch {
+      gameButtonLookup = null;
+    }
+  }
+  return gameButtonLookup;
+};
 const journeyOn$ = bindValue<boolean>("seety", "journeyOn", false);
 const transitMode$ = bindValue<boolean>("seety", "transitMode", false);
 interface Journey {
@@ -1835,6 +1864,8 @@ export const VitalsStrip = () => {
 
   const configMode = useValue(configMode$);
   const outlined = useValue(iconOutline$);
+  // The option only takes effect when the game's button classes were found.
+  const gameButton = useValue(gameButtonStyle$) ? gameButtonClasses() : null;
 
   const [pos, setPos] = useState({ x: savedX, y: savedY });
   const [dragging, setDragging] = useState(false);
@@ -1966,6 +1997,7 @@ export const VitalsStrip = () => {
         configMode && dragging ? styles.dragging : "",
         configMode ? styles.stripConfig : "",
         outlined ? styles.outlined : "",
+        gameButton ? styles.gameStyle : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -2014,18 +2046,23 @@ export const VitalsStrip = () => {
 
         const row = (value: number, level: VitalLevel) => {
           const classes = [styles.entry];
+          // As a game button the game's class draws the button and its hover; the dark style's
+          // own hover and status tints would paint over it, so the game variants are used instead.
+          if (gameButton) {
+            classes.push(gameButton.button);
+          }
           // A row with a list behind it has no infoview, so C# reports it as non-clickable -
           // but it does open that list, so it still needs to look pressable.
-          if (configMode || vital.clickable || hasPanel) {
+          if (!gameButton && (configMode || vital.clickable || hasPanel)) {
             classes.push(styles.clickable);
           }
           if (configMode && !vital.enabled) {
             classes.push(styles.disabled);
           }
           if (level === VitalLevel.Warning) {
-            classes.push(styles.warning);
+            classes.push(gameButton ? styles.gameWarning : styles.warning);
           } else if (level === VitalLevel.Critical) {
-            classes.push(styles.critical);
+            classes.push(gameButton ? styles.gameCritical : styles.critical);
           }
 
           // Percentages are shown as a filled bar behind the icon instead of a number: thirty
@@ -2096,16 +2133,20 @@ export const VitalsStrip = () => {
         }
       >
         <div
-          className={`${styles.entry} ${styles.clickable} ${
-            configMode ? styles.configOn : ""
-          }`}
+          className={[
+            styles.entry,
+            gameButton ? gameButton.button : styles.clickable,
+            configMode ? (gameButton ? gameButton.selected : styles.configOn) : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           onClick={() => {
             if (!drag.current.moved) {
               trigger("seety", "setConfigMode", !configMode);
             }
           }}
         >
-          <img className={styles.icon} src="Media/Glyphs/Gear.svg" />
+          <img className={`${styles.icon} ${styles.gameGlyph}`} src="Media/Glyphs/Gear.svg" />
         </div>
       </Tooltip>
 
