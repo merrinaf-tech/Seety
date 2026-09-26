@@ -31,7 +31,7 @@ namespace Seety.Vitals
     ///
     /// A vehicle carries <see cref="Game.Vehicles.Blocker"/> the moment something else has already
     /// decided it is not moving - the same component Game.Simulation.StuckMovingObjectSystem acts
-    /// on. Its presence already means "stuck"; there is no threshold to invent.
+    /// on. Its presence identifies a blocked vehicle, not necessarily a traffic jam.
     ///
     /// But one stuck vehicle is not a jam, and that is the whole difficulty here. Blocker carries
     /// no timer and only two types, None and Temporary, so it fires for a car giving way at a
@@ -60,11 +60,11 @@ namespace Seety.Vitals
         private const float CellSize = 32f;
 
         /// <summary>
-        /// Fewer stuck vehicles than this in one place is traffic behaving normally, not a jam.
-        /// Without a floor the list fills up with pairs of cars waiting at a give-way, which is
-        /// what every quiet city is full of.
+        /// Minimum blocked vehicles in a cell and its neighbours (a 96 m square). Five vehicles
+        /// included too many ordinary junction queues; use fifteen to surface larger pile-ups.
+        /// This is an absolute floor, even when no location qualifies for a row.
         /// </summary>
-        private const int MinJamSize = 5;
+        private const int MinJamSize = 15;
 
         private readonly List<TrafficJamGroup> _groups = new List<TrafficJamGroup>();
         private readonly Dictionary<string, TrafficJamGroup> _byId = new Dictionary<string, TrafficJamGroup>();
