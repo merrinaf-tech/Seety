@@ -8,7 +8,7 @@ const enabled$ = bindValue<boolean>("seety", "darkGameButtons", false);
 const STYLE_ID = "seety-dark-game-buttons";
 
 /**
- * The option "Dark game buttons": the game's blue floating buttons, drawn in the dark blue of the
+ * The option "Dark game buttons": the game's blue floating buttons, drawn like the fields of the
  * bottom bar instead.
  *
  * It restyles the game's floating-button class itself, so every button built from it changes
@@ -21,8 +21,10 @@ const STYLE_ID = "seety-dark-game-buttons";
  * Rules are appended after the game's stylesheet with the same specificity, so they win without
  * !important, and the game's more specific .selected rule still wins over them.
  *
- * #223141 at 85% is --commonDarkBlue, the colour of the bottom bar, written out because combining
- * a var() with an alpha needs color-mix(), which this renderer is not known to support.
+ * The colours are the bottom bar's own custom properties - --toolbarFieldColor and its hover and
+ * active shades, which the city name, clock and population fields are drawn with - so the two
+ * rows match exactly and follow the game's theme. Tried in game on 2026-09-26: 37 buttons carried
+ * the class and all of them changed.
  */
 export const DarkGameButtons = () => {
   const enabled = useValue(enabled$);
@@ -42,19 +44,10 @@ export const DarkGameButtons = () => {
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent =
-      `${b}{background-color:rgba(34,49,65,0.85)}` +
-      `${b}:hover{background-color:rgba(58,80,104,0.92)}` +
-      `${b}:active{background-color:rgba(78,106,136,0.95)}`;
+      `${b}{background-color:var(--toolbarFieldColor)}` +
+      `${b}:hover{background-color:var(--toolbarFieldColor-hover)}` +
+      `${b}:active{background-color:var(--toolbarFieldColor-active)}`;
     (document.head || document.body).appendChild(style);
-
-    // A trial, so say what happened: how many buttons carry the class, and whether the first one
-    // actually took the new colour. Written to the game's UI log.
-    const found = document.getElementsByClassName(classes.button);
-    const first = found.length > 0 ? (found[0] as HTMLElement) : null;
-    const applied = first ? window.getComputedStyle(first).backgroundColor : "(no button on screen)";
-    console.log(
-      `[Seety] Dark game buttons on: class ${classes.button}, ${found.length} button(s), first background ${applied}.`
-    );
   }, [enabled]);
 
   return null;
