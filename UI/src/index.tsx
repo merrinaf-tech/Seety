@@ -1,6 +1,7 @@
 import { ModRegistrar } from "cs2/modding";
 import { VitalsStrip } from "mods/vitals-strip";
 import { withTrend } from "mods/toolbar-trends";
+import { DarkGameButtons } from "mods/dark-game-buttons";
 
 /**
  * Seety mounts a single strip over the game HUD.
@@ -15,6 +16,8 @@ import { withTrend } from "mods/toolbar-trends";
  */
 const register: ModRegistrar = (moduleRegistry) => {
   moduleRegistry.append("Game", VitalsStrip);
+  // Renders nothing; owns the stylesheet behind the "Dark game buttons" option.
+  moduleRegistry.append("Game", DarkGameButtons);
 
   // PopulationField and MoneyField have setters that assign to const declarations in the
   // game bundle. Extending either throws and aborts registration of later mods' HUD buttons,

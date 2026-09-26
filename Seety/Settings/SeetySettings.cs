@@ -31,6 +31,7 @@ namespace Seety.Settings
         private bool _highlightProblems = true;
         private bool _iconOutline = true;
         private bool _gameButtonStyle;
+        private bool _darkGameButtons;
         private bool _toolbarTrends;
         private bool _zoneTransparency;
 
@@ -159,6 +160,29 @@ namespace Seety.Settings
 
                 _gameButtonStyle = value;
                 Mod.OnGameButtonStyleChanged(value);
+            }
+        }
+
+        /// <summary>
+        /// Draw the game's blue floating buttons in the dark blue of the bottom bar.
+        ///
+        /// Off by default. This restyles the game's own floating-button class, so it reaches the
+        /// vanilla button rows and every mod that uses the game's button, not only Seety. Nothing is
+        /// saved: switching it off removes the style and the game's own colours return.
+        /// </summary>
+        [SettingsUISection(MainSection, DisplayGroup)]
+        public bool DarkGameButtons
+        {
+            get { return _darkGameButtons; }
+            set
+            {
+                if (_darkGameButtons == value)
+                {
+                    return;
+                }
+
+                _darkGameButtons = value;
+                Mod.OnDarkGameButtonsChanged(value);
             }
         }
 
@@ -330,6 +354,7 @@ namespace Seety.Settings
             _highlightProblems = true;
             _iconOutline = true;
             _gameButtonStyle = false;
+            _darkGameButtons = false;
             _toolbarTrends = false;
             _zoneTransparency = false;
             _seededDefaults = false;

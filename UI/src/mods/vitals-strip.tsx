@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
 import { LocalizedEntityName, Name, useLocalization } from "cs2/l10n";
-import { getModule } from "cs2/modding";
+import { gameButtonClasses } from "./game-button";
 import styles from "./vitals-strip.module.scss";
 import { clampPosition } from "./position";
 import { DismissInput } from "./dismiss-input";
@@ -224,32 +224,6 @@ const configMode$ = bindValue<boolean>("seety", "configMode", false);
 const iconOutline$ = bindValue<boolean>("seety", "iconOutline", true);
 const gameButtonStyle$ = bindValue<boolean>("seety", "gameButtonStyle", false);
 
-/**
- * The game's own floating HUD button - the blue square the top-left row is made of - as the class
- * names the game registered for it. Used by the "Draw the bar as game buttons" option so colour,
- * size, corners, hover, pressed and theme are the game's rather than a copy of them. Looked up
- * once, on first use, because the registry is filled by the game before mods render. Null if a
- * game update moves or renames the module: the bar then keeps its own dark style.
- */
-type GameButtonClasses = { button: string; selected: string };
-let gameButtonLookup: GameButtonClasses | null | undefined;
-const gameButtonClasses = (): GameButtonClasses | null => {
-  if (gameButtonLookup === undefined) {
-    try {
-      const classes = getModule(
-        "game-ui/common/input/button/floating-icon-button.module.scss",
-        "classes"
-      );
-      gameButtonLookup =
-        classes && typeof classes.button === "string"
-          ? { button: classes.button, selected: "selected" }
-          : null;
-    } catch {
-      gameButtonLookup = null;
-    }
-  }
-  return gameButtonLookup;
-};
 const journeyOn$ = bindValue<boolean>("seety", "journeyOn", false);
 const transitMode$ = bindValue<boolean>("seety", "transitMode", false);
 interface Journey {

@@ -51,6 +51,9 @@ namespace Seety.Systems
 
         /// <summary>Whether the bar is drawn as the game's floating buttons. See SeetySettings.GameButtonStyle.</summary>
         private ValueBinding<bool> _gameButtonStyleBinding;
+
+        /// <summary>Whether the game's floating buttons are drawn dark. See SeetySettings.DarkGameButtons.</summary>
+        private ValueBinding<bool> _darkGameButtonsBinding;
         private ValueBinding<bool> _toolbarTrendsBinding;
 
         /// <summary>Public transport standing still: the other half of the traffic window.</summary>
@@ -352,6 +355,10 @@ namespace Seety.Systems
                 settings != null && settings.GameButtonStyle);
             AddBinding(_gameButtonStyleBinding);
 
+            _darkGameButtonsBinding = new ValueBinding<bool>(Group, "darkGameButtons",
+                settings != null && settings.DarkGameButtons);
+            AddBinding(_darkGameButtonsBinding);
+
             _toolbarTrendsBinding = new ValueBinding<bool>(Group, "toolbarTrends",
                 settings != null && settings.ToolbarTrends);
             AddBinding(_toolbarTrendsBinding);
@@ -569,6 +576,15 @@ namespace Seety.Systems
             if (_gameButtonStyleBinding != null)
             {
                 _gameButtonStyleBinding.Update(gameStyle);
+            }
+        }
+
+        /// <summary>Called by the settings when the dark game buttons are switched on or off.</summary>
+        public void SetDarkGameButtons(bool dark)
+        {
+            if (_darkGameButtonsBinding != null)
+            {
+                _darkGameButtonsBinding.Update(dark);
             }
         }
 
