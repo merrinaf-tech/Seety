@@ -8,6 +8,7 @@
     <Compile Include="../../Seety/Vitals/JourneyTrace.cs" Link="JourneyTrace.cs" />
     <Compile Include="../../Seety/Vitals/TrafficJamBreakdown.cs" Link="TrafficJamBreakdown.cs" />
     <Compile Include="../../Seety/Vitals/StoppedTransitList.cs" Link="StoppedTransitList.cs" />
+    <Compile Include="../../Seety/Tooltips/ReasonRanking.cs" Link="ReasonRanking.cs" />
     <Compile Include="../../Seety/Notifications/NotificationIconVisibility.cs" Link="NotificationIconVisibility.cs" />
   </ItemGroup>
 </Project>

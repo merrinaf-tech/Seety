@@ -174,6 +174,25 @@ Check(transit.Groups.Count == 1 && transit.Groups[0].Count == 1, "a standing bus
 Check(transit.Groups[0].Route == redLine, "the row carries its line for the game to name");
 Console.WriteLine("PASS: transit trains counted once, speed from the train, boarding and unknown speed excluded");
 
+// The building tooltip: the game's own notifications first, worst first; then efficiency losses
+// that cost something, largest first; at most three lines; nothing when nothing is wrong.
+Seety.Tooltips.ReasonCandidate Note(string key, float priority) =>
+    new Seety.Tooltips.ReasonCandidate { Key = key, IsNotification = true, Severity = priority };
+Seety.Tooltips.ReasonCandidate Factor(string key, float multiplier) =>
+    new Seety.Tooltips.ReasonCandidate { Key = key, Severity = multiplier };
+var picked = new List<Seety.Tooltips.ReasonCandidate>();
+Seety.Tooltips.ReasonRanking.Pick(new(), new() { Factor("Budget", 1f), Factor("Mail", 0.99f) }, picked);
+Check(picked.Count == 0, "no reason, no tooltip; a 1% loss is not a reason");
+Seety.Tooltips.ReasonRanking.Pick(new() { Note("High Rent", 2), Note("No Electricity", 4) },
+    new() { Factor("NotEnoughEmployees", 0.6f), Factor("Garbage", 0.9f) }, picked);
+Check(picked.Count == 3 && picked[0].Key == "No Electricity" && picked[1].Key == "High Rent"
+    && picked[2].Key == "NotEnoughEmployees", "notifications first and worst first, then the largest loss, three lines");
+Seety.Tooltips.ReasonRanking.Pick(new() { Note("Fire", 5), Note("Fire", 5) }, new(), picked);
+Check(picked.Count == 1, "the same notification twice is one line");
+Check(Seety.Tooltips.ReasonRanking.LossPercent(0.68f) == 32 && Seety.Tooltips.ReasonRanking.LossPercent(0.999f) == 1,
+    "loss percentages round, and never read as zero");
+Console.WriteLine("PASS: building reasons ranking, threshold, cap and percentages");
+
 var world = new EntityManager();
 Entity Prefab(bool enabled)
 {
