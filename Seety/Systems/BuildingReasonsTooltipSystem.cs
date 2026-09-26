@@ -212,12 +212,18 @@ namespace Seety.Systems
         /// <summary>
         /// Walks up from whatever the cursor hit to the building that owns it: a raycast often
         /// lands on a sign or a roof fitting, which is its own entity.
+        ///
+        /// Never through a vehicle or a creature. Their Owner is the depot or home they belong to,
+        /// so climbing from a train reached its railway depot and showed the depot's garbage under
+        /// a train. A cursor on something that moves is not a cursor on a building.
         /// </summary>
         private Entity ResolveBuilding(Entity hit)
         {
             for (var guard = 0; guard < 8 && hit != Entity.Null; guard++)
             {
-                if (!EntityManager.Exists(hit) || EntityManager.HasComponent<Temp>(hit))
+                if (!EntityManager.Exists(hit) || EntityManager.HasComponent<Temp>(hit)
+                    || EntityManager.HasComponent<Game.Vehicles.Vehicle>(hit)
+                    || EntityManager.HasComponent<Game.Creatures.Creature>(hit))
                 {
                     return Entity.Null;
                 }
