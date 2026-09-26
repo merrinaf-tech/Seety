@@ -153,7 +153,7 @@ namespace Seety.Localization.Strings
                 { "Seety.ZONE_RES_LOW", "低密度住宅" },
                 { "Seety.ZONE_RES_MED", "中密度住宅" },
                 { "option.desc.AddFunds", "這是 Seety 中唯一會改變城市而非報告城市的控制項。" },
-                { "option.desc.BuildingReasons", "游標停在建築上時，列出最多三項拖累它的因素：先是遊戲標記的問題，然後是效率損失及其幅度。一切正常時不顯示任何內容。僅在選取工具下。" },
+                { "option.desc.BuildingReasons", "游標停在建築上時，列出最多三項拖累它的效率損失及各自的幅度。建築上方已用圖示顯示的問題不會重複，除非你隱藏了這些圖示。一切正常時不顯示任何內容。僅在選取工具下。" },
                 { "option.desc.DarkGameButtons", "將遊戲的藍色按鈕（如左上角那一排）改為底部列的深藍色。所有使用遊戲內建按鈕的按鈕都會改變，包括其他模組的按鈕；模組自行繪製的按鈕保持不變。選取的按鈕保留原色。關閉後恢復遊戲外觀。" },
                 { "option.desc.FundsAmount", "向城市金庫增加的金額。負數則會扣除資金。" },
                 { "option.desc.GameButtonStyle", "將每個讀數顯示為遊戲內建的藍色按鈕，就像左上角那一排，而不是放在深色面板上。顏色、尺寸和圓角都來自遊戲。讀數不會改變。" },

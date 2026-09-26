@@ -1872,6 +1872,12 @@ namespace Seety.Systems
         }
 
         /// <summary>Hide or show the notification icons over the city.</summary>
+        /// <summary>Whether the player hid the notification icons over the city from the Problems window.</summary>
+        public bool NotificationIconsHidden
+        {
+            get { return _iconVisibility != null && _iconVisibility.Hidden; }
+        }
+
         private void OnSetIconsHidden(bool hidden)
         {
             _iconVisibility.Set(hidden);

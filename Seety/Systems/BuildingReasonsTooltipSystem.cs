@@ -20,11 +20,13 @@ namespace Seety.Systems
     /// and nothing at all when there is none. It deliberately does not summarise the building -
     /// occupancy, workers, value - which the building's panel and other tooltip mods already do.
     ///
-    /// Two sources, both the game's own:
-    /// - the notification icons the game raised on the building, named with the game's own title
-    ///   (Notifications.TITLE[...]), so the words match the icon floating over it;
+    /// What it shows is what the screen does not already say:
     /// - efficiency factors below full, named as the building panel names them
-    ///   (SelectedInfoPanel.EFFICIENCY_FACTORS[...]) with the percentage they cost.
+    ///   (SelectedInfoPanel.EFFICIENCY_FACTORS[...]) with the percentage they cost - the size of
+    ///   each problem, which no icon carries;
+    /// - the building's notifications (Notifications.TITLE[...]) only while the player has hidden
+    ///   the notification icons from Seety's Problems window. With the icons showing, a line per
+    ///   icon repeated what was floating right above the building and said nothing more.
     /// Both are localisation ids handed to the game, so every language the game has is covered.
     ///
     /// Only with the default tool: while a road or a zone is being drawn, a tooltip about the
@@ -41,6 +43,7 @@ namespace Seety.Systems
         private DefaultToolSystem _defaultTool;
         private ToolRaycastSystem _raycast;
         private PrefabSystem _prefabs;
+        private SeetyUISystem _ui;
 
         private readonly StringTooltip[] _lines = new StringTooltip[ReasonRanking.MaxLines];
         private int _lineCount;
@@ -64,6 +67,7 @@ namespace Seety.Systems
             _defaultTool = World.GetOrCreateSystemManaged<DefaultToolSystem>();
             _raycast = World.GetOrCreateSystemManaged<ToolRaycastSystem>();
             _prefabs = World.GetOrCreateSystemManaged<PrefabSystem>();
+            _ui = World.GetOrCreateSystemManaged<SeetyUISystem>();
 
             for (var i = 0; i < _lines.Length; i++)
             {
@@ -107,7 +111,7 @@ namespace Seety.Systems
             _notifications.Clear();
             _factors.Clear();
 
-            if (EntityManager.HasBuffer<IconElement>(building))
+            if (_ui != null && _ui.NotificationIconsHidden && EntityManager.HasBuffer<IconElement>(building))
             {
                 var icons = EntityManager.GetBuffer<IconElement>(building, true);
                 for (var i = 0; i < icons.Length; i++)
