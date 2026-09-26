@@ -1275,10 +1275,18 @@ namespace Seety.Systems
             // A transit line's name as the game binds it, so the UI shows it the way the vanilla
             // line list does ("Tram Line 3", or the player's own name). GetRenderedLabelName gives
             // the line tool's prefab name instead, which is why rows read "Tram Line Tool".
+            //
+            // Written on EVERY row, null when there is no line. Cohtml fixes a type's properties
+            // the first time it is written; writing this one only on transit rows crashed the game
+            // natively in TypeEnd the moment the list switched to public transport.
+            writer.PropertyName("lineName");
             if (names != null && route != Entity.Null)
             {
-                writer.PropertyName("lineName");
                 names.BindName(writer, route);
+            }
+            else
+            {
+                writer.WriteNull();
             }
             writer.TypeEnd();
         }
