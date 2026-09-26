@@ -2,8 +2,11 @@
 """Regression sweep over the whole mod: keys, icons, bindings, writers, wiring."""
 import glob, io, os, re, sys
 
-ROOT = r"C:\Users\merri\Documents\Cities Skylines mods\Seety"
-GAMEUI = r"C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II\Cities2_Data\Content\Game\UI"
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+# The modding toolchain sets these for the current user; the fallbacks are the default install.
+GAME = os.environ.get("CSII_INSTALLATIONPATH",
+                      r"C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II")
+GAMEUI = os.path.join(GAME, "Cities2_Data", "Content", "Game", "UI")
 fails = []
 
 
@@ -67,7 +70,7 @@ check(not gone, "ogni icona referenziata esiste (%d)" % len(icons), str(gone))
 # ---- 7. vanilla binding names still exist ----------------------------------------------------
 # Against Game.dll's own string heap, which is where the binding names are declared. The UI
 # bundle binds several of them through variables, so it is not a reliable index.
-_raw = open(r"C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II\Cities2_Data\Managed\Game.dll", "rb").read()
+_raw = open(os.path.join(GAME, "Cities2_Data", "Managed", "Game.dll"), "rb").read()
 dll = _raw.decode("utf-16-le", "ignore") + _raw[1:].decode("utf-16-le", "ignore")
 binds = set(re.findall(r'new VanillaBinding\("(\w+)", *(?:string\.Empty|"(\w*)")\s*,\s*"(\w+)"', cat))
 names = set()
@@ -85,7 +88,10 @@ for const in ("TRAFFIC_ID", "CEMETERY_ID", "WORKFORCE_ID", "DEMOGRAPHICS_ID", "P
     check(("vital.id === " + const) in tsx, "riga espandibile raggiungibile: " + const)
 
 # ---- 9. the deployed package ------------------------------------------------------------------
-mods = r"C:\Users\merri\AppData\LocalLow\Colossal Order\Cities Skylines II\Mods\Seety"
+mods = os.path.join(
+    os.environ.get("CSII_LOCALMODSPATH",
+                   os.path.expandvars(r"%USERPROFILE%\AppData\LocalLow\Colossal Order\Cities Skylines II\Mods")),
+    "Seety")
 files = sorted(os.listdir(mods)) if os.path.isdir(mods) else []
 check(len(files) == 7, "pacchetto installato completo", "%d file: %s" % (len(files), files))
 
