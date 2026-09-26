@@ -11,10 +11,10 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  // NO `gap` anywhere in this file. The game renders through Cohtml/Gameface, which ignores
-  // flexbox gap - the game's own stylesheet uses it exactly once, which is the tell. Every
-  // increase looked right in the source and changed nothing on screen. Spacing is done with
-  // margins, which Gameface does honour.
+  // Spacing in this file is done with margins. When it was written Cohtml/Gameface ignored
+  // flexbox gap: every increase looked right in the source and changed nothing on screen. The
+  // game's own 1.6.2f1 stylesheet uses gap in nine flex rules, so it probably works now, but that
+  // has not been proven in game. Margins are known to work.
   // Strip height: 1.5 + 37 + 1.5 = 40rem, to sit level with the vanilla HUD buttons along the
   // top edge. 40rem is the game's own size for a HUD toggle (--floatingToggleSize) and for
   // several of its round interface buttons, so it is a real target rather than an eyeballed one.

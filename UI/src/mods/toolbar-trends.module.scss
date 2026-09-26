@@ -8,8 +8,8 @@
   flex-shrink: 1;
   max-width: 80rem;
   coh-font-fit-mode: shrink;
-  // Margin rather than gap: the game renders through Gameface, which ignores flexbox gap. The
-  // same note is on .strip in vitals-strip.module.scss and it applies to every file here.
+  // Margin rather than gap, like the rest of Seety: see the note on .strip in
+  // vitals-strip.module.scss.
   margin-left: 4rem;
 
   font-size: 12rem;
