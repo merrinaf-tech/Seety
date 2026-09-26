@@ -107,11 +107,6 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	  only what changed since the version now live. See AGENTS.md - letting this accumulate is the repeat offender.
 	-->
 	<ChangeLog>
-The traffic list shows only jams of 15 or more vehicles.
-The traffic and transit lists count only vehicles that are actually stopped.
-Transit lines show their in-game names.
-New option: draw the bar as the game's own buttons.
-New option: dark game buttons.
-New option: a tooltip saying why a building struggles.
+Charts show the current value instead of the peak.
 	</ChangeLog>
 </Publish>

@@ -984,7 +984,9 @@ const HistoryChart = ({ history }: { history: History }) => {
     <div className={styles.chart}>
       <div className={styles.chartLabel}>
         <span>{history.label}</span>
-        <span>{Math.round(max).toLocaleString()}</span>
+        {/* The latest reading - what the figure is now. The peak was shown here before, which
+            read as the current value and is already visible as the top of the chart. */}
+        <span>{Math.round(values[values.length - 1]).toLocaleString()}</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={styles.chartSvg}>
         <polygon points={area} fill="rgba(130, 190, 255, 0.20)" />
