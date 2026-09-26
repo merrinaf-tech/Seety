@@ -91,6 +91,20 @@ jams.Refresh(query, entities, names, null);
 Check(jams.Groups.Count == 0, "distant queues cannot combine to reach the threshold");
 Console.WriteLine("PASS: traffic minimum size, empty lists, disappearing queues and local grouping");
 
+// Blocker is on every car, so the jam query hands over moving traffic too. Dense but flowing
+// traffic is not a jam; a crawl at walking pace is.
+vehicles.Clear(); Crowd(20, 320);
+foreach (var car in vehicles) entities.Set(car, new Game.Objects.Moving { m_Velocity = new float3(8, 0, 0) });
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 0, "twenty cars flowing past each other are not a jam");
+foreach (var car in vehicles) entities.Set(car, new Game.Objects.Moving { m_Velocity = new float3(0.5f, 0, 0) });
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 1 && jams.Groups[0].Count == 20, "twenty cars crawling are a jam");
+for (int i = 0; i < 6; i++) entities.Set(vehicles[i], new Game.Objects.Moving { m_Velocity = new float3(8, 0, 0) });
+jams.Refresh(query, entities, names, null);
+Check(jams.Groups.Count == 0, "the moving part of a crowd does not count towards it");
+Console.WriteLine("PASS: moving traffic is not counted as a jam");
+
 // A train is one entity per carriage, each pointing at the lead one. The list once showed a
 // single moving seven-carriage train as "7": every carriage was counted, and a carriage without
 // Moving was taken to be standing.
@@ -143,17 +157,21 @@ transitVehicles.Add(mystery);
 transit.Refresh(transitQuery, transitWorld, transitNames);
 Check(transit.Groups.Count == 0, "a rail vehicle with no speed to read is not assumed stopped");
 transitVehicles.Clear();
-var bus = transitWorld.Create();
-transitWorld.Set(bus, new Game.Vehicles.PublicTransport());
-transitWorld.AddComponent<Game.Vehicles.Blocker>(bus);
-transitWorld.Set(bus, new Game.Routes.CurrentRoute { m_Route = redLine });
-transitVehicles.Add(bus);
-var freeBus = transitWorld.Create();
-transitWorld.Set(freeBus, new Game.Vehicles.PublicTransport());
-transitWorld.Set(freeBus, new Game.Routes.CurrentRoute { m_Route = redLine });
-transitVehicles.Add(freeBus);
+// Every vehicle carries Blocker in the game, moving or not, so it must not decide anything.
+Entity Bus(float speed)
+{
+    var b = transitWorld.Create();
+    transitWorld.Set(b, new Game.Vehicles.PublicTransport());
+    transitWorld.AddComponent<Game.Vehicles.Blocker>(b);
+    transitWorld.Set(b, new Game.Objects.Moving { m_Velocity = new float3(speed, 0, 0) });
+    transitWorld.Set(b, new Game.Routes.CurrentRoute { m_Route = redLine });
+    transitVehicles.Add(b);
+    return b;
+}
+Bus(0f); Bus(12f); Bus(9f);
 transit.Refresh(transitQuery, transitWorld, transitNames);
-Check(transit.Groups.Count == 1 && transit.Groups[0].Count == 1, "a blocked bus counts, a free one does not");
+Check(transit.Groups.Count == 1 && transit.Groups[0].Count == 1, "a standing bus counts, moving ones with Blocker do not");
+Check(transit.Groups[0].Route == redLine, "the row carries its line for the game to name");
 Console.WriteLine("PASS: transit trains counted once, speed from the train, boarding and unknown speed excluded");
 
 var world = new EntityManager();

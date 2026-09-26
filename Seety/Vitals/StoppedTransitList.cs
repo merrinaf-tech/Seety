@@ -16,18 +16,11 @@ namespace Seety.Vitals
     /// what marks the role rather than the movement, and covers every mode in one pass.
     ///
     /// <para>
-    /// Being stopped is not one question, because the game does not answer it the same way for
-    /// every kind. CarNavigationSystem, WatercraftNavigationSystem and AircraftNavigationSystem
-    /// each write <see cref="Game.Vehicles.Blocker"/> when something is in the way - the same
-    /// component the road jam list is built on. No train navigation system writes it, and
-    /// TrainFlags carries no blocked state, so rail is the one kind with nothing to read.
-    /// </para>
-    ///
-    /// <para>
-    /// So the game's own signal is used wherever it exists, and only rail falls back to "no
-    /// speed". That matters for accuracy in both directions: a bus at a red light has no speed
-    /// but no Blocker either, and requiring Blocker keeps it out of the list, while a metro held
-    /// at a signal will appear - which is the honest cost of the game not saying.
+    /// Stopped means standing still, read from the vehicle's own speed: TrainNavigation for rail,
+    /// Moving for everything else. <see cref="Game.Vehicles.Blocker"/> is no help: Game.dll adds it
+    /// and never removes it, so every vehicle carries one. Reading its presence as "held up" listed
+    /// each line's whole fleet, moving or not. A vehicle standing at a red light or a signal is
+    /// counted - the game does not say why something has stopped, only that it has.
     /// </para>
     ///
     /// <para>
@@ -118,8 +111,9 @@ namespace Seety.Vitals
                     }
 
                     string id;
-                    string label = Where(vehicle, entities, names, out id)
-                                   ?? Where(unit, entities, names, out id);
+                    Entity route;
+                    string label = Where(vehicle, entities, names, out id, out route)
+                                   ?? Where(unit, entities, names, out id, out route);
 
                     if (string.IsNullOrEmpty(label))
                     {
@@ -129,7 +123,7 @@ namespace Seety.Vitals
                     TrafficJamGroup group;
                     if (!_byId.TryGetValue(id, out group))
                     {
-                        group = new TrafficJamGroup { Id = id, Name = label, Count = 0 };
+                        group = new TrafficJamGroup { Id = id, Name = label, Count = 0, Route = route };
 
                         // The first one found sets where a click goes. Any of them is on the same
                         // line, and averaging their positions can point at a spot between two
@@ -167,20 +161,6 @@ namespace Seety.Vitals
                 return false;
             }
 
-            // The game's own answer, for the three kinds that have one.
-            if (entities.HasComponent<Game.Vehicles.Blocker>(vehicle)
-                || entities.HasComponent<Game.Vehicles.Blocker>(unit))
-            {
-                return true;
-            }
-
-            if (!entities.HasComponent<Game.Vehicles.Train>(vehicle)
-                && !entities.HasComponent<Game.Vehicles.Train>(unit))
-            {
-                return false;
-            }
-
-            // Rail only: nothing writes Blocker for it, so speed is all there is to go on.
             if (entities.HasComponent<Game.Vehicles.TrainNavigation>(unit))
             {
                 var speed = entities.GetComponentData<Game.Vehicles.TrainNavigation>(unit).m_Speed;
@@ -224,13 +204,14 @@ namespace Seety.Vitals
         /// several stopped vehicles one problem rather than several.
         /// </summary>
         private static string Where(Entity vehicle, EntityManager entities, NameSystem names,
-            out string id)
+            out string id, out Entity route)
         {
             id = null;
+            route = Entity.Null;
 
             if (entities.HasComponent<Game.Routes.CurrentRoute>(vehicle))
             {
-                Entity route = entities.GetComponentData<Game.Routes.CurrentRoute>(vehicle).m_Route;
+                route = entities.GetComponentData<Game.Routes.CurrentRoute>(vehicle).m_Route;
                 string line = SafeName(names, route);
 
                 if (!string.IsNullOrEmpty(line))

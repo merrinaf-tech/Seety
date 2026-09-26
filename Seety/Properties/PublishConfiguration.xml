@@ -106,7 +106,8 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	-->
 	<ChangeLog>
 The traffic list shows only jams of 15 or more vehicles.
-The transit list counts each train once, not each carriage.
+The traffic and transit lists count only vehicles that are actually stopped.
+Transit lines show their in-game names.
 New option: draw the bar as the game's own buttons.
 	</ChangeLog>
 </Publish>

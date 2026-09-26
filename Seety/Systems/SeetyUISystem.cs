@@ -960,7 +960,7 @@ namespace Seety.Systems
                 writer.PropertyName("id");
                 writer.Write(TrafficVitalId);
                 writer.PropertyName("rows");
-                WriteJamRows(writer, _transitModeBinding.value ? _transit.Groups : jams);
+                WriteJamRows(writer, _transitModeBinding.value ? _transit.Groups : jams, _names);
                 writer.TypeEnd();
             }
 
@@ -1098,7 +1098,8 @@ namespace Seety.Systems
         /// - the traffic row's own, already verified - since there is no reliable way to find a
         /// per-vehicle-kind icon file the way a notification's name can be turned into one.
         /// </summary>
-        private static void WriteJamRows(IJsonWriter writer, System.Collections.Generic.IReadOnlyList<Vitals.TrafficJamGroup> jams)
+        private static void WriteJamRows(IJsonWriter writer,
+            System.Collections.Generic.IReadOnlyList<Vitals.TrafficJamGroup> jams, NameSystem names)
         {
             writer.ArrayBegin((uint)jams.Count);
 
@@ -1107,7 +1108,8 @@ namespace Seety.Systems
                 // One number, because there is only one thing to say: how many vehicles are
                 // stuck in the place this row flies to.
                 WriteRow(writer, group.Name, "Media/Game/Icons/Traffic.svg", group.Count,
-                    Vitals.VitalLevel.Normal, true, "jam:" + group.Id);
+                    Vitals.VitalLevel.Normal, true, "jam:" + group.Id,
+                    route: group.Route, names: names);
             }
 
             writer.ArrayEnd();
@@ -1246,7 +1248,7 @@ namespace Seety.Systems
         /// </summary>
         private static void WriteRow(IJsonWriter writer, string id, string icon, int count,
             Vitals.VitalLevel level, bool clickable, string action = "", string suffix = "",
-            int total = 0, string unit = "")
+            int total = 0, string unit = "", Entity route = default, NameSystem names = null)
         {
             writer.TypeBegin("seety.BreakdownRow");
             writer.PropertyName("id");
@@ -1270,6 +1272,14 @@ namespace Seety.Systems
             writer.Write(total);
             writer.PropertyName("unit");
             writer.Write(unit ?? string.Empty);
+            // A transit line's name as the game binds it, so the UI shows it the way the vanilla
+            // line list does ("Tram Line 3", or the player's own name). GetRenderedLabelName gives
+            // the line tool's prefab name instead, which is why rows read "Tram Line Tool".
+            if (names != null && route != Entity.Null)
+            {
+                writer.PropertyName("lineName");
+                names.BindName(writer, route);
+            }
             writer.TypeEnd();
         }
 
