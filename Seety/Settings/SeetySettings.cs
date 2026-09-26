@@ -32,6 +32,7 @@ namespace Seety.Settings
         private bool _iconOutline = true;
         private bool _gameButtonStyle;
         private bool _darkGameButtons;
+        private bool _buildingReasons;
         private bool _toolbarTrends;
         private bool _zoneTransparency;
 
@@ -184,6 +185,20 @@ namespace Seety.Settings
                 _darkGameButtons = value;
                 Mod.OnDarkGameButtonsChanged(value);
             }
+        }
+
+        /// <summary>
+        /// Under the cursor, what is holding a building back: the game's own notifications on it
+        /// and the efficiency factors that cost something. See BuildingReasonsTooltipSystem.
+        ///
+        /// Off by default, so a player who installs Seety for the bar does not meet a new tooltip
+        /// on every building. Read every frame by the tooltip system, so it needs no handler.
+        /// </summary>
+        [SettingsUISection(MainSection, DisplayGroup)]
+        public bool BuildingReasons
+        {
+            get { return _buildingReasons; }
+            set { _buildingReasons = value; }
         }
 
         /// <summary>
@@ -355,6 +370,7 @@ namespace Seety.Settings
             _iconOutline = true;
             _gameButtonStyle = false;
             _darkGameButtons = false;
+            _buildingReasons = false;
             _toolbarTrends = false;
             _zoneTransparency = false;
             _seededDefaults = false;

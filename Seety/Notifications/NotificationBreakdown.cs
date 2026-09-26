@@ -209,7 +209,7 @@ namespace Seety.Notifications
         /// The icon file for a notification type. Prefab names carry spaces that filenames do not,
         /// and a handful are named differently again - see <see cref="IconAliases"/>.
         /// </summary>
-        private static string IconFor(string name)
+        internal static string IconFor(string name)
         {
             var file = name.Replace(" ", string.Empty);
 

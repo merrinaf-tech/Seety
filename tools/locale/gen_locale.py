@@ -178,6 +178,25 @@ add("option.desc.DarkGameButtons",
     "将游戏的蓝色按钮（如左上角那一排）改为底部栏的深蓝色。所有使用游戏自带按钮的按钮都会改变，包括其他模组的按钮；模组自行绘制的按钮保持不变。选中的按钮保留原色。关闭后恢复游戏外观。",
     "將遊戲的藍色按鈕（如左上角那一排）改為底部列的深藍色。所有使用遊戲內建按鈕的按鈕都會改變，包括其他模組的按鈕；模組自行繪製的按鈕保持不變。選取的按鈕保留原色。關閉後恢復遊戲外觀。")
 
+add("option.label.BuildingReasons",
+    "Why a building struggles", "Warum ein Gebäude Probleme hat", "Por qué un edificio tiene problemas",
+    "Pourquoi un bâtiment peine", "Perché un edificio è in difficoltà", "建物の不調の理由",
+    "건물이 어려운 이유", "Dlaczego budynek ma problemy", "Por que um edifício tem problemas",
+    "Почему здание испытывает трудности", "建筑为何表现不佳", "建築為何表現不佳")
+add("option.desc.BuildingReasons",
+    "When the cursor rests on a building, lists up to three things holding it back: the problems the game has flagged on it, then efficiency losses with what they cost. Nothing appears when nothing is wrong. Only with the selection tool.",
+    "Wenn der Mauszeiger auf einem Gebäude ruht, werden bis zu drei Dinge aufgeführt, die es bremsen: die Probleme, die das Spiel gemeldet hat, dann Effizienzverluste mit ihrem Anteil. Ist nichts falsch, erscheint nichts. Nur mit dem Auswahlwerkzeug.",
+    "Al dejar el cursor sobre un edificio, enumera hasta tres cosas que lo frenan: los problemas que el juego ha señalado y luego las pérdidas de eficiencia con lo que cuestan. Si no pasa nada, no aparece nada. Solo con la herramienta de selección.",
+    "Quand le curseur reste sur un bâtiment, indique jusqu'à trois choses qui le freinent : les problèmes signalés par le jeu, puis les pertes d'efficacité avec ce qu'elles coûtent. Rien n'apparaît si tout va bien. Uniquement avec l'outil de sélection.",
+    "Quando il cursore si ferma su un edificio, elenca fino a tre cose che lo frenano: i problemi segnalati dal gioco, poi le perdite di efficienza con quanto costano. Se va tutto bene non compare nulla. Solo con lo strumento di selezione.",
+    "カーソルを建物に置くと、その建物を妨げているものを最大 3 つ表示します。まずゲームが示した問題、次に効率の低下とその割合です。問題がなければ何も表示されません。選択ツール使用時のみ。",
+    "커서를 건물 위에 두면 건물을 방해하는 요소를 최대 세 가지 보여 줍니다. 먼저 게임이 표시한 문제, 그다음 효율 손실과 그 비율입니다. 문제가 없으면 아무것도 나타나지 않습니다. 선택 도구에서만.",
+    "Gdy kursor zatrzyma się na budynku, wymienia do trzech rzeczy, które go hamują: problemy zgłoszone przez grę, a potem straty wydajności z ich wielkością. Gdy wszystko w porządku, nic się nie pojawia. Tylko z narzędziem wyboru.",
+    "Quando o cursor para sobre um edifício, lista até três coisas que o atrapalham: os problemas apontados pelo jogo e depois as perdas de eficiência com quanto custam. Se nada estiver errado, nada aparece. Apenas com a ferramenta de seleção.",
+    "Когда курсор задерживается на здании, показывает до трёх причин, которые ему мешают: проблемы, отмеченные игрой, затем потери эффективности с их размером. Если всё в порядке, ничего не появляется. Только с инструментом выбора.",
+    "光标停在建筑上时，列出最多三项拖累它的因素：先是游戏标记的问题，然后是效率损失及其幅度。一切正常时不显示任何内容。仅在选择工具下。",
+    "游標停在建築上時，列出最多三項拖累它的因素：先是遊戲標記的問題，然後是效率損失及其幅度。一切正常時不顯示任何內容。僅在選取工具下。")
+
 add("option.label.ZoneTransparency",
     "Fade the zoning grid", "Bauraster abschwächen", "Atenuar la cuadrícula de zonificación",
     "Atténuer la grille de zonage", "Attenua la griglia di zonizzazione", "区画グリッドを薄く",

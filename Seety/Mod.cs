@@ -66,6 +66,7 @@ namespace Seety
             // Follows the player's Tool / Cancel binding so the key that backs out of a tool also
             // closes Seety's windows. UIUpdate because it only reads input and writes a binding.
             updateSystem.UpdateAt<Systems.CancelKeyUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateAt<Systems.BuildingReasonsTooltipSystem>(SystemUpdatePhase.UITooltip);
 
             // Modification1 is where prefab edits belong: late enough that the zone prefabs are
             // loaded, early enough that the renderer picks the colours up the same frame.

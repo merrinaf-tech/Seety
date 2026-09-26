@@ -110,5 +110,6 @@ The traffic and transit lists count only vehicles that are actually stopped.
 Transit lines show their in-game names.
 New option: draw the bar as the game's own buttons.
 New option: dark game buttons.
+New option: a tooltip saying why a building struggles.
 	</ChangeLog>
 </Publish>
