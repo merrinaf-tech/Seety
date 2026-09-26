@@ -154,7 +154,7 @@ interface BreakdownRow {
   /** "jump", "passenger:X", "cargo:X", "school:N", or empty. See SeetyUISystem.WriteRow. */
   action: string;
   /** A transit line's name as the game binds it; shown instead of id when present. */
-  lineName?: Name;
+  lineName: Name | null;
   /** A denominator, when the row has one. Zero when it does not. */
   total: number;
   /** The game unit `count` and `total` are in, or empty for a plain tally. See formatUnit. */
