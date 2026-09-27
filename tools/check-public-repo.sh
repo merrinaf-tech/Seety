@@ -14,7 +14,7 @@
 
 set -e
 
-FORBIDDEN='(^|/)_dev/|(^|/)(AGENTS|DESIGN|CLAUDE|NOTES|TODO|SESSION)\.md$|(^|/)Library/|\.pid$|(^|/)(bin|obj)/|\.user$|(^|/)UI/dist/|(^|/)node_modules/|(^|/)__pycache__/|\.pyc$'
+FORBIDDEN='(^|/)_dev/|(^|/)(AGENTS|DESIGN|CLAUDE|NOTES|TODO|SESSION)\.md$|(^|/)Library/|\.pid$|(^|/)(bin|obj)/|\.user$|(^|/)UI/dist/|(^|/)node_modules/|(^|/)__pycache__/|\.pyc$|^tests/|^tools/verify\.py$'
 
 found=$(git ls-files | grep -Ei "$FORBIDDEN" || true)
 

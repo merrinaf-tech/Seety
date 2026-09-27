@@ -24,3 +24,7 @@ __pycache__/
 
 # Development workbench: notes, player feedback, backups, logs. Never published.
 _dev/
+
+# Local regression checks; retained for development, excluded from the public repository.
+tests/
+tools/verify.py
