@@ -16,6 +16,11 @@ The panel shows its current street or transport line, destination and remaining 
 transport line in the route to open its game panel; choose **Show traffic jams** to return to
 the congestion list. Journey tracking stops when the window closes.
 
+In the Transport passengers window, choose **Busiest stops** to see the ten line stops with the
+most passengers waiting now. Each row shows the stop, its line colour and number, and the count
+waiting for that line. Cargo lines are excluded. Click a row to open its line; **Refresh** reranks
+the list.
+
 ## What it shows
 
 Twenty-six readings, each switched on or off by clicking the thing itself rather than a

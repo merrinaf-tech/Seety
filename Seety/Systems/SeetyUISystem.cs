@@ -93,6 +93,10 @@ namespace Seety.Systems
         private readonly Vitals.TransportBreakdown _transport = new Vitals.TransportBreakdown();
 
         private bool _transportActive;
+        private readonly Vitals.WaitingStopList _waitingStops = new Vitals.WaitingStopList();
+        private EntityQuery _waitingStopQuery;
+        private ValueBinding<bool> _transportStopsModeBinding;
+        private RawValueBinding _waitingStopsBinding;
 
         /// <summary>
         /// While on, the strip shows every row in the catalogue - including the ones switched off
@@ -274,6 +278,12 @@ namespace Seety.Systems
             });
 
             _camera = World.GetOrCreateSystemManaged<Game.Rendering.CameraUpdateSystem>();
+            _waitingStopQuery = GetEntityQuery(
+                ComponentType.ReadOnly<Game.Routes.TransportLine>(),
+                ComponentType.ReadOnly<Game.Routes.RouteWaypoint>(),
+                ComponentType.ReadOnly<PrefabRef>(),
+                ComponentType.Exclude<Game.Common.Deleted>(),
+                ComponentType.Exclude<Game.Tools.Temp>());
             _names = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
             _terrain = World.GetOrCreateSystemManaged<Game.Simulation.TerrainSystem>();
             _census = World.GetOrCreateSystemManaged<CitizenCensusSystem>();
@@ -374,6 +384,14 @@ namespace Seety.Systems
 
             _notificationsBinding = new RawValueBinding(Group, "notifications", WriteNotifications);
             AddBinding(_notificationsBinding);
+
+            _transportStopsModeBinding = new ValueBinding<bool>(Group, "transportStopsMode", false);
+            AddBinding(_transportStopsModeBinding);
+            _waitingStopsBinding = new RawValueBinding(Group, "waitingStops", WriteWaitingStops);
+            AddBinding(_waitingStopsBinding);
+            AddBinding(new TriggerBinding<bool>(Group, "setTransportStopsMode", OnSetTransportStopsMode));
+            AddBinding(new TriggerBinding(Group, "refreshWaitingStops", RefreshWaitingStops));
+            AddBinding(new TriggerBinding<string>(Group, "openWaitingStopLine", OnOpenWaitingStopLine));
 
             _resourcesBinding = new RawValueBinding(Group, "resources", WriteResources);
             AddBinding(_resourcesBinding);
@@ -644,6 +662,11 @@ namespace Seety.Systems
             if (!string.IsNullOrEmpty(_expandedId))
             {
                 _historyBinding.Update();
+                if (_expandedId == TransportVitalId && _transportStopsModeBinding.value)
+                {
+                    _waitingStops.Refresh(_waitingStopQuery, EntityManager, _names, false);
+                    _waitingStopsBinding.Update();
+                }
 
                 if (NeedsCensus)
                 {
@@ -1146,6 +1169,61 @@ namespace Seety.Systems
         /// <summary>The vital whose window carries the per-mode transport list.</summary>
         private const string TransportVitalId = "transport";
 
+        private void WriteWaitingStops(IJsonWriter writer)
+        {
+            var entries = _waitingStops.Entries;
+            writer.ArrayBegin((uint)entries.Count);
+            foreach (var entry in entries)
+            {
+                writer.TypeBegin("seety.WaitingStop");
+                writer.PropertyName("id"); writer.Write(entry.Id);
+                writer.PropertyName("name"); WriteJourneyName(writer, entry.Name);
+                writer.PropertyName("lineName"); WriteJourneyName(writer, entry.LineName);
+                writer.PropertyName("colour"); writer.Write(entry.Colour ?? string.Empty);
+                writer.PropertyName("number"); writer.Write(entry.Number);
+                writer.PropertyName("count"); writer.Write(entry.Count);
+                writer.TypeEnd();
+            }
+            writer.ArrayEnd();
+        }
+
+        private void OnSetTransportStopsMode(bool stops)
+        {
+            stops = stops && _expandedId == TransportVitalId && _visibleBinding.value && !_configMode;
+            _transportStopsModeBinding.Update(stops);
+            if (stops) RefreshWaitingStops();
+            else
+            {
+                _waitingStops.Clear();
+                _waitingStopsBinding.Update();
+            }
+        }
+
+        private void RefreshWaitingStops()
+        {
+            if (_expandedId != TransportVitalId || !_transportStopsModeBinding.value) return;
+            try { _waitingStops.Refresh(_waitingStopQuery, EntityManager, _names, true); }
+            catch (Exception e)
+            {
+                _waitingStops.Clear();
+                Mod.Log.Error(e, "Could not read waiting passengers at stops.");
+            }
+            _waitingStopsBinding.Update();
+        }
+
+        private void OnOpenWaitingStopLine(string id)
+        {
+            if (_expandedId != TransportVitalId || !_transportStopsModeBinding.value) return;
+            try
+            {
+                Entity line = _waitingStops.LineFor(id, EntityManager);
+                if (line == Entity.Null) return;
+                if (_tools == null) _tools = World.GetExistingSystemManaged<Game.Tools.ToolSystem>();
+                if (_tools != null) _tools.selected = line;
+            }
+            catch (Exception e) { Mod.Log.Error(e, "Could not open a transport line from a stop."); }
+        }
+
         /// <summary>
         /// Rereads both resource tables.
         ///
@@ -1314,6 +1392,8 @@ namespace Seety.Systems
         private void OnExpand(string id)
         {
             _expandedId = _visibleBinding.value && !_configMode ? id ?? string.Empty : string.Empty;
+            if (_expandedId != TransportVitalId && _transportStopsModeBinding.value)
+                OnSetTransportStopsMode(false);
             if (_expandedId != TrafficVitalId && _journeyOnBinding.value) OnSetJourneyOn(false);
             _historyBinding.Update();
 
@@ -1803,9 +1883,12 @@ namespace Seety.Systems
             writer.TypeBegin("seety.Journey");
             writer.PropertyName("hasSubject"); writer.Write(_journey.HasSubject);
             writer.PropertyName("subject"); writer.Write(_journey.Subject ?? string.Empty);
+            writer.PropertyName("subjectName"); WriteJourneyName(writer, _journey.SubjectName);
             writer.PropertyName("here"); writer.Write(_journey.Here ?? string.Empty);
+            writer.PropertyName("hereName"); WriteJourneyName(writer, _journey.HereName);
             writer.PropertyName("hereMetres"); writer.Write(_journey.HereMetres);
             writer.PropertyName("destination"); writer.Write(_journey.Destination ?? string.Empty);
+            writer.PropertyName("destinationName"); WriteJourneyName(writer, _journey.DestinationName);
             writer.PropertyName("destinationRef"); writer.Write(_journey.DestinationRef ?? string.Empty);
             writer.PropertyName("truncated"); writer.Write(_journey.Truncated);
             writer.PropertyName("legs"); writer.ArrayBegin((uint)_journey.Legs.Count);
@@ -1814,6 +1897,7 @@ namespace Seety.Systems
                 writer.TypeBegin("seety.JourneyLeg");
                 writer.PropertyName("kind"); writer.Write(leg.Kind);
                 writer.PropertyName("name"); writer.Write(leg.Name);
+                writer.PropertyName("displayName"); WriteJourneyName(writer, leg.DisplayName);
                 writer.PropertyName("route"); writer.Write(leg.Route);
                 writer.PropertyName("metres"); writer.Write(leg.Metres);
                 writer.PropertyName("colour"); writer.Write(leg.Colour ?? string.Empty);
@@ -1822,6 +1906,12 @@ namespace Seety.Systems
             }
             writer.ArrayEnd();
             writer.TypeEnd();
+        }
+
+        private static void WriteJourneyName(IJsonWriter writer, NameSystem.Name? name)
+        {
+            if (name.HasValue) name.Value.Write(writer);
+            else writer.WriteNull();
         }
 
         /// <summary>

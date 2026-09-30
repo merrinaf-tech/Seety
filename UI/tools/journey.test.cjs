@@ -15,6 +15,17 @@ test("built traffic panel toggles journeys, renders empty states and opens versi
     "seety.notifications": [{ id: "traffic", rows: [] }],
   };
   const previousWindow = global.window;
+  const dictionary = {
+    "Brands.DENNY": "Denny Denims",
+    "Routes.SUBWAY": "Subway Line {NUMBER}",
+  };
+  const localizeName = (value) => {
+    if (value.__Type === "names.CustomName") return value.name;
+    let text = dictionary[value.nameId] ?? value.nameId;
+    for (const [key, arg] of Object.entries(value.nameArgs ?? {}))
+      text = text.replace(`{${key}}`, dictionary[arg] ?? arg);
+    return text;
+  };
   global.window = {
     React: { ...React, useState: (initial) => [initial === null ? "traffic" : initial, () => {}],
       useRef: (value) => ({ current: value }), useCallback: (fn) => fn, useEffect: () => {} },
@@ -24,11 +35,15 @@ test("built traffic panel toggles journeys, renders empty states and opens versi
       trigger: (...args) => calls.push(args),
     },
     "cs2/ui": { Tooltip: ({ children }) => children },
-    "cs2/l10n": { useLocalization: () => ({ translate: (_key, fallback) => fallback, unitSettings: { unitSystem: 0 } }) },
+    "cs2/l10n": {
+      useLocalization: () => ({ translate: (_key, fallback) => fallback, unitSettings: { unitSystem: 0 } }),
+      LocalizedEntityName: ({ value }) => localizeName(value),
+    },
   };
   try {
     const bundle = await import(pathToFileURL(path.resolve(__dirname, "../dist/Seety.mjs")));
-    let Strip; bundle.default({ append: (_anchor, component) => { Strip = component; }, extend: () => {} });
+    // The strip is the first registration; the stylesheet owner appended after it renders null.
+    let Strip; bundle.default({ append: (_anchor, component) => { Strip ??= component; }, extend: () => {} });
     const panel = () => Strip().props.children.at(-1);
     // The action slot holds two buttons now - the road/trains switch and the journey toggle -
     // so they are picked out by the trigger each one sends rather than by position.
@@ -76,6 +91,23 @@ test("built traffic panel toggles journeys, renders empty states and opens versi
     assert.equal(buttons.length, 1, "only transport lines are clickable");
     buttons[0].props.onClick();
     assert.deepEqual(calls.pop(), ["seety", "openJourneyLine", "42:3"]);
+    bindings["seety.journey"] = {
+      hasSubject: true, subject: "Jane", subjectName: { __Type: "names.CustomName", name: "Jane Smith" },
+      here: "Assets.NAME[Station]", hereName: { __Type: "names.CustomName", name: "Magnolia Station" }, hereMetres: 21,
+      destination: "Assets.NAME[Commercial_FashionStore]", destinationRef: "50:2",
+      destinationName: { __Type: "names.LocalizedName", nameId: "Brands.DENNY" }, truncated: false,
+      legs: [{ kind: "transit", name: "Subway Line Tool", route: "42:3", metres: 26,
+        displayName: { __Type: "names.FormattedName", nameId: "Routes.SUBWAY", nameArgs: { NUMBER: "7" } } }],
+    };
+    const namedTree = journeyTree();
+    const namedHtml = renderToStaticMarkup(namedTree);
+    for (const text of ["Jane Smith", "Magnolia Station", "Denny Denims", "Subway Line 7", "21 m"])
+      assert.ok(namedHtml.includes(text), "full name or distance is missing: " + text);
+    assert.ok(!namedHtml.includes("Assets.NAME[") && !namedHtml.includes("Subway Line Tool"));
+    buttons.length = 0; walk(namedTree);
+    assert.equal(buttons.length, 2, "line and named destination remain clickable");
+    buttons[1].props.onClick();
+    assert.deepEqual(calls.pop(), ["seety", "flyToJourneyPlace", "50:2"]);
     bindings["seety.journey"] = { hasSubject: true, subject: "Bus", here: "", destination: "", legs: [], truncated: true };
     const partial = renderToStaticMarkup(journeyTree());
     assert.match(partial, /Unavailable/); assert.match(partial, /No remaining route/); assert.match(partial, /first part/);

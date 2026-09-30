@@ -283,6 +283,20 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
+.transportSection {
+  display: flex;
+  align-items: center;
+  > span { flex: 1; }
+  > button { margin-left: 8rem; text-transform: none; letter-spacing: normal; }
+}
+
+.waitingStopLine { color: rgba(255, 255, 255, 0.55); }
+
+.waitingStopRow {
+  .panelName { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .value { flex-shrink: 0; }
+}
+
 // The recorded series. Sits above the breakdown rows when a row has both.
 .chart {
   padding: 4rem 6rem 6rem;

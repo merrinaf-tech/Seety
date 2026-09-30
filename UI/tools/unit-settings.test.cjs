@@ -59,7 +59,7 @@ test("built UI renders metric and imperial readings without a runtime UnitSystem
     bundle.default({
       append: (anchor, component) => {
         assert.equal(anchor, "Game");
-        Strip = component;
+        Strip ??= component;
       },
       // Only the shared, mutable export may be extended; the field-specific setters throw.
       extend: (modulePath, exportName) => { extended.push(modulePath + "#" + exportName); },

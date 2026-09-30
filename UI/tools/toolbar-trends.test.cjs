@@ -76,8 +76,8 @@ test("built toolbar extension preserves native fields and subsequent mod registr
         for (const registrar of [register,
           (reg) => reg.append("GameTopLeft", "another-mod"),
           (reg) => reg.append("GameBottomRight", "find-it-and-picker")]) registrar(r);
-        assert.equal(r.appended[0][0], "Game");
-        assert.deepEqual(r.appended.slice(1), [
+        assert.deepEqual(r.appended.slice(0, 2).map(([anchor]) => anchor), ["Game", "Game"]);
+        assert.deepEqual(r.appended.slice(2), [
           ["GameTopLeft", "another-mod"], ["GameBottomRight", "find-it-and-picker"],
         ]);
         assert.notEqual(r.modules[statPath].StatFieldTrend, Native);
@@ -146,7 +146,8 @@ test("built toolbar extension preserves native fields and subsequent mod registr
       try {
         register(missing);
         missing.append("GameBottomRight", "another-mod");
-        assert.equal(missing.appended.length, 2);
+        assert.deepEqual(missing.appended.map(([anchor]) => anchor),
+          ["Game", "Game", "GameBottomRight"]);
         assert.equal(warnings.length, 1);
       } finally { console.warn = warn; }
     });

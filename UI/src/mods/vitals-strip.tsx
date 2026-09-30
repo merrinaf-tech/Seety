@@ -226,13 +226,19 @@ const gameButtonStyle$ = bindValue<boolean>("seety", "gameButtonStyle", false);
 
 const journeyOn$ = bindValue<boolean>("seety", "journeyOn", false);
 const transitMode$ = bindValue<boolean>("seety", "transitMode", false);
+const transportStopsMode$ = bindValue<boolean>("seety", "transportStopsMode", false);
+interface WaitingStop { id: string; name: Name | null; lineName: Name | null; colour: string; number: number; count: number }
+const waitingStops$ = bindValue<WaitingStop[]>("seety", "waitingStops", []);
 interface Journey {
   hasSubject: boolean;
   subject: string;
+  subjectName?: Name | null;
   here: string;
+  hereName?: Name | null;
   /** Distance still to run on `here`, in metres. Zero when the path does not say. */
   hereMetres: number;
   destination: string;
+  destinationName?: Name | null;
   /** The destination entity, for the click that flies there. Empty when it has no position. */
   destinationRef: string;
   truncated: boolean;
@@ -240,7 +246,7 @@ interface Journey {
    * `metres` is always metric: the player's own unit is applied where it is drawn.
    * `colour` is the line's own "#rrggbb" and `number` its line number, both empty/zero on roads.
    */
-  legs: { kind: string; name: string; route: string; metres: number; colour: string; number: number }[];
+  legs: { kind: string; name: string; displayName?: Name | null; route: string; metres: number; colour: string; number: number }[];
 }
 const journey$ = bindValue<Journey>("seety", "journey", {
   hasSubject: false, subject: "", here: "", hereMetres: 0, destination: "", destinationRef: "",
@@ -805,31 +811,24 @@ const JourneyPanel = () => {
   const journey = useValue(journey$);
   const length = (metres: number) => formatUnit(metres, "length", metric);
 
-  /**
-   * A place name as the game itself would print it.
-   *
-   * NameSystem hands back a finished string for anything the player named, and a localization key
-   * for everything else - which is why the panel was showing rows reading "Assets.NAME[Pathway]".
-   * Passing every name through the dictionary resolves those and leaves player-given names alone,
-   * since a name that is not a key simply does not match one.
-   */
-  const place = (name: string) => t(name, name);
+  // Vanilla names preserve brands, address arguments and line numbers. Keep the label as a
+  // fallback if the entity disappeared while the backend was reading its full name.
+  const place = (label: string, name?: Name | null) => name
+    ? <LocalizedEntityName value={name} />
+    : t(label, label);
   if (!journey?.hasSubject) {
     return <div className={styles.panelEmpty}>
       {t("Seety.JOURNEY_EMPTY", "Select a citizen or vehicle with an active journey.")}
     </div>;
   }
   return <div className={styles.journey}>
-    {journey.subject ? <div className={styles.journeySubject}>{journey.subject}</div> : null}
+    {journey.subject ? <div className={styles.journeySubject}>{place(journey.subject, journey.subjectName)}</div> : null}
     <div className={styles.journeySummary}>
       <span>{t("Seety.JOURNEY_HERE", "Now")}</span>
-      {/* Built as one string: this renderer drops the leading space between adjacent pieces of
-          text, which is why the distance is not its own element here. The figure is what is left
-          to run on this street, and it only appears when the path actually said. */}
+      {/* A nonbreaking space survives Gameface's trimming between the name and its distance. */}
       <span>{journey.here
-        ? (journey.hereMetres > 0
-            ? `${place(journey.here)} (${length(journey.hereMetres)})`
-            : place(journey.here))
+        ? <>{place(journey.here, journey.hereName)}{journey.hereMetres > 0
+            ? `\u00a0(${length(journey.hereMetres)})` : null}</>
         : t("Seety.JOURNEY_UNKNOWN", "Unavailable")}</span>
     </div>
     <div className={styles.journeySubject}>{t("Seety.JOURNEY_REMAINING", "Remaining journey")}</div>
@@ -849,8 +848,8 @@ const JourneyPanel = () => {
         : null}
       {leg.kind === "transit" && leg.route ? <button type="button" className={styles.journeyLine}
         title={t("Seety.JOURNEY_OPEN_LINE", "Open transport line")}
-        onClick={() => trigger("seety", "openJourneyLine", leg.route)}>{place(leg.name)}</button>
-        : <span className={styles.journeyName}>{place(leg.name)}</span>}
+        onClick={() => trigger("seety", "openJourneyLine", leg.route)}>{place(leg.name, leg.displayName)}</button>
+        : <span className={styles.journeyName}>{place(leg.name, leg.displayName)}</span>}
       {leg.metres > 0
         ? <span className={styles.journeyMetres}>{length(leg.metres)}</span>
         : null}
@@ -870,10 +869,10 @@ const JourneyPanel = () => {
         ? <button type="button" className={styles.journeyLine}
             title={t("Seety.JOURNEY_GO", "Go to the destination")}
             onClick={() => trigger("seety", "flyToJourneyPlace", journey.destinationRef)}>
-            {place(journey.destination)}
+            {place(journey.destination, journey.destinationName)}
           </button>
         : <span>{journey.destination
-            ? place(journey.destination)
+            ? place(journey.destination, journey.destinationName)
             : t("Seety.JOURNEY_UNKNOWN", "Unavailable")}</span>}
     </div>
   </div>;
@@ -916,39 +915,64 @@ const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
  */
 const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
   const t = useT();
-  if (rows.length === 0) {
-    return (
-      <div className={styles.panelEmpty}>
-        {t("Seety.EMPTY_NOTHING", "Nothing to report")}
-      </div>
-    );
-  }
+  const stopsMode = useValue(transportStopsMode$);
+  const stops = useValue(waitingStops$);
 
   const passengers = rows.filter((r) => r.action.startsWith("passenger:"));
   const cargo = rows.filter((r) => r.action.startsWith("cargo:"));
 
   return (
     <>
-      {passengers.length > 0 ? (
-        <div className={styles.panelSection}>
-          {t("Seety.SEC_PASSENGERS", "Passengers")}
+      <div className={`${styles.panelSection} ${styles.transportSection}`}>
+        <span>{t("Seety.SEC_PASSENGERS", "Passengers")}</span>
+        <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
+          aria-pressed={stopsMode}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={() => trigger("seety", "setTransportStopsMode", !stopsMode)}>
+          {stopsMode ? t("Seety.TRANSPORT_MODES", "By transport mode")
+            : t("Seety.TRANSPORT_STOPS", "Busiest stops")}
+        </button>
+        {stopsMode ? <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={() => trigger("seety", "refreshWaitingStops")}>
+          {t("Seety.STOPS_REFRESH", "Refresh")}
+        </button> : null}
+      </div>
+      {stopsMode ? <>
+        {stops.length === 0 ? <div className={styles.panelEmpty}>
+          {t("Seety.STOPS_EMPTY", "No passengers waiting at stops.")}
+        </div> : stops.map((stop) => <div key={stop.id}
+          className={`${styles.panelRow} ${styles.waitingStopRow} ${styles.clickable}`}
+          title={t("Seety.JOURNEY_OPEN_LINE", "Open transport line")}
+          onClick={() => trigger("seety", "openWaitingStopLine", stop.id)}>
+          {stop.colour ? <span className={styles.journeyDot}
+            style={{ backgroundColor: stop.colour, color: inkOn(stop.colour) }}>
+            {stop.number > 0 ? stop.number : ""}
+          </span> : null}
+          <span className={styles.panelName}>{stop.name ? <LocalizedEntityName value={stop.name} />
+            : t("Seety.STOPS_UNNAMED", "Unnamed stop")}
+            {stop.lineName ? <span className={styles.waitingStopLine}> · <LocalizedEntityName value={stop.lineName} /></span> : null}
+          </span>
+          <span className={styles.value}>{stop.count.toLocaleString()} {t("Seety.STOPS_WAITING", "waiting")}</span>
+        </div>)}
+        <div className={styles.tableNote}>
+          {t("Seety.STOPS_NOTE", "Top 10 stops by passengers waiting for each line. Counts update live; Refresh reorders the list.")}
         </div>
-      ) : null}
-      {passengers.map((row) => (
+      </> : passengers.length > 0 ? passengers.map((row) => (
         <BreakdownRowItem key={row.id} row={row} />
-      ))}
+      )) : <div className={styles.panelEmpty}>{t("Seety.EMPTY_NOTHING", "Nothing to report")}</div>}
 
-      {cargo.length > 0 ? (
+      {!stopsMode && cargo.length > 0 ? (
         <div className={styles.panelSection}>{t("Seety.SEC_CARGO", "Cargo")}</div>
       ) : null}
-      {cargo.map((row) => (
+      {!stopsMode ? cargo.map((row) => (
         <BreakdownRowItem key={row.id} row={row} />
-      ))}
+      )) : null}
 
-      <div className={styles.tableNote}>
+      {!stopsMode ? <div className={styles.tableNote}>
         Aboard right now, counted vehicle by vehicle, against what the vehicles currently running
         that mode could hold between them. Not a rolling total: an empty line reads empty.
-      </div>
+      </div> : null}
     </>
   );
 };

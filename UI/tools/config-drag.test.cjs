@@ -69,7 +69,7 @@ test("the built strip only moves in configuration mode and cancels interrupted d
     const bundle = await import(pathToFileURL(path.resolve(__dirname, "../dist/Seety.mjs")));
     let Strip;
     // This suite exercises the strip; the shared toolbar extension has its own regression test.
-    bundle.default({ append: (_anchor, component) => { Strip = component; }, extend: () => {} });
+    bundle.default({ append: (_anchor, component) => { Strip ??= component; }, extend: () => {} });
     const render = () => {
       let passes = 0;
       do {

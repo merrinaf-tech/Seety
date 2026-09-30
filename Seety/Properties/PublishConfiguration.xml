@@ -56,7 +56,7 @@ Nothing on the list is already on the vanilla HUD, and every figure mirrors the 
 
 &gt; **Selected journey** - a switch in the traffic window turns the jam list into the journey of whatever you have selected. Click a citizen or a vehicle and you get the street or transport line it is on now, every street and line still ahead of it with the distance along each, and where it all ends. It reads the route the game has already worked out, so nothing here is guessed. A step on public transport carries that line's own colour and number, and clicking it opens the line. Clicking the destination takes the camera there.
 
-&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** - the fullest schools first, passengers and freight by mode, the worst jams by street - or, with a switch, the lines whose buses, trams, metros, trains or ferries are standing still - and the parts behind the combined readings. Where the game has its own panel for one of them, clicking goes there.
+&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** - the fullest schools first, passengers and freight by mode, or the ten public transport stops with the most passengers waiting for each line. Each stop shows its line colour and number; clicking opens that line. Traffic shows the worst jams by street or, with a switch, the lines whose buses, trams, metros, trains or ferries are standing still. Where the game has its own panel for one of them, clicking goes there.
 
 Some readings also carry a chart of how they got here.
 
@@ -97,7 +97,7 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.1.0" />
+	<ModVersion Value="1.2.0" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
@@ -108,5 +108,7 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	-->
 	<ChangeLog>
 Charts show the current value instead of the peak.
+Selected journey uses the game's actual names for people, streets, lines and destinations.
+New Busiest stops view: passengers waiting at each public transport line stop, excluding cargo. Line colours and numbers identify the routes; clicking a stop opens its line.
 	</ChangeLog>
 </Publish>

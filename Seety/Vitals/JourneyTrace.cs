@@ -12,6 +12,7 @@ namespace Seety.Vitals
 
         /// <summary>The street, or the line. Already resolved to something a player recognises.</summary>
         public string Name;
+        public NameSystem.Name? DisplayName;
 
         /// <summary>
         /// The route entity behind a transit leg, as "index:version", or empty for a road leg.
@@ -97,9 +98,11 @@ namespace Seety.Vitals
 
         /// <summary>What was selected, named.</summary>
         public string Subject { get; private set; }
+        public NameSystem.Name? SubjectName { get; private set; }
 
         /// <summary>Where it is right now - a street, or the line it is riding.</summary>
         public string Here { get; private set; }
+        public NameSystem.Name? HereName { get; private set; }
 
         /// <summary>
         /// How much of <see cref="Here"/> is still ahead, in metres, or zero when that is unknown.
@@ -113,6 +116,7 @@ namespace Seety.Vitals
 
         /// <summary>Where it is headed, from the path the game computed.</summary>
         public string Destination { get; private set; }
+        public NameSystem.Name? DestinationName { get; private set; }
 
         /// <summary>
         /// The destination itself, as "index:version", so the row can take the camera there.
@@ -136,9 +140,12 @@ namespace Seety.Vitals
             HasSubject = false;
             Truncated = false;
             Subject = null;
+            SubjectName = null;
             Here = null;
+            HereName = null;
             HereMetres = 0f;
             Destination = null;
+            DestinationName = null;
             DestinationRef = string.Empty;
 
             if (selected == Entity.Null || !entities.Exists(selected))
@@ -147,6 +154,7 @@ namespace Seety.Vitals
             }
 
             Subject = SafeName(names, selected);
+            SubjectName = SafeDisplayName(names, selected);
 
             // A citizen is not the thing that moves. It points at whatever is currently carrying
             // it - its own body while walking, a car while driving - and the path lives there.
@@ -165,7 +173,8 @@ namespace Seety.Vitals
             }
 
             Entity hereRoute;
-            Here = WhereItIs(carrier, entities, names, out hereRoute);
+            Entity herePlace;
+            Here = WhereItIs(carrier, entities, names, out hereRoute, out herePlace);
 
             // Waiting on a platform is not the same as being on a lane: a citizen inside a
             // station has no road under them, and the trace used to give up and say nothing. The
@@ -173,11 +182,14 @@ namespace Seety.Vitals
             // records it.
             if (string.IsNullOrEmpty(Here))
             {
-                Here = Indoors(selected, entities, names);
+                Here = Indoors(selected, entities, names, out herePlace);
             }
+            HereName = SafeDisplayName(names, herePlace);
 
             Entity destination;
-            Destination = WhereItIsGoing(carrier, entities, names, out destination);
+            Entity destinationPlace;
+            Destination = WhereItIsGoing(carrier, entities, names, out destination, out destinationPlace);
+            DestinationName = SafeDisplayName(names, destinationPlace);
             DestinationRef = destination == Entity.Null ? string.Empty : Reference(destination);
             ReadLegs(carrier, entities, names);
 
@@ -214,9 +226,10 @@ namespace Seety.Vitals
         /// is the answer to "where is it" for anything riding one.
         /// </summary>
         private static string WhereItIs(Entity carrier, EntityManager entities, NameSystem names,
-            out Entity hereRoute)
+            out Entity hereRoute, out Entity herePlace)
         {
             hereRoute = Entity.Null;
+            herePlace = Entity.Null;
 
             Entity vehicle = Entity.Null;
             if (entities.HasComponent<Game.Creatures.CurrentVehicle>(carrier))
@@ -234,6 +247,7 @@ namespace Seety.Vitals
                 if (!string.IsNullOrEmpty(line))
                 {
                     hereRoute = route;
+                    herePlace = route;
                     return line;
                 }
             }
@@ -246,13 +260,15 @@ namespace Seety.Vitals
                 Entity route;
                 if (Classify(lane, entities, names, out kind, out name, out route))
                 {
+                    herePlace = route;
                     return name;
                 }
             }
 
             // Riding something unnamed, or standing still inside a building. Naming the carrier is
             // the last thing left that is true.
-            return riding == carrier ? null : SafeName(names, riding);
+            herePlace = riding == carrier ? Entity.Null : riding;
+            return SafeName(names, herePlace);
         }
 
         /// <summary>
@@ -264,16 +280,17 @@ namespace Seety.Vitals
         /// carry an order without a computed path yet.
         /// </summary>
         private static string WhereItIsGoing(Entity carrier, EntityManager entities, NameSystem names,
-            out Entity destination)
+            out Entity destination, out Entity destinationPlace)
         {
             destination = Entity.Null;
+            destinationPlace = Entity.Null;
 
             if (entities.HasComponent<Game.Pathfind.PathInformation>(carrier))
             {
                 Entity place = entities
                     .GetComponentData<Game.Pathfind.PathInformation>(carrier).m_Destination;
 
-                string label = NamedPlace(place, entities, names);
+                string label = NamedPlace(place, entities, names, out destinationPlace);
                 if (!string.IsNullOrEmpty(label))
                 {
                     destination = Settled(place, entities);
@@ -284,7 +301,7 @@ namespace Seety.Vitals
             if (entities.HasComponent<Game.Common.Target>(carrier))
             {
                 Entity place = entities.GetComponentData<Game.Common.Target>(carrier).m_Target;
-                string label = NamedPlace(place, entities, names);
+                string label = NamedPlace(place, entities, names, out destinationPlace);
 
                 if (!string.IsNullOrEmpty(label))
                 {
@@ -301,8 +318,10 @@ namespace Seety.Vitals
         /// Where a citizen is when they are on no lane at all - inside a building, or waiting on
         /// its platform. The station is what a player would call that spot.
         /// </summary>
-        private static string Indoors(Entity selected, EntityManager entities, NameSystem names)
+        private static string Indoors(Entity selected, EntityManager entities, NameSystem names,
+            out Entity place)
         {
+            place = Entity.Null;
             if (!entities.HasComponent<Game.Citizens.CurrentBuilding>(selected))
             {
                 return null;
@@ -311,6 +330,7 @@ namespace Seety.Vitals
             Entity building = entities
                 .GetComponentData<Game.Citizens.CurrentBuilding>(selected).m_CurrentBuilding;
 
+            place = building;
             return SafeName(names, building);
         }
 
@@ -354,7 +374,7 @@ namespace Seety.Vitals
         /// Bytes formatted by hand rather than through a Unity helper: this runs on the UI thread
         /// for every leg of every refresh, and the result is going straight into JSON.
         /// </summary>
-        private static string LineColour(Entity route, EntityManager entities)
+        internal static string LineColour(Entity route, EntityManager entities)
         {
             if (route == Entity.Null || !entities.Exists(route)
                 || !entities.HasComponent<Game.Routes.Color>(route))
@@ -371,7 +391,7 @@ namespace Seety.Vitals
         }
 
         /// <summary>A line's number, or zero when it carries none.</summary>
-        private static int LineNumber(Entity route, EntityManager entities)
+        internal static int LineNumber(Entity route, EntityManager entities)
         {
             if (route == Entity.Null || !entities.Exists(route)
                 || !entities.HasComponent<Game.Routes.RouteNumber>(route))
@@ -485,6 +505,7 @@ namespace Seety.Vitals
                 {
                     Kind = kind,
                     Name = name,
+                    DisplayName = SafeDisplayName(names, route),
                     Route = kind == "transit" ? Reference(route) : string.Empty,
                     Colour = kind == "transit" ? LineColour(route, entities) : string.Empty,
                     Number = kind == "transit" ? LineNumber(route, entities) : 0,
@@ -571,7 +592,10 @@ namespace Seety.Vitals
                     Entity street = entities.GetComponentData<Game.Net.Aggregated>(current).m_Aggregate;
                     string label = Remembered(names, street, seen);
 
-                    if (!string.IsNullOrEmpty(label))
+                    // Invisible station paths and track aggregates may only have an internal
+                    // asset key. They are not named streets; continue toward a named owner.
+                    if (!string.IsNullOrEmpty(label)
+                        && !label.StartsWith("Assets.NAME[", System.StringComparison.Ordinal))
                     {
                         kind = "road";
                         name = label;
@@ -646,8 +670,10 @@ namespace Seety.Vitals
         /// or at a piece of road, so the same ownership walk that names a leg is what turns the
         /// last two into something worth printing.
         /// </summary>
-        private static string NamedPlace(Entity place, EntityManager entities, NameSystem names)
+        private static string NamedPlace(Entity place, EntityManager entities, NameSystem names,
+            out Entity namedEntity)
         {
+            namedEntity = Entity.Null;
             if (place == Entity.Null || !entities.Exists(place))
             {
                 return null;
@@ -658,10 +684,17 @@ namespace Seety.Vitals
             Entity owner = place;
             for (int hop = 0; hop < MaxOwnerHops && owner != Entity.Null && entities.Exists(owner); hop++)
             {
-                if (entities.HasComponent<Game.Buildings.Building>(owner))
+                // A company can own a path target. Name it before walking on to its building:
+                // GetName resolves its brand, just as the citizen's destination panel does.
+                if (entities.HasComponent<Game.Companies.CompanyData>(owner)
+                    || entities.HasComponent<Game.Buildings.Building>(owner))
                 {
                     string label = SafeName(names, owner);
-                    if (!string.IsNullOrEmpty(label)) return label;
+                    if (!string.IsNullOrEmpty(label))
+                    {
+                        namedEntity = owner;
+                        return label;
+                    }
                 }
                 if (!entities.HasComponent<Game.Common.Owner>(owner)) break;
                 owner = entities.GetComponentData<Game.Common.Owner>(owner).m_Owner;
@@ -672,10 +705,23 @@ namespace Seety.Vitals
             Entity route;
             if (Classify(place, entities, names, out kind, out name, out route))
             {
+                namedEntity = route;
                 return name;
             }
 
+            namedEntity = place;
             return SafeName(names, place);
+        }
+
+        /// <summary>
+        /// Keep the game's full name record for the client to localize. Rendered labels omit
+        /// company brands, addresses and route numbers; GetName is what vanilla panels bind.
+        /// </summary>
+        private static NameSystem.Name? SafeDisplayName(NameSystem names, Entity entity)
+        {
+            if (entity == Entity.Null) return null;
+            try { return names.GetName(entity); }
+            catch { return null; }
         }
 
         /// <summary>
