@@ -56,20 +56,6 @@ The bar can also run vertically, from the same tab.
 Some readings also carry a chart of how they got here.
 
 Optionally, rest the cursor on a building to see what is holding it back, and by how much.
-
-## What it never does
-
-Seety reads. It does not govern. Clicking a reading changes only which info view is showing and where the camera is pointing.
-
-Two options draw outside Seety's own bar, both off unless you turn them on: one prints the change beside the population and money figures on the bottom bar; the other redraws the game's blue buttons in the bottom bar's colour.
-
-Two other exceptions, both on the options page and nowhere near the bar. One is a field to add or remove money from your treasury - off to the side, typed in on purpose. The other fades the zoning cells drawn along your roads, for anyone who finds them loud: off unless you turn it on, it changes how those cells are drawn and nothing else, and switching it back off restores exactly the colours the game shipped.
-
-## Before you install
-
-Available in all twelve languages supported by the game. Free and open source under the MIT licence: [source on GitHub](https://github.com/merrinaf-tech/Seety).
-
-If it saves you a few trips through the menus, you can [buy me a coffee](https://ko-fi.com/fabiozsche). Entirely optional - the mod is the same either way.
 	</LongDescription>
 
 	<Thumbnail Value="Properties/Thumbnail.png" />
