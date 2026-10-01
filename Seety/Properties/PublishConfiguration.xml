@@ -96,7 +96,7 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.2.0" />
+	<ModVersion Value="1.3.0" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
@@ -106,8 +106,10 @@ If it saves you a few trips through the menus, you can [buy me a coffee](https:/
 	  only what changed since the version now live. See AGENTS.md - letting this accumulate is the repeat offender.
 	-->
 	<ChangeLog>
-Charts show the current value instead of the peak.
-Selected journey uses the game's actual names for people, streets, lines and destinations.
-New Busiest stops view: passengers waiting at each public transport line stop, excluding cargo. Line colours and numbers identify the routes; clicking a stop opens its line.
+Readings are chosen in the options, on their own tab.
+Option for a vertical bar.
+The bar is locked in place; unlock it in the options to move it.
+The bar snaps into line with the game's buttons.
+Info view panels draw over the bar.
 	</ChangeLog>
 </Publish>
