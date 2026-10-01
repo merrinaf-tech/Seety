@@ -26,11 +26,10 @@ Maybe the real city was the stats we saw along the way.
 ## Setup
 
 1. Enable the mod.
-2. Click the **gear** at the end of the bar.
-3. Click the readings you want to keep, and drag the bar where you want it.
-4. Click the gear again.
+2. In the options, on Seety's **Readings** tab, tick the readings you want.
+3. To move the bar, untick **Lock the bar in place** on the **Bar** tab, drag it, and tick it again.
 
-The bar is locked in place outside configuration mode.
+The bar can also run vertically, from the same tab.
 
 ## The bar
 

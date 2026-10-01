@@ -8,12 +8,10 @@ import { useEffect, useRef } from "react";
  * does not have to configure Seety as well.
  *
  * Surfaces register only while they are actually open, and exactly one is closed per press: the
- * highest priority, and among equals the most recently opened. That is what stops a press
- * closing the window and leaving configuration mode in the same breath.
+ * highest priority, and among equals the most recently opened, so one press never closes two
+ * windows at once.
  */
 export enum DismissPriority {
-  /** Configuration mode: a mode rather than a surface, so it backs out last. */
-  ConfigMode = 0,
   /** A floating window opened from the bar. */
   Window = 10,
 }

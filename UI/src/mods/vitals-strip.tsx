@@ -220,9 +220,12 @@ const visible$ = bindValue<boolean>("seety", "visible", true);
 const posX$ = bindValue<number>("seety", "posX", 10);
 const posY$ = bindValue<number>("seety", "posY", 90);
 const iconsHidden$ = bindValue<boolean>("seety", "iconsHidden", false);
-const configMode$ = bindValue<boolean>("seety", "configMode", false);
 const iconOutline$ = bindValue<boolean>("seety", "iconOutline", true);
 const gameButtonStyle$ = bindValue<boolean>("seety", "gameButtonStyle", false);
+const verticalStrip$ = bindValue<boolean>("seety", "verticalStrip", false);
+const positionLocked$ = bindValue<boolean>("seety", "positionLocked", true);
+// Every reading in the catalogue, switched on or not. See arrange in the strip.
+const catalogSize$ = bindValue<number>("seety", "catalogSize", 0);
 
 const journeyOn$ = bindValue<boolean>("seety", "journeyOn", false);
 const transitMode$ = bindValue<boolean>("seety", "transitMode", false);
@@ -333,53 +336,66 @@ const ZERO$ = bindValue<number>("seety", "posX", 0);
 const DRAG_THRESHOLD = 4;
 
 /**
- * The strip snaps to a multiple of this many rem while being dragged, so it is easy to land it
- * back on the exact same spot, or roughly level with another anchored panel, rather than
- * fighting for a pixel-perfect drop. Not tied to the vanilla toolbar's own button spacing -
- * nothing here reads that - just a plain, even grid.
+ * The grid the vanilla floating buttons sit on, in rem: the top-left row starts 10rem in from the
+ * top and left edges (the game's own `top: 10rem; left: 10rem`), and each button is
+ * --floatingToggleSize, 40rem, with 6rem between neighbours.
+ *
+ * Read off a 1080p screenshot on 2026-10-01, where a rem is a pixel: button centres at 30, 76, 122
+ * and on. Values the game owns; an update that moves its buttons leaves the bar slightly off the
+ * row, not broken.
  */
-const DRAG_GRID = 8;
+/**
+ * The longest a vertical bar runs before it splits into two columns. 18 cells reach about 840rem
+ * down from the top row, still clear of the bottom bar on a 1080rem-tall screen. Chosen by the
+ * player who asked for it; a number, not a derived one.
+ */
+const SINGLE_COLUMN_MAX = 18;
 
-function snapToGrid(value: number): number {
-  return Math.round(value / DRAG_GRID) * DRAG_GRID;
+const HUD_EDGE = 10;
+const HUD_BUTTON = 40;
+const HUD_PITCH = 46;
+
+/**
+ * The snap step: a quarter of that pitch. Every fourth point is a vanilla button's centre, so the
+ * bar still lines up exactly when wanted; the three between are there because a whole pitch alone
+ * proved too coarse to place the bar by hand.
+ */
+const HUD_STEP = HUD_PITCH / 4;
+
+/**
+ * One axis of the snap: the bar lands so that its first cell's centre sits on the vanilla buttons'
+ * grid - on a button's centre, or a quarter of the way between two - and the cells after it,
+ * spaced at the same pitch, follow on the same grid.
+ *
+ * `cellCentre` is how far that centre is from the bar's own edge, which differs between the dark
+ * panel and the game-button style and between row and column; aligning centres rather than edges
+ * is what makes one rule fit all four. The result stays within 0..max, stepping a whole pitch back
+ * rather than leaving the grid when the nearest point would push the bar off screen.
+ */
+function snapToHud(value: number, cellCentre: number, max: number): number {
+  const first = HUD_EDGE + HUD_BUTTON / 2;
+  let snapped = first + Math.round((value + cellCentre - first) / HUD_STEP) * HUD_STEP - cellCentre;
+  while (snapped > max && snapped - HUD_STEP >= 0) snapped -= HUD_STEP;
+  while (snapped < 0 && snapped + HUD_STEP <= max) snapped += HUD_STEP;
+  return Math.min(max, Math.max(0, snapped));
 }
 
 /**
- * The top edge of the vanilla HUD's own top-left row, in rem.
- *
- * From the game's compiled stylesheet, where its top layout is
- * `position: absolute; top: 10rem; left: 10rem; right: 10rem`. Read from the game rather than
- * eyeballed, but it is the container's edge, not necessarily the buttons' - if they sit inside
- * padding of its own, this needs to be whatever lines up in game. One constant, one place.
- *
- * Like the icon paths, this is a value the game owns and could move in an update. Wrong, it costs
- * a slightly-off magnet, not a broken bar.
+ * Where the first cell's centre is inside the bar, in rem. Measured from the layout rather than
+ * worked out from the stylesheet: margins, padding and the game's button class all feed into it.
+ * Zero when there is nothing to measure yet.
  */
-const HUD_TOP_Y = 10;
-
-/**
- * How near that line the bar has to be dragged before it locks onto it, in rem.
- *
- * Wider than it sounds: the ordinary grid is 8rem, so anything much larger than this would swallow
- * the two gridlines either side and make the top of the screen feel sticky.
- */
-const HUD_SNAP_PULL = 5;
-
-/**
- * Vertical snapping: the plain grid everywhere, except near the vanilla HUD row, where the bar
- * locks flush to it.
- *
- * The grid alone could not reach that line at all - 10 is not a multiple of 8 - so lining the bar
- * up with the game's own buttons was impossible by hand, which is the entire reason this exists.
- * Deliberately one extra target rather than a general magnetic grid: dragging keeps behaving
- * exactly as it did everywhere else, and only the one alignment worth having is made reachable.
- */
-function snapY(value: number): number {
-  if (Math.abs(value - HUD_TOP_Y) <= HUD_SNAP_PULL) {
-    return HUD_TOP_Y;
+function firstCellCentre(strip: HTMLElement | null, scale: number): { x: number; y: number } {
+  const cell = strip?.querySelector?.(`.${styles.entry}`);
+  if (!strip || !cell) {
+    return { x: 0, y: 0 };
   }
-
-  return snapToGrid(value);
+  const outer = strip.getBoundingClientRect();
+  const inner = cell.getBoundingClientRect();
+  return {
+    x: (inner.left + inner.width / 2 - outer.left) / scale,
+    y: (inner.top + inner.height / 2 - outer.top) / scale,
+  };
 }
 
 /**
@@ -1235,7 +1251,7 @@ const FloatingWindow = ({
       className={styles.window}
       ref={windowRef}
       style={{ left: `${pos.x}rem`, top: `${pos.y}rem` }}
-      // The strip below is draggable too; without this a drag inside the window moves both.
+      // Nothing behind a window may see a press on it - the bar is draggable when unlocked.
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className={styles.windowBar} onMouseDown={onMouseDown}>
@@ -1870,16 +1886,20 @@ export const VitalsStrip = () => {
   const journeyOn = useValue(journeyOn$);
   const transitMode = useValue(transitMode$);
 
-  const configMode = useValue(configMode$);
   const outlined = useValue(iconOutline$);
   // The option only takes effect when the game's button classes were found.
   const gameButton = useValue(gameButtonStyle$) ? gameButtonClasses() : null;
+  const vertical = useValue(verticalStrip$);
+  const catalogSize = useValue(catalogSize$);
+  // Locked by default, by request: when the bar moved at any time it got dragged by accident while
+  // panning or using a tool. The player unlocks it in the options to move it.
+  const canDrag = !useValue(positionLocked$);
 
   const [pos, setPos] = useState({ x: savedX, y: savedY });
   const [dragging, setDragging] = useState(false);
   // Which row is expanded, or null. One at a time: two open panels would overlap.
   const [expanded, setExpanded] = useState<string | null>(null);
-  const activeExpanded = visible && !configMode && vitals?.some((v) => v.id === expanded && v.enabled)
+  const activeExpanded = visible && vitals?.some((v) => v.id === expanded && v.enabled)
     ? expanded : null;
 
   // C# only fetches a series for the row that is actually open, so it has to be told.
@@ -1892,13 +1912,11 @@ export const VitalsStrip = () => {
   }, [expanded, activeExpanded]);
 
   useEffect(() => () => trigger("seety", "expand", ""), []);
-  // Cancel closes the open window first, and only backs out of configuration mode once there is
-  // no window left - the same order the game itself backs out of things.
+  // Cancel closes the open window, the same way it backs out of the game's own.
   useDismissOnCancel(!!activeExpanded, () => setExpanded(null), DismissPriority.Window);
-  useDismissOnCancel(configMode, () => trigger("seety", "setConfigMode", false),
-    DismissPriority.ConfigMode);
 
-  const drag = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, moved: false, scale: 1 });
+  const drag = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, moved: false, scale: 1,
+    centre: { x: 0, y: 0 } });
   const elementRef = useRef<HTMLDivElement | null>(null);
 
   // The C# side is the owner of the position; follow it except while the pointer is down, when
@@ -1914,7 +1932,8 @@ export const VitalsStrip = () => {
       if (event.button !== 0) return;
       // A new click must work even after the previous gesture moved the strip.
       drag.current.moved = false;
-      if (!configMode || !visible) return;
+      if (!canDrag || !visible) return;
+      const scale = pxPerRem();
       drag.current = {
         pointerX: event.clientX,
         pointerY: event.clientY,
@@ -1922,19 +1941,20 @@ export const VitalsStrip = () => {
         originY: pos.y,
         moved: false,
         // Pointer deltas are pixels, `pos` is rem. See pxPerRem.
-        scale: pxPerRem(),
+        scale,
+        centre: firstCellCentre(elementRef.current, scale),
       };
       setDragging(true);
     },
-    [pos.x, pos.y, configMode, visible]
+    [pos.x, pos.y, canDrag, visible]
   );
 
   useEffect(() => {
     if (!dragging) {
       return;
     }
-    // Leaving configuration (or hiding the HUD) cancels an unfinished move.
-    if (!configMode || !visible) {
+    // Losing permission to drag (or hiding the HUD) cancels an unfinished move.
+    if (!canDrag || !visible) {
       setDragging(false);
       return;
     }
@@ -1961,10 +1981,10 @@ export const VitalsStrip = () => {
       const maxX = Math.max(0, window.innerWidth / scale - width);
       const maxY = Math.max(0, window.innerHeight / scale - height);
 
+      const centre = drag.current.centre;
       setPos({
-        x: Math.min(maxX, Math.max(0, snapToGrid(drag.current.originX + dx))),
-        // Horizontal keeps the plain grid; only the vertical has a line worth locking onto.
-        y: Math.min(maxY, Math.max(0, snapY(drag.current.originY + dy))),
+        x: snapToHud(drag.current.originX + dx, centre.x, maxX),
+        y: snapToHud(drag.current.originY + dy, centre.y, maxY),
       });
     };
 
@@ -1986,7 +2006,28 @@ export const VitalsStrip = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, configMode, visible]);
+  }, [dragging, canDrag, visible]);
+
+  // The grid is defined by where the first cell's centre lands, and that moves when the bar turns
+  // between row and column or changes style - so each of those snaps it again, as does the first
+  // render with something in it, which also lines up a position saved before the grid existed. It
+  // pulls back inside the screen a bar that its new shape would push off it, too.
+  const shown = visible && (vitals?.length ?? 0) > 0;
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!shown || !element) {
+      return;
+    }
+    const scale = pxPerRem();
+    const centre = firstCellCentre(element, scale);
+    const maxX = Math.max(0, window.innerWidth / scale - element.offsetWidth / scale);
+    const maxY = Math.max(0, window.innerHeight / scale - element.offsetHeight / scale);
+    const x = Math.round(snapToHud(savedX, centre.x, maxX));
+    const y = Math.round(snapToHud(savedY, centre.y, maxY));
+    if (x !== savedX || y !== savedY) {
+      trigger("seety", "setPosition", x, y);
+    }
+  }, [vertical, !!gameButton, shown]);
 
   if (!visible || !vitals || vitals.length === 0) {
     return null;
@@ -1997,13 +2038,38 @@ export const VitalsStrip = () => {
     ? (breakdowns ?? []).find((b) => b.id === activeExpanded)
     : undefined;
 
+  // A row stays one row. A column stays one column up to SINGLE_COLUMN_MAX cells; past that it
+  // splits, and the first column always takes half the catalogue - 13 of 26 - so the full set is two
+  // even columns and the first never changes length as readings come and go. Splitting earlier, at
+  // that half, left a first column of 13 beside a stub of one or two. Explicit columns rather than
+  // flex-wrap, which this renderer is not known to do.
+  const arrange = (cells: React.ReactNode[]) => {
+    if (!vertical || cells.length <= SINGLE_COLUMN_MAX) {
+      return vertical ? [<div key={0} className={styles.column}>{cells}</div>] : cells;
+    }
+    const perColumn = Math.max(1, Math.ceil((catalogSize || cells.length) / 2));
+    const columns: React.ReactNode[] = [];
+    for (let start = 0; start < cells.length; start += perColumn) {
+      columns.push(
+        <div key={start}
+          className={start > 0 ? `${styles.column} ${styles.nextColumn}` : styles.column}>
+          {cells.slice(start, start + perColumn)}
+        </div>
+      );
+    }
+    return columns;
+  };
+
   return (
+    <>
     <div
       ref={elementRef}
       className={[
         styles.strip,
-        configMode && dragging ? styles.dragging : "",
-        configMode ? styles.stripConfig : "",
+        // A press is usually a click, so the cue waits for real movement.
+        dragging && drag.current.moved ? styles.dragging : "",
+        canDrag ? styles.unlocked : "",
+        vertical ? styles.vertical : "",
         outlined ? styles.outlined : "",
         gameButton ? styles.gameStyle : "",
       ]
@@ -2016,14 +2082,8 @@ export const VitalsStrip = () => {
           otherwise. Inside the strip because the strip is what is always mounted. */}
       <DismissInput />
 
-      {configMode ? (
-        <span className={styles.configBanner}>
-          {t("Seety.CONFIG_BANNER", "Choose readings or move the bar")}
-        </span>
-      ) : null}
-
-      {vitals
-        .filter((vital) => configMode || vital.enabled)
+      {arrange(vitals
+        .filter((vital) => vital.enabled)
         // Bars first, counts last. Every bar-format entry is the same fixed box with no text in
         // it; a count carries a number of its own and reads differently, so grouping them at one
         // end keeps the left side a clean, uniform row instead of a number breaking it up every
@@ -2036,9 +2096,8 @@ export const VitalsStrip = () => {
         .map((vital) => {
         const breakdown = (breakdowns ?? []).find((b) => b.id === vital.id);
         // A row is expandable if it has a list behind it, a chart, a table, factors, or any
-        // combination. In configuration mode nothing expands: a click means "show this one".
+        // combination.
         const hasPanel =
-          !configMode &&
           (breakdown !== undefined ||
             vital.hasHistory ||
             vital.factors !== "" ||
@@ -2061,11 +2120,8 @@ export const VitalsStrip = () => {
           }
           // A row with a list behind it has no infoview, so C# reports it as non-clickable -
           // but it does open that list, so it still needs to look pressable.
-          if (!gameButton && (configMode || vital.clickable || hasPanel)) {
+          if (!gameButton && (vital.clickable || hasPanel)) {
             classes.push(styles.clickable);
-          }
-          if (configMode && !vital.enabled) {
-            classes.push(styles.disabled);
           }
           if (level === VitalLevel.Warning) {
             classes.push(gameButton ? styles.gameWarning : styles.warning);
@@ -2091,10 +2147,6 @@ export const VitalsStrip = () => {
                 onClick={() => {
                   // A press that turned into a drag must not also open anything.
                   if (drag.current.moved) {
-                    return;
-                  }
-                  if (configMode) {
-                    trigger("seety", "toggleVital", vital.id);
                     return;
                   }
                   if (hasPanel) {
@@ -2128,36 +2180,12 @@ export const VitalsStrip = () => {
         ) : (
           <React.Fragment key={vital.id}>{row(vital.value, vital.level)}</React.Fragment>
         );
-        })}
+        }))}
 
-      <Tooltip
-        tooltip={
-          configMode
-            ? t("Seety.CONFIG_ON", "Done choosing")
-            : t(
-                "Seety.CONFIG_OFF",
-                "Choose which readings to show: click the ones you want"
-              )
-        }
-      >
-        <div
-          className={[
-            styles.entry,
-            gameButton ? gameButton.button : styles.clickable,
-            configMode ? (gameButton ? gameButton.selected : styles.configOn) : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          onClick={() => {
-            if (!drag.current.moved) {
-              trigger("seety", "setConfigMode", !configMode);
-            }
-          }}
-        >
-          <img className={`${styles.icon} ${styles.gameGlyph}`} src="Media/Glyphs/Gear.svg" />
-        </div>
-      </Tooltip>
+    </div>
 
+    {/* Beside the bar, not inside it: the bar sits under the game's own panels (see .strip),
+        and a window inside it would be taken down with it. */}
       {openVital ? (
         <FloatingWindow
           title={t(openVital.titleKey, openVital.title)}
@@ -2229,6 +2257,6 @@ export const VitalsStrip = () => {
           ) : null}
         </FloatingWindow>
       ) : null}
-    </div>
+    </>
   );
 };

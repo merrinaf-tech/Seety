@@ -96,11 +96,10 @@ test("built UI renders metric and imperial readings without a runtime UnitSystem
       }
     }
 
-    // Hiding or configuring the HUD must also release its expensive backend subscription.
-    for (const mode of ["open", "hidden", "configuring", "removed", "disabled"]) {
+    // Hiding the HUD must also release its expensive backend subscription.
+    for (const mode of ["open", "hidden", "removed", "disabled"]) {
       expanded = vital.id;
       bindings["seety.visible"] = mode !== "hidden";
-      bindings["seety.configMode"] = mode === "configuring";
       bindings["seety.vitals"] = mode === "removed" ? [] : [vital];
       vital.enabled = mode !== "disabled";
       effects = [];
@@ -119,7 +118,6 @@ test("built UI renders metric and imperial readings without a runtime UnitSystem
     vital.companions = [];
     expanded = vital.id;
     bindings["seety.visible"] = true;
-    bindings["seety.configMode"] = false;
     bindings["seety.vitals"] = [vital];
     bindings["seety.notifications"] = [{ id: vital.id, rows: [] }];
     assert.match(renderToStaticMarkup(React.createElement(Strip)), /Nothing to report/);

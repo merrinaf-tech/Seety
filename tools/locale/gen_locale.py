@@ -24,9 +24,18 @@ def add(key, *values):
 add("option.title",
     "Seety", "Seety", "Seety", "Seety", "Seety", "Seety",
     "Seety", "Seety", "Seety", "Seety", "Seety", "Seety")
-add("option.tab.Main",
-    "Main", "Allgemein", "General", "Général", "Generale", "メイン",
-    "기본", "Główne", "Principal", "Основное", "主要", "主要")
+add("option.tab.Bar",
+    "Bar", "Leiste", "Barra", "Barre", "Barra", "バー",
+    "바", "Pasek", "Barra", "Панель", "状态条", "狀態條")
+add("option.tab.Readings",
+    "Readings", "Werte", "Lecturas", "Indicateurs", "Letture", "数値",
+    "수치", "Odczyty", "Leituras", "Показатели", "读数", "讀數")
+add("option.tab.Game",
+    "Game", "Spiel", "Juego", "Jeu", "Gioco", "ゲーム",
+    "게임", "Gra", "Jogo", "Игра", "游戏", "遊戲")
+add("option.tab.Funds",
+    "Funds", "Finanzen", "Fondos", "Fonds", "Fondi", "資金",
+    "자금", "Fundusze", "Fundos", "Средства", "资金", "資金")
 add("option.group.DisplayGroup",
     "Display", "Anzeige", "Visualización", "Affichage", "Visualizzazione", "表示",
     "표시", "Wyświetlanie", "Exibição", "Отображение", "显示", "顯示")
@@ -50,6 +59,40 @@ add("option.desc.ShowStrip",
     "Показывает или скрывает всю панель. Нажмите на любой показатель, чтобы открыть соответствующий режим информации.",
     "显示或隐藏整个状态条。点击任意读数可打开对应的信息视图。",
     "顯示或隱藏整個狀態條。點擊任一讀數可開啟對應的資訊檢視。")
+add("option.label.VerticalStrip",
+    "Vertical bar", "Senkrechte Leiste", "Barra vertical", "Barre verticale",
+    "Barra verticale", "縦向きのバー", "세로 바", "Pionowy pasek",
+    "Barra vertical", "Вертикальная панель", "竖向状态条", "直向狀態條")
+add("option.desc.VerticalStrip",
+    "Stacks the readings one under the other instead of side by side. With more than 18 on, they split into two columns.",
+    "Ordnet die Werte untereinander statt nebeneinander an. Sind mehr als 18 eingeschaltet, werden sie auf zwei Spalten verteilt.",
+    "Coloca las lecturas una debajo de otra en lugar de una al lado de otra. Con más de 18 activadas, se reparten en dos columnas.",
+    "Empile les indicateurs les uns sous les autres au lieu de côte à côte. Au-delà de 18 activés, ils se répartissent sur deux colonnes.",
+    "Dispone le letture una sotto l'altra invece che affiancate. Con più di 18 attive, si dividono in due colonne.",
+    "数値を横並びではなく縦に並べます。19個以上オンにすると、2列に分かれます。",
+    "수치를 옆으로 나란히가 아니라 위아래로 쌓아 표시합니다. 18개보다 많이 켜면 두 열로 나뉩니다.",
+    "Układa odczyty jeden pod drugim zamiast obok siebie. Gdy włączonych jest więcej niż 18, dzielą się na dwie kolumny.",
+    "Empilha as leituras uma embaixo da outra em vez de lado a lado. Com mais de 18 ativadas, elas se dividem em duas colunas.",
+    "Располагает показатели друг под другом, а не в ряд. Если включено больше 18, они делятся на два столбца.",
+    "将读数上下排列，而不是左右并排。开启超过 18 个时，会分成两列。",
+    "將讀數上下排列，而不是左右並排。開啟超過 18 個時，會分成兩列。")
+add("option.label.LockPosition",
+    "Lock the bar in place", "Leiste fixieren", "Fijar la barra", "Verrouiller la barre",
+    "Blocca la posizione della barra", "バーの位置を固定", "바 위치 고정", "Zablokuj pasek",
+    "Travar a barra", "Закрепить панель", "锁定状态条位置", "鎖定狀態條位置")
+add("option.desc.LockPosition",
+    "While on, the bar cannot be dragged, so it does not move by accident while you play. Turn it off to move the bar, then back on.",
+    "Solange aktiv, lässt sich die Leiste nicht ziehen und verrutscht beim Spielen nicht versehentlich. Zum Verschieben ausschalten, danach wieder einschalten.",
+    "Mientras está activado, la barra no se puede arrastrar, así no se mueve por accidente mientras juegas. Desactívalo para moverla y luego vuelve a activarlo.",
+    "Tant que c'est activé, la barre ne peut pas être déplacée et ne bouge donc pas par accident pendant que vous jouez. Désactivez-le pour la déplacer, puis réactivez-le.",
+    "Finché è attivo la barra non si può trascinare, così non si sposta per sbaglio mentre giochi. Disattivalo per spostarla, poi riattivalo.",
+    "オンの間はバーをドラッグできないため、プレイ中に誤って動くことがありません。動かすときはオフにし、その後オンに戻してください。",
+    "켜져 있는 동안 바를 끌 수 없어 플레이 중 실수로 움직이지 않습니다. 옮기려면 끄고, 옮긴 뒤 다시 켜세요.",
+    "Gdy włączone, paska nie da się przeciągnąć, więc nie przesunie się przypadkiem podczas gry. Wyłącz, aby go przesunąć, a potem włącz ponownie.",
+    "Enquanto estiver ativado, a barra não pode ser arrastada, então não se move por acidente enquanto você joga. Desative para movê-la e depois ative de novo.",
+    "Пока включено, панель нельзя перетащить, поэтому она не сдвинется случайно во время игры. Выключите, чтобы переместить её, затем включите снова.",
+    "开启时无法拖动状态条，游戏时不会误移。要移动时先关闭，移好后再开启。",
+    "開啟時無法拖曳狀態條，遊戲時不會誤移。要移動時先關閉，移好後再開啟。")
 add("option.label.HighlightProblems",
     "Highlight problems", "Probleme hervorheben", "Resaltar problemas", "Mettre en évidence les problèmes",
     "Evidenzia i problemi", "問題を強調表示", "문제 강조", "Podświetlaj problemy",

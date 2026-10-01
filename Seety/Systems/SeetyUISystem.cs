@@ -52,6 +52,12 @@ namespace Seety.Systems
         /// <summary>Whether the bar is drawn as the game's floating buttons. See SeetySettings.GameButtonStyle.</summary>
         private ValueBinding<bool> _gameButtonStyleBinding;
 
+        /// <summary>Whether the readings run in a column. See SeetySettings.VerticalStrip.</summary>
+        private ValueBinding<bool> _verticalStripBinding;
+
+        /// <summary>Whether pressing on the bar can move it. See SeetySettings.LockPosition.</summary>
+        private ValueBinding<bool> _positionLockedBinding;
+
         /// <summary>Whether the game's floating buttons are drawn dark. See SeetySettings.DarkGameButtons.</summary>
         private ValueBinding<bool> _darkGameButtonsBinding;
         private ValueBinding<bool> _toolbarTrendsBinding;
@@ -97,14 +103,6 @@ namespace Seety.Systems
         private EntityQuery _waitingStopQuery;
         private ValueBinding<bool> _transportStopsModeBinding;
         private RawValueBinding _waitingStopsBinding;
-
-        /// <summary>
-        /// While on, the strip shows every row in the catalogue - including the ones switched off
-        /// - so the player can pick by clicking the thing itself rather than hunting a checkbox.
-        /// </summary>
-        private bool _configMode;
-
-        private ValueBinding<bool> _configModeBinding;
 
         /// <summary>Which row the player has open, or empty. Only its history is fetched.</summary>
         private string _expandedId = string.Empty;
@@ -365,6 +363,18 @@ namespace Seety.Systems
                 settings != null && settings.GameButtonStyle);
             AddBinding(_gameButtonStyleBinding);
 
+            _verticalStripBinding = new ValueBinding<bool>(Group, "verticalStrip",
+                settings != null && settings.VerticalStrip);
+            AddBinding(_verticalStripBinding);
+
+            _positionLockedBinding = new ValueBinding<bool>(Group, "positionLocked",
+                settings == null || settings.LockPosition);
+            AddBinding(_positionLockedBinding);
+
+            // The whole catalogue, not what is switched on: a column splits at half of this, so the
+            // full set is two even columns and a short bar stays one.
+            AddBinding(new ValueBinding<int>(Group, "catalogSize", Vitals.VitalCatalog.All().Count));
+
             _darkGameButtonsBinding = new ValueBinding<bool>(Group, "darkGameButtons",
                 settings != null && settings.DarkGameButtons);
             AddBinding(_darkGameButtonsBinding);
@@ -406,11 +416,6 @@ namespace Seety.Systems
             AddBinding(new TriggerBinding<int>(Group, "jumpToCemetery", OnJumpToCemetery));
             AddBinding(new TriggerBinding<string, int>(Group, "jumpToResource", OnJumpToResource));
             AddBinding(new TriggerBinding<string>(Group, "openInfoview", OnOpenInfoview));
-
-            _configModeBinding = new ValueBinding<bool>(Group, "configMode", false);
-            AddBinding(_configModeBinding);
-            AddBinding(new TriggerBinding<bool>(Group, "setConfigMode", OnSetConfigMode));
-            AddBinding(new TriggerBinding<string>(Group, "toggleVital", OnToggleVital));
 
             _iconsHiddenBinding = new ValueBinding<bool>(Group, "iconsHidden", false);
             AddBinding(_iconsHiddenBinding);
@@ -481,9 +486,8 @@ namespace Seety.Systems
             var settings = Mod.Settings;
             foreach (var vital in Vitals.VitalCatalog.All())
             {
-                // In configuration mode every row is live, so the player sees real numbers while
-                // choosing. Otherwise only what they picked is read at all.
-                if (_configMode || settings == null || settings.IsVitalEnabled(vital.Id))
+                // Only what the player picked is read at all.
+                if (settings == null || settings.IsVitalEnabled(vital.Id))
                 {
                     _active.Add(vital);
 
@@ -529,11 +533,49 @@ namespace Seety.Systems
         /// </summary>
         private void SortByGameOrder()
         {
-            if (!_infoviewsResolved || _infoviewOrder.Count == 0)
+            if (_infoviewsResolved && _infoviewOrder.Count > 0)
+            {
+                _active.Sort(GameOrder());
+            }
+
+            PlaceBeforeSchools(_active);
+        }
+
+        /// <summary>Taken out of game order and put just ahead of the schools, in this order.</summary>
+        private static readonly string[] BeforeSchools = { "post", "pollution" };
+
+        private static readonly string[] Schools = { "elementary", "highschool", "college", "university" };
+
+        /// <summary>
+        /// The one exception to game order, by request (2026-10-01): post and environment quality
+        /// move up to just before the first school. With every reading on, a vertical bar's first
+        /// column is 13 cells, and in game order it ended two schools into the four - this puts all
+        /// four together at the top of the second column. Nothing moves when no school is shown.
+        /// </summary>
+        private static void PlaceBeforeSchools(List<Vitals.Vital> rows)
+        {
+            if (rows.FindIndex(v => Array.IndexOf(Schools, v.Id) >= 0) < 0)
             {
                 return;
             }
 
+            var moved = new List<Vitals.Vital>();
+            foreach (var id in BeforeSchools)
+            {
+                var at = rows.FindIndex(v => v.Id == id);
+                if (at >= 0)
+                {
+                    moved.Add(rows[at]);
+                    rows.RemoveAt(at);
+                }
+            }
+
+            rows.InsertRange(rows.FindIndex(v => Array.IndexOf(Schools, v.Id) >= 0), moved);
+        }
+
+        /// <summary>Infoview menu order, ties and rows without an infoview kept in catalogue order.</summary>
+        private Comparison<Vitals.Vital> GameOrder()
+        {
             var catalogue = new Dictionary<string, int>();
             var index = 0;
             foreach (var vital in Vitals.VitalCatalog.All())
@@ -541,7 +583,7 @@ namespace Seety.Systems
                 catalogue[vital.Id] = index++;
             }
 
-            _active.Sort(delegate(Vitals.Vital a, Vitals.Vital b)
+            return delegate(Vitals.Vital a, Vitals.Vital b)
             {
                 var orderA = OrderOf(a);
                 var orderB = OrderOf(b);
@@ -552,7 +594,40 @@ namespace Seety.Systems
                 }
 
                 return catalogue[a.Id].CompareTo(catalogue[b.Id]);
-            });
+            };
+        }
+
+        /// <summary>
+        /// Every reading in the order the bar draws it with all of them on: game order, then the
+        /// UI's own stable split of bars before counts.
+        ///
+        /// The options page cannot follow this by itself - its checkboxes are in declaration order,
+        /// fixed at compile time, while this comes from the game's prefabs at runtime. So it is
+        /// logged, and a mismatch is a warning: the checkboxes are reordered by hand to match.
+        /// </summary>
+        private void LogBarOrder()
+        {
+            var all = new List<Vitals.Vital>(Vitals.VitalCatalog.All());
+            all.Sort(GameOrder());
+            PlaceBeforeSchools(all);
+
+            var bar = new List<string>();
+            foreach (var vital in all)
+            {
+                if (vital.Format == Vitals.VitalFormat.Percentage) bar.Add(vital.Id);
+            }
+            foreach (var vital in all)
+            {
+                if (vital.Format != Vitals.VitalFormat.Percentage) bar.Add(vital.Id);
+            }
+
+            var options = new List<string>(Settings.SeetySettings.CheckboxOrder());
+            Mod.Log.Info("Bar order: " + string.Join(", ", bar.ToArray()));
+            if (string.Join(",", bar.ToArray()) != string.Join(",", options.ToArray()))
+            {
+                Mod.Log.Warn("The options page lists the readings in another order: "
+                    + string.Join(", ", options.ToArray()));
+            }
         }
 
         /// <summary>The game's own sort key for a row, or a value that keeps it at the front.</summary>
@@ -594,6 +669,24 @@ namespace Seety.Systems
             if (_gameButtonStyleBinding != null)
             {
                 _gameButtonStyleBinding.Update(gameStyle);
+            }
+        }
+
+        /// <summary>Called by the settings when the bar is switched between row and column.</summary>
+        public void SetVerticalStrip(bool vertical)
+        {
+            if (_verticalStripBinding != null)
+            {
+                _verticalStripBinding.Update(vertical);
+            }
+        }
+
+        /// <summary>Called by the settings when the bar is locked in place or unlocked.</summary>
+        public void SetLockPosition(bool locked)
+        {
+            if (_positionLockedBinding != null)
+            {
+                _positionLockedBinding.Update(locked);
             }
         }
 
@@ -1189,7 +1282,7 @@ namespace Seety.Systems
 
         private void OnSetTransportStopsMode(bool stops)
         {
-            stops = stops && _expandedId == TransportVitalId && _visibleBinding.value && !_configMode;
+            stops = stops && _expandedId == TransportVitalId && _visibleBinding.value;
             _transportStopsModeBinding.Update(stops);
             if (stops) RefreshWaitingStops();
             else
@@ -1391,7 +1484,7 @@ namespace Seety.Systems
         /// </summary>
         private void OnExpand(string id)
         {
-            _expandedId = _visibleBinding.value && !_configMode ? id ?? string.Empty : string.Empty;
+            _expandedId = _visibleBinding.value ? id ?? string.Empty : string.Empty;
             if (_expandedId != TransportVitalId && _transportStopsModeBinding.value)
                 OnSetTransportStopsMode(false);
             if (_expandedId != TrafficVitalId && _journeyOnBinding.value) OnSetJourneyOn(false);
@@ -1849,7 +1942,7 @@ namespace Seety.Systems
         /// </summary>
         private void OnSetJourneyOn(bool on)
         {
-            on = on && _visibleBinding.value && !_configMode && _expandedId == TrafficVitalId;
+            on = on && _visibleBinding.value && _expandedId == TrafficVitalId;
             _journeyOnBinding.Update(on);
             RefreshJourney(on ? JourneySelection() : Entity.Null);
             _nextJourneyRefresh = 0;
@@ -1974,29 +2067,6 @@ namespace Seety.Systems
             _iconsHiddenBinding.Update(_iconVisibility.Hidden);
         }
 
-        private void OnSetConfigMode(bool on)
-        {
-            _configMode = on;
-            _configModeBinding.Update(on);
-            if (on)
-            {
-                OnExpand(string.Empty);
-            }
-            RebuildActiveVitals();
-        }
-
-        /// <summary>Clicked a row while configuring: show it or stop showing it.</summary>
-        private void OnToggleVital(string id)
-        {
-            var settings = Mod.Settings;
-            if (settings == null || string.IsNullOrEmpty(id))
-            {
-                return;
-            }
-
-            settings.SetVitalEnabled(id, !settings.IsVitalEnabled(id));
-        }
-
         private void OnSetVisible(bool visible)
         {
             SetVisible(visible);
@@ -2107,6 +2177,7 @@ namespace Seety.Systems
 
             _infoviewsResolved = true;
             RebuildActiveVitals();
+            LogBarOrder();
 
             // The prefab names live in the packed asset database and cannot be read outside a
             // running game, so the catalogue ships candidates. Logging what actually exists is

@@ -7,6 +7,11 @@
 // top-left button row alongside every other mod's button.
 .strip {
   position: fixed;
+  // Under the game's own panels rather than over them: an infoview's legend opens at the top left,
+  // exactly where the bar tends to be parked, and the game's panel is the one being read then.
+  // Last in the Game anchor, the bar would otherwise paint over everything before it. Its windows
+  // are rendered beside it, not inside, so they are not taken down with it.
+  z-index: -1;
 
   display: flex;
   flex-direction: row;
@@ -46,6 +51,15 @@
 .dragging {
   cursor: grabbing;
   background-color: rgba(0, 0, 0, 0.94);
+}
+
+// Unlocked in the options: the bar can be picked up, and the cursor says so over its edges.
+.unlocked {
+  cursor: grab;
+
+  &.dragging {
+    cursor: grabbing;
+  }
 }
 
 // Every cell is the same box, whatever it holds. A row of boxes of different widths reads as a
@@ -567,7 +581,7 @@
 
   // Was 25rem, a little larger than the shared 22rem .icon. Sized back down to make room for
   // .entry .value under it without the two overlapping - see the note there. Scoped to the
-  // strip's own entries only either way - the gear, the parking list and the rest keep their size.
+  // strip's own entries only either way - the parking list and the rest keep their size.
   .icon {
     width: 20rem;
     height: 20rem;
@@ -653,45 +667,6 @@
   }
 }
 
-// Configuration mode: a row the player has switched off, shown only while choosing.
-.disabled {
-  opacity: 0.35;
-}
-
-// The gear, while configuration mode is on.
-.configOn {
-  background-color: rgba(130, 190, 255, 0.30);
-}
-
-// Configuration mode has to be unmistakable: it changes what a click means, and a player who
-// leaves it on by accident would find the whole strip inert for the rest of the session.
-.stripConfig {
-  background-color: rgba(24, 60, 96, 0.98);
-  border: 2rem solid rgb(130, 190, 255);
-  cursor: grab;
-
-  &.dragging {
-    cursor: grabbing;
-  }
-}
-
-.configBanner {
-  // Above the strip rather than inside it: in the row it pushed every cell sideways, so the
-  // things being chosen moved the moment the mode came on.
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 4rem;
-
-  padding: 2rem 8rem;
-  border-radius: 3rem;
-
-  font-size: 12rem;
-  white-space: nowrap;
-  color: rgb(16, 26, 38);
-  background-color: rgb(130, 190, 255);
-}
-
 // The share of the population an age band holds, drawn under its name. A shape is faster to read
 // than four numbers, and the numbers are right there when the shape raises a question.
 // Was display:block with no positioning - a block still starts where the preceding text left
@@ -729,10 +704,6 @@
 
 // Transparent strip, so dragging needs its own cue.
 .gameStyle.dragging {
-  background-color: rgba(0, 0, 0, 0.35);
-}
-
-.gameStyle.stripConfig {
   background-color: rgba(0, 0, 0, 0.35);
 }
 
@@ -787,7 +758,46 @@
   color: var(--negativeColor);
 }
 
-// The gear is a glyph in the dark style; vanilla floating buttons carry white glyphs.
-.gameStyle .gameGlyph {
-  filter: brightness(0) invert(1);
+// The bar as a column. Only the direction changes: every cell keeps its own size, padding and
+// drawing, so the spacing is the row's turned on its side - the 4rem margins move from the sides
+// of a cell to its top and bottom, and the strip's padding swaps axes with them. At the end of the
+// file because .gameStyle .entry has the same specificity and has to lose to this.
+//
+// The strip itself stays a row: what it holds is one or two .column boxes side by side, top
+// aligned so a shorter second column does not float in the middle.
+.vertical {
+  align-items: flex-start;
+  padding: 4rem 1.5rem;
+}
+
+// Cells hang from the column's left edge, not its centre. As game buttons a count is wider than
+// 40rem ("14.4K"), the column grows to fit the widest, and centring then pushed every square button
+// in it a pixel or two off the vanilla grid. Left-aligned, a wide cell only reaches further right.
+.column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+// The gap between columns is the gap between neighbours in a row: 8rem dark, 6rem as game buttons.
+.nextColumn {
+  margin-left: 8rem;
+}
+
+.gameStyle .nextColumn {
+  margin-left: 6rem;
+}
+
+// 4.5rem rather than the row's 4: a cell is 37rem tall but 38rem wide, and the extra half rem a
+// side keeps the column on the vanilla buttons' 46rem pitch, as the row already is across.
+.vertical .entry {
+  margin: 4.5rem 0;
+}
+
+.gameStyle.vertical {
+  padding: 0;
+}
+
+.gameStyle.vertical .entry {
+  margin: 3rem 0;
 }

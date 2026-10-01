@@ -8,8 +8,9 @@ window appears: the city's problems grouped by type with the camera jumping to e
 against the jobs that exist, who lives here by age and education, why zone demand is stuck, which
 school is about to overflow, which cemetery is about to fill.
 
-Use the gear to enter configuration mode to choose readings and move the bar. Outside that
-mode the bar stays locked in place.
+Choose the readings on the **Readings** tab of the mod's options. The bar is locked in place: to
+move it, switch off **Lock the bar in place** on the **Bar** tab, drag it, and switch it back on.
+The same tab stacks the bar vertically, in two columns once more than half the readings are on.
 
 In the Traffic window, choose **Selected journey** and select a citizen or vehicle in the game.
 The panel shows its current street or transport line, destination and remaining route. Click a

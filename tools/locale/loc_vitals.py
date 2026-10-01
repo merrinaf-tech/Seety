@@ -80,4 +80,30 @@ for vid, title, label in T:
     add("Seety.VITAL[" + vid + "]", *title)
     add("Seety.LABEL[" + vid + "]", *label)
 
+# One checkbox per reading on the options page, labelled with the reading's own title. The
+# property is "Reading" plus the id in PascalCase - see SeetySettings.ReadingsWithoutCheckbox.
+# Only the catalogue's own rows: companions live inside another row's window and have no switch.
+CHECKBOXES = [
+    ("problems", "Problems"), ("happiness", "Happiness"), ("health", "Health"),
+    ("unemployment", "Unemployment"), ("homelessness", "Homelessness"), ("workers", "Workers"),
+    ("tourists", "Tourists"), ("electricity", "Electricity"), ("water", "Water"),
+    ("sewage", "Sewage"), ("deathcare", "Deathcare"), ("cemetery", "Cemetery"),
+    ("elementary", "Elementary"), ("highschool", "HighSchool"), ("college", "College"),
+    ("university", "University"), ("parking", "Parking"), ("garbage", "Garbage"),
+    ("crimeprob", "CrimeProb"), ("pollution", "Pollution"), ("fire", "Fire"), ("post", "Post"),
+    ("traffic", "Traffic"), ("landvalue", "LandValue"), ("demand", "Demand"),
+    ("transport", "Transport"),
+]
+
+TITLES = dict((vid, title) for vid, title, _ in T)
+for vid, prop in CHECKBOXES:
+    add("option.label.Reading" + prop, *TITLES[vid])
+    add("option.desc.Reading" + prop,
+        "Show this reading on the bar.", "Diesen Wert auf der Leiste anzeigen.",
+        "Mostrar esta lectura en la barra.", "Afficher cet indicateur sur la barre.",
+        "Mostra questa lettura sulla barra.", "この数値をバーに表示します。",
+        "이 수치를 바에 표시합니다.", "Pokazuj ten odczyt na pasku.",
+        "Mostrar esta leitura na barra.", "Показывать этот показатель на панели.",
+        "在状态条上显示此读数。", "在狀態條上顯示此讀數。")
+
 print("vitals:", len(T))

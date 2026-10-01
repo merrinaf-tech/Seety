@@ -61,6 +61,11 @@ namespace Seety
             // must not undo choices an existing player already made.
             Settings.SeedDefaults();
 
+            foreach (var id in SeetySettings.ReadingsWithoutCheckbox())
+            {
+                Log.Warn("Reading '" + id + "' has no checkbox on the options page; it cannot be switched off.");
+            }
+
             updateSystem.UpdateAt<SeetyUISystem>(SystemUpdatePhase.UIUpdate);
 
             // Follows the player's Tool / Cancel binding so the key that backs out of a tool also
@@ -193,6 +198,26 @@ namespace Seety
             }
 
             _uiSystem.SetGameButtonStyle(gameStyle);
+        }
+
+        internal static void OnVerticalStripChanged(bool vertical)
+        {
+            if (!_ready || _uiSystem == null)
+            {
+                return;
+            }
+
+            _uiSystem.SetVerticalStrip(vertical);
+        }
+
+        internal static void OnLockPositionChanged(bool locked)
+        {
+            if (!_ready || _uiSystem == null)
+            {
+                return;
+            }
+
+            _uiSystem.SetLockPosition(locked);
         }
 
         internal static void OnDarkGameButtonsChanged(bool dark)
