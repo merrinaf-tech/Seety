@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 /**
  * One dismissal per press of the game's Tool / Cancel binding.
  *
- * Ported from ADHD gone wild, which solved this first. The mouse half reads the player's resolved
+ * The mouse half reads the player's resolved
  * binding in C# - see CancelKeyUISystem - so somebody who has moved Cancel off the right button
  * does not have to configure Seety as well.
  *

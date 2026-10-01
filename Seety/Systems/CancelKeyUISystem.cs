@@ -12,9 +12,6 @@ namespace Seety.Systems
     /// Carries the game's real Tool / Cancel action into Seety's UI, so the key that backs out of
     /// a tool also closes Seety's windows.
     ///
-    /// Ported from the same system in ADHD gone wild rather than reinvented; the notes below are
-    /// what that one learned the hard way and they apply here unchanged.
-    ///
     /// The "Default Tool UI" action is contextual and is not emitted for a component appended to
     /// the global Game surface, and the game blocks mouse Tool actions while the pointer is over
     /// UI - so WasPerformedThisFrame cannot close a panel. What survives both is the binding

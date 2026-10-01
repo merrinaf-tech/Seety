@@ -85,7 +85,7 @@ Optionally, rest the cursor on a building to see what is holding it back, and by
 	<!--
 	  Replace this whole body and bump ModVersion for the next release. This is NOT a running
 	  history: before the next NewVersion, delete everything between the ChangeLog tags and write
-	  only what changed since the version now live. See AGENTS.md - letting this accumulate is the repeat offender.
+	  only what changed since the version now live.
 	-->
 	<ChangeLog>
 Readings are chosen in the options, on their own tab.
