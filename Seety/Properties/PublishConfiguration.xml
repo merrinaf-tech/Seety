@@ -33,29 +33,25 @@ The bar can also run vertically, from the same tab.
 
 ## The bar
 
-**Twenty-six readings**, each on or off as you like: happiness, health, unemployment, homelessness, workers, tourists, active problems, electricity, water, sewage, crematorium coverage, cemetery space, four school levels, parking, garbage, safety, fire safety, environment quality, post, traffic flow, land value, zone demand and public transport.
+**Twenty-six readings**, each on or off as you like. Click one and it takes you to what it is about: most open the matching info view, the rest open a window of their own - draggable, closeable.
 
-Three carry a second figure instead of a square of their own, because they are one question asked twice: health also holds hospital coverage, garbage also holds landfill space, and safety also holds free jail and prison cells. Open the reading and both are there, each still opening its own info view.
-
-Nothing on the list is already on the vanilla HUD, and every figure mirrors the exact source the game uses for it - a number that disagrees with the game's own panels is worse than no number at all.
-
-**More is always better.** The naturally negative figures - pollution, crime, cells occupied, schools filling up - are turned around and renamed, so a fuller, greener bar always means better, with no direction to remember per icon. Past a sensible limit a reading turns amber, then red; thresholds stay quiet in an empty city.
-
-## Everything opens something
-
-**Click a reading and it takes you to what it is about.** Most open the matching in-game info view. The rest open a window of their own - draggable, closeable:
-
-&gt; **Active problems** - every notification grouped by type and counted, worst first. Click a type and the camera goes to one of them, click again for the next, so you can work through them instead of hunting. A switch in the title bar hides the notification icons over the city.
-
-&gt; **Workers** - your workforce against the jobs that exist, on the same rows: people by education and age, who is employed, idle, working below their qualification, working outside the city or commuting in, and beside them the jobs at each level and how many nobody is doing. Every citizen counted one by one.
-
-&gt; **Happiness and demographics** - who actually lives here, age against education, with each band's share of the population drawn under it. A wide band of seniors is a wave of retirements coming; a wide band of teenagers is a school problem arriving in a few years.
-
-&gt; **Zone demand** - all six demands, and the five biggest reasons behind each. Commercial, industrial and office come apart per resource: what the city wants, how many businesses trade in it, how stocked their shelves are and how staffed they are. The game tracks all of it and never draws it, so a flat commercial bar stops being a mystery. Where a resource has a company behind it, the row flies you to the one losing most ground.
-
-&gt; **Selected journey** - a switch in the traffic window turns the jam list into the journey of whatever you have selected. Click a citizen or a vehicle and you get the street or transport line it is on now, every street and line still ahead of it with the distance along each, and where it all ends. It reads the route the game has already worked out, so nothing here is guessed. A step on public transport carries that line's own colour and number, and clicking it opens the line. Clicking the destination takes the camera there.
-
-&gt; **Schools**, **transport**, **traffic**, **parking** and **environment** - the fullest schools first, passengers and freight by mode, or the ten public transport stops with the most passengers waiting for each line. Each stop shows its line colour and number; clicking opens that line. Traffic shows the worst jams by street or, with a switch, the lines whose buses, trams, metros, trains or ferries are standing still. Where the game has its own panel for one of them, clicking goes there.
+- **Active problems** - every notification by type, worst first; click a type to fly to each one in turn. Can hide the icons over the city.
+- **Happiness and demographics** - average happiness, and who lives here by age and education.
+- **Average health** - with hospital coverage beside it.
+- **Unemployment** and **homelessness** - the share of citizens affected.
+- **Workers** - your workforce against the jobs that exist, level by level: employed, idle, overqualified, commuting.
+- **Tourists** - how many are in town.
+- **Electricity**, **water** and **sewage** - how much of the demand is actually met, with batteries and trade in the window.
+- **Crematorium coverage** and **cemetery space** - which cemetery is about to fill, one click away.
+- **Four school levels** - free places, fullest schools first.
+- **Free parking** - room left for cars and bikes.
+- **Garbage processing** - with landfill space beside it.
+- **Safety from crime** - with free jail and prison cells beside it.
+- **Fire safety**, **postal service** and **land value**.
+- **Environment quality** - the four pollutions, each opening its own map.
+- **Traffic flow** - the worst jams, the transit lines standing still, or the route of whatever you have selected.
+- **Zone demand** - all six demands and the biggest reasons behind each, down to the resource.
+- **Transport passengers** - passengers and freight by mode, and the busiest stops.
 
 Some readings also carry a chart of how they got here.
 
