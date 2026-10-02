@@ -104,9 +104,43 @@ namespace Seety.Localization
                     return _settings.GetOptionLabelLocaleID(name);
                 case "desc":
                     return _settings.GetOptionDescLocaleID(name);
+                case "enum":
+                    return EnumValueId(name);
                 default:
                     return null;
             }
+        }
+
+        /// <summary>
+        /// "StreetNameMode.CustomOnly" -> the id the options page looks up for that dropdown entry.
+        /// GetEnumValueLocaleID is generic in the enum type, so it is called for the right one by name.
+        /// </summary>
+        private string EnumValueId(string name)
+        {
+            var split = name.IndexOf('.');
+            if (split <= 0)
+            {
+                return null;
+            }
+
+            var type = typeof(SeetySettings).Assembly.GetType("Seety.Settings." + name.Substring(0, split));
+            if (type == null || !type.IsEnum)
+            {
+                return null;
+            }
+
+            object value;
+            try
+            {
+                value = Enum.Parse(type, name.Substring(split + 1));
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+
+            var method = typeof(SeetySettings).GetMethod("GetEnumValueLocaleID");
+            return method == null ? null : (string)method.MakeGenericMethod(type).Invoke(_settings, new[] { value });
         }
 
         public void Unload()

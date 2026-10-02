@@ -230,6 +230,9 @@ const catalogSize$ = bindValue<number>("seety", "catalogSize", 0);
 
 const journeyOn$ = bindValue<boolean>("seety", "journeyOn", false);
 const transitMode$ = bindValue<boolean>("seety", "transitMode", false);
+// Which street names the map draws, 0 all / 1 only renamed / 2 none. See StreetNameLabels in C#.
+const streetNames$ = bindValue<number>("seety", "streetNames", 0);
+const streetNamesAvailable$ = bindValue<boolean>("seety", "streetNamesAvailable", false);
 const transportStopsMode$ = bindValue<boolean>("seety", "transportStopsMode", false);
 interface WaitingStop { id: string; name: Name | null; lineName: Name | null; colour: string; number: number; count: number }
 const waitingStops$ = bindValue<WaitingStop[]>("seety", "waitingStops", []);
@@ -930,6 +933,12 @@ const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
  * groups are already distinguishable in the data - see TransportMode.Action - this just draws
  * that distinction instead of throwing it away.
  */
+/** The passenger section's two pages, as the tabs show them. */
+const TRANSPORT_PAGES = [
+  { stops: false, icon: "Media/Game/Icons/Transportation.svg", key: "Seety.TRANSPORT_MODES", english: "By transport mode" },
+  { stops: true, icon: "Media/Game/Icons/BusStop.svg", key: "Seety.TRANSPORT_STOPS", english: "Busiest stops" },
+];
+
 const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
   const t = useT();
   const stopsMode = useValue(transportStopsMode$);
@@ -940,20 +949,32 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
 
   return (
     <>
+      {/* Two pages, as tabs like the traffic window's, and on the stops page a refresh icon set
+          a step apart because it acts rather than switches. */}
       <div className={`${styles.panelSection} ${styles.transportSection}`}>
-        <span>{t("Seety.SEC_PASSENGERS", "Passengers")}</span>
-        <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
-          aria-pressed={stopsMode}
-          onMouseDown={(event) => event.stopPropagation()}
-          onClick={() => trigger("seety", "setTransportStopsMode", !stopsMode)}>
-          {stopsMode ? t("Seety.TRANSPORT_MODES", "By transport mode")
-            : t("Seety.TRANSPORT_STOPS", "Busiest stops")}
-        </button>
-        {stopsMode ? <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
-          onMouseDown={(event) => event.stopPropagation()}
-          onClick={() => trigger("seety", "refreshWaitingStops")}>
-          {t("Seety.STOPS_REFRESH", "Refresh")}
-        </button> : null}
+        <span className={styles.transportSectionLabel}>{t("Seety.SEC_PASSENGERS", "Passengers")}</span>
+        {TRANSPORT_PAGES.map((p) => (
+          <Tooltip key={p.key} tooltip={t(p.key, p.english)}>
+            <button type="button" aria-pressed={stopsMode === p.stops}
+              className={stopsMode === p.stops ? `${styles.windowTab} ${styles.windowTabActive}` : styles.windowTab}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                if (stopsMode !== p.stops) trigger("seety", "setTransportStopsMode", p.stops);
+              }}>
+              <img className={styles.windowTabIcon} src={p.icon} />
+            </button>
+          </Tooltip>
+        ))}
+        {stopsMode ? (
+          <Tooltip tooltip={t("Seety.STOPS_REFRESH", "Refresh")}>
+            <button type="button" className={`${styles.windowTab} ${styles.windowTabApart}`}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => trigger("seety", "refreshWaitingStops")}>
+              <img className={`${styles.windowTabIcon} ${styles.windowTabGlyph}`}
+                src="Media/Glyphs/ArrowCircular.svg" />
+            </button>
+          </Tooltip>
+        ) : null}
       </div>
       {stopsMode ? <>
         {stops.length === 0 ? <div className={styles.panelEmpty}>
@@ -1167,6 +1188,80 @@ function useVanillaValue(vital: Vital): number {
   }
 }
 
+/** The three pages of the traffic window, in the order the tabs show them. */
+const TRAFFIC_PAGES = [
+  { id: "road", icon: "Media/Game/Icons/Traffic.svg", key: "Seety.TRAFFIC_ROAD", english: "Road traffic" },
+  { id: "transit", icon: "Media/Game/Icons/Transportation.svg", key: "Seety.TRAFFIC_TRANSIT", english: "Public transport" },
+  // The game's own "traffic routes" icon: that infoview is the route of whatever is selected.
+  { id: "journey", icon: "Media/Game/Icons/TrafficRoutes.svg", key: "Seety.JOURNEY_SHOW", english: "Selected journey" },
+];
+
+/** The street name modes in click order, with the glyph that shows the current one. */
+const STREET_NAME_MODES = [
+  { glyph: "Media/Glyphs/EyeOpen.svg", key: "Seety.STREETNAMES_ALL", english: "Street names: all shown" },
+  { glyph: "Media/Glyphs/Pen.svg", key: "Seety.STREETNAMES_CUSTOM", english: "Street names: only the ones you renamed" },
+  { glyph: "Media/Glyphs/EyeClosed.svg", key: "Seety.STREETNAMES_NONE", english: "Street names: hidden" },
+];
+
+/**
+ * The traffic window's title bar: three tabs for its pages, and apart from them the street name
+ * switch.
+ *
+ * Tabs rather than the two text buttons there were: those named where a click would go rather
+ * than where you are, and the road/transit one vanished in journey mode. Each tab is an icon that
+ * is always there and lit while its page is showing.
+ *
+ * The street name button is not a fourth tab, because it changes the map rather than the window.
+ * One button that steps through the three modes, its icon showing the current one, instead of
+ * three more. Hidden when the game method behind it was not found - see StreetNameLabels.
+ */
+const TrafficActions = ({ journeyOn, transitMode, streetNames, streetNamesAvailable }: {
+  journeyOn: boolean;
+  transitMode: boolean;
+  streetNames: number;
+  streetNamesAvailable: boolean;
+}) => {
+  const t = useT();
+  const page = journeyOn ? "journey" : transitMode ? "transit" : "road";
+  // Only the bindings that differ are sent: going from the journey to public transport has to
+  // leave the journey and switch the list, going back to roads from a list does not touch journeys.
+  const go = (id: string) => {
+    if (id === "journey") {
+      if (!journeyOn) trigger("seety", "setJourneyOn", true);
+      return;
+    }
+    if (journeyOn) trigger("seety", "setJourneyOn", false);
+    const transit = id === "transit";
+    if (transit !== transitMode) trigger("seety", "setTransitMode", transit);
+  };
+  const mode = STREET_NAME_MODES[streetNames] ?? STREET_NAME_MODES[0];
+
+  return (
+    <>
+      {TRAFFIC_PAGES.map((p) => (
+        <Tooltip key={p.id} tooltip={t(p.key, p.english)}>
+          <button type="button" aria-pressed={page === p.id}
+            className={page === p.id ? `${styles.windowTab} ${styles.windowTabActive}` : styles.windowTab}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => go(p.id)}>
+            <img className={styles.windowTabIcon} src={p.icon} />
+          </button>
+        </Tooltip>
+      ))}
+      {streetNamesAvailable ? (
+        <Tooltip key="streetNames"
+          tooltip={`${t(mode.key, mode.english)}. ${t("Seety.STREETNAMES_CLICK", "Click to change")}`}>
+          <button type="button" className={`${styles.windowTab} ${styles.windowTabApart}`}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => trigger("seety", "setStreetNames", (streetNames + 1) % STREET_NAME_MODES.length)}>
+            <img className={`${styles.windowTabIcon} ${styles.windowTabGlyph}`} src={mode.glyph} />
+          </button>
+        </Tooltip>
+      ) : null}
+    </>
+  );
+};
+
 /**
  * A window that floats over the game and can be dragged anywhere.
  *
@@ -1325,6 +1420,24 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
     [t("Seety.WF_VACANT", "Vacant"), (r) => r.vacant, false],
   ];
 
+  // One line on what each column counts, shown on its heading. Same order as `columns`; the
+  // definitions are the census's own - see CitizenCensusSystem and WorkforceTable in C#.
+  const tips = [
+    t("Seety.WF_TIP_TOTAL", "Citizens who live here at this level. Tourists and commuters are not counted."),
+    t("Seety.WF_TIP_KIDS", "Children and teenagers who are not at school."),
+    t("Seety.WF_TIP_STUDENT", "Citizens studying now, at any age."),
+    t("Seety.WF_TIP_OLD", "Seniors."),
+    t("Seety.WF_TIP_ADULTS", "Citizens of working age."),
+    t("Seety.WF_TIP_EMPLOYED", "Working at a job in the city."),
+    t("Seety.WF_TIP_UNEMPLOYED", "Able to work but without a job in the city, as the game counts them."),
+    t("Seety.WF_TIP_UNDER", "Employed in a job below their education."),
+    t("Seety.WF_TIP_OUT", "Live here and work outside the city."),
+    t("Seety.WF_TIP_IN", "Work here and live outside the city."),
+    t("Seety.WF_TIP_JOBS", "Jobs at this level in the city's buildings."),
+    t("Seety.WF_TIP_VACANT",
+      "Of those jobs, the ones nobody is doing. Orange when they outnumber the adults at this level."),
+  ];
+
   const totals = columns.map(([, get]) =>
     rows.reduce((sum, r, i) => sum + get(r, i), 0)
   );
@@ -1342,11 +1455,17 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
   return (
     <div className={styles.table}>
       <div className={`${styles.tableRow} ${styles.tableHead}`}>
-        <span className={styles.tableLevel}>{t("Seety.WF_EDUCATION", "Education")}</span>
-        {columns.map(([name, , divider, wide]) => (
-          <span key={name} className={cellClass(divider, false, wide)}>
-            {name}
+        <Tooltip tooltip={t("Seety.WF_TIP_EDUCATION", "The highest education the citizen has finished.")}>
+          <span className={`${styles.tableLevel} ${styles.tableLevelFixed}`}>
+            {t("Seety.WF_EDUCATION", "Education")}
           </span>
+        </Tooltip>
+        {columns.map(([name, , divider, wide], c) => (
+          <Tooltip key={name} tooltip={tips[c]}>
+            <span className={cellClass(divider, false, wide)}>
+              {name}
+            </span>
+          </Tooltip>
         ))}
       </div>
 
@@ -1359,21 +1478,37 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
         return (
           <div key={row.level} className={styles.tableRow}>
             {/* Rows arrive from C# in education order, uneducated first, so the index is the level. */}
-            <span className={styles.tableLevel}><EducationSwatch level={i} />{row.level}</span>
-            {columns.map(([name, get, divider, wide], c) => (
-              <span
-                key={name}
-                className={cellClass(divider, short_ && c === columns.length - 1, wide)}
-              >
-                {get(row, i).toLocaleString()}
-              </span>
-            ))}
+            <span className={`${styles.tableLevel} ${styles.tableLevelFixed}`}>
+              <EducationSwatch level={i} />{row.level}
+            </span>
+            {columns.map(([name, get, divider, wide], c) => {
+              const value = get(row, i);
+              const cell = (
+                <span
+                  key={name}
+                  className={cellClass(divider, short_ && c === columns.length - 1, wide)}
+                >
+                  {value.toLocaleString()}
+                </span>
+              );
+              // This level's share of the column, as a bare percentage: the column is the one under
+              // the cursor, so naming it again only made the tooltip longer. Nothing on a column
+              // that adds up to zero.
+              return totals[c] > 0 ? (
+                <Tooltip key={name} tooltip={`${((value / totals[c]) * 100)
+                  .toLocaleString(undefined, { maximumFractionDigits: 1 })}%`}>
+                  {cell}
+                </Tooltip>
+              ) : cell;
+            })}
           </div>
         );
       })}
 
       <div className={`${styles.tableRow} ${styles.tableTotal}`}>
-        <span className={styles.tableLevel}>{t("Seety.WF_TOTAL", "Total")}</span>
+        <span className={`${styles.tableLevel} ${styles.tableLevelFixed}`}>
+          {t("Seety.WF_TOTAL", "Total")}
+        </span>
         {totals.map((value, i) => (
           <span key={i} className={cellClass(columns[i][2], false, columns[i][3])}>
             {value.toLocaleString()}
@@ -1381,10 +1516,6 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
         ))}
       </div>
 
-      <div className={`${styles.tableNote} ${styles.tableNoteWide}`}>
-        Tourists excluded. Kids are the ones not at school. Out lives here and works outside the
-        city; In works here and lives outside it.
-      </div>
     </div>
   );
 };
@@ -1890,6 +2021,8 @@ export const VitalsStrip = () => {
   const iconsHidden = useValue(iconsHidden$);
   const journeyOn = useValue(journeyOn$);
   const transitMode = useValue(transitMode$);
+  const streetNames = useValue(streetNames$);
+  const streetNamesAvailable = useValue(streetNamesAvailable$);
 
   const outlined = useValue(iconOutline$);
   // The option only takes effect when the game's button classes were found.
@@ -2204,36 +2337,17 @@ export const VitalsStrip = () => {
                     : t("Seety.ICONS_HIDE_TIP", "Hide the notification icons over the city")
                 }
               >
-                <span
-                  className={styles.windowAction}
-                  onClick={() => trigger("seety", "setIconsHidden", !iconsHidden)}
-                >
-                  {iconsHidden
-                    ? t("Seety.ICONS_SHOW", "Show icons")
-                    : t("Seety.ICONS_HIDE", "Hide icons")}
-                </span>
+                {/* The same eye as the street name switch: what it shows is what the map shows now. */}
+                <button type="button" aria-pressed={iconsHidden} className={styles.windowTab}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={() => trigger("seety", "setIconsHidden", !iconsHidden)}>
+                  <img className={`${styles.windowTabIcon} ${styles.windowTabGlyph}`}
+                    src={iconsHidden ? "Media/Glyphs/EyeClosed.svg" : "Media/Glyphs/EyeOpen.svg"} />
+                </button>
               </Tooltip>
             ) : openVital.id === TRAFFIC_ID ? (
-              <>
-                {/* Only while a list is showing: in journey mode there is no list for it to
-                    switch, and a button that does nothing to what is on screen reads as broken. */}
-                {journeyOn ? null : (
-                  <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
-                    aria-pressed={transitMode}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    onClick={() => trigger("seety", "setTransitMode", !transitMode)}>
-                    {transitMode ? t("Seety.TRAFFIC_ROAD", "Road")
-                      : t("Seety.TRAFFIC_TRANSIT", "Public transport")}
-                  </button>
-                )}
-                <button type="button" className={`${styles.windowAction} ${styles.journeyToggle}`}
-                  aria-pressed={journeyOn}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={() => trigger("seety", "setJourneyOn", !journeyOn)}>
-                  {journeyOn ? t("Seety.JOURNEY_JAMS", "Show traffic jams")
-                    : t("Seety.JOURNEY_SHOW", "Selected journey")}
-                </button>
-              </>
+              <TrafficActions journeyOn={journeyOn} transitMode={transitMode}
+                streetNames={streetNames} streetNamesAvailable={streetNamesAvailable} />
             ) : undefined
           }
         >

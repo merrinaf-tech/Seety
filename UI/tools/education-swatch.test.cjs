@@ -37,7 +37,8 @@ test("education levels carry the game's own colour square, read from the game", 
       useValue: ({ key, fallback }) => bindings[key] ?? fallback,
       trigger: () => {},
     },
-    "cs2/ui": { Tooltip: ({ children }) => children },
+    // Tooltips become a wrapper carrying their text, so the rendered markup shows what each says.
+    "cs2/ui": { Tooltip: ({ tooltip, children }) => React.createElement("span", { "data-tip": tooltip }, children) },
     "cs2/l10n": {
       useLocalization: () => ({
         translate: (_key, fallback) => fallback,
@@ -73,6 +74,22 @@ test("education levels carry the game's own colour square, read from the game", 
     for (const [className] of workforce) {
       assert.match(className, /\bgame-symbol\b/, "the game's own legend square");
     }
+
+    // Every cell's share of its column. Five identical levels: each is a fifth of every column.
+    const workforceHtml = renderToStaticMarkup(React.createElement(Strip));
+    // A bare number and a percent sign: the strip's own tooltips ("Workers: 1%") are not these.
+    const tips = [...workforceHtml.matchAll(/data-tip="(\d[\d.,]*%)"/g)].map((m) => m[1]);
+    // Out, In and Kids (1 child - 1 at school) add up to zero here, and carry no share at all.
+    assert.equal(tips.length, 5 * 9, "one share per level and non-empty column");
+    assert.ok(tips.every((tip) => tip === "20%"), "just the percentage: " + tips[0]);
+    assert.ok(!workforceHtml.includes("Tourists excluded"), "the note under the table is gone");
+
+    // Every heading explains its column; the education heading too.
+    const heads = [...workforceHtml.matchAll(/data-tip="([^"%]+)"><span[^>]*>([^<]+)<\/span>/g)]
+      .map((m) => [m[2].trim(), m[1]]);
+    assert.equal(heads.length, 13, "Education plus twelve columns");
+    assert.deepEqual(heads[0], ["Education", "The highest education the citizen has finished."]);
+    assert.ok(heads.some(([head, tip]) => head === "Vacant" && /nobody is doing/.test(tip)));
 
     // Demographics: the levels are the column heads.
     expanded = "happiness";

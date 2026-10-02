@@ -47,6 +47,7 @@ namespace Seety.Settings
         private bool _buildingReasons;
         private bool _toolbarTrends;
         private bool _zoneTransparency;
+        private StreetNameMode _streetNames = StreetNameMode.ShowAll;
 
         // Default resting place: clear of the vanilla button row along the top edge, so the strip
         // does not land on top of the game's own controls the first time it appears.
@@ -280,6 +281,30 @@ namespace Seety.Settings
 
                 _zoneTransparency = value;
                 Mod.OnZoneTransparencyChanged(value);
+            }
+        }
+
+        /// <summary>
+        /// Which street names the map draws: all, only the ones the player gave, or none. The same
+        /// setting the traffic window switches; see Systems.StreetNameLabels.
+        ///
+        /// All by default, so the map looks as the game ships it until the player asks otherwise.
+        /// Greyed out if the game method it relies on was not found.
+        /// </summary>
+        [SettingsUISection(GameSection, GameGroup)]
+        [SettingsUIDisableByCondition(typeof(Systems.StreetNameLabels), nameof(Systems.StreetNameLabels.Unavailable))]
+        public StreetNameMode StreetNames
+        {
+            get { return _streetNames; }
+            set
+            {
+                if (_streetNames == value)
+                {
+                    return;
+                }
+
+                _streetNames = value;
+                Mod.OnStreetNamesChanged(value);
             }
         }
 
@@ -687,6 +712,7 @@ namespace Seety.Settings
             _buildingReasons = false;
             _toolbarTrends = false;
             _zoneTransparency = false;
+            _streetNames = StreetNameMode.ShowAll;
             _seededDefaults = false;
             _stripX = DefaultStripX;
             _stripY = DefaultStripY;

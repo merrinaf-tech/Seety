@@ -16,7 +16,8 @@
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
-		<CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+		<!-- True so 0Harmony.dll, the one package assembly, is copied next to Seety.dll and shipped. -->
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 
 		<PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
@@ -66,6 +67,18 @@
 
 	<ItemGroup>
 		<None Include="Properties\PublishConfiguration.xml" />
+	</ItemGroup>
+
+	<!--
+		Harmony patches the one game method behind street-name labels - see StreetNameLabels. 2.2.2 is
+		the version other Cities: Skylines II mods ship, so a game with several of them loaded does
+		not meet two different Harmony assemblies. 0Harmony.dll ships next to Seety.dll.
+	-->
+	<ItemGroup>
+		<PackageReference Include="Lib.Harmony" Version="2.2.2" />
+		<!-- Harmony is MIT: its licence travels with the DLL, as React's does with Seety.mjs. -->
+		<None Include="$(NuGetPackageRoot)lib.harmony\2.2.2\LICENSE" Link="0Harmony.LICENSE.txt"
+		      CopyToOutputDirectory="PreserveNewest" Visible="false" />
 	</ItemGroup>
 
 	<!--

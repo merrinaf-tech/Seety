@@ -300,8 +300,11 @@
 .transportSection {
   display: flex;
   align-items: center;
-  > span { flex: 1; }
-  > button { margin-left: 8rem; text-transform: none; letter-spacing: normal; }
+}
+
+// The section name takes the room; the page tabs and refresh icon sit at the right.
+.transportSectionLabel {
+  flex: 1;
 }
 
 .waitingStopLine { color: rgba(255, 255, 255, 0.55); }
@@ -340,7 +343,9 @@
   z-index: 10;
 
   min-width: 380rem;
-  max-width: 860rem;
+  // 940 rather than 860 since the education levels carry a colour square: the workforce table's
+  // twelve columns no longer fitted, and the window squeezed the level names into the numbers.
+  max-width: 940rem;
 
   // Nearly solid. At 0.94 the city showed through a table of numbers and both became
   // hard to read; a window that is being read should stop being scenery.
@@ -366,8 +371,10 @@
 
 .windowTitle {
   // Takes the bar's spare width, so anything after it sits against the right edge as a group
-  // rather than being spaced out across the bar. The alternative - an auto left margin on the
-  // action - is the usual way to do this and does not work here: see the note on .windowAction.
+  // rather than being spaced out across the bar. The usual alternative, `margin-left: auto` on the
+  // first control, does not work here: this renderer does not resolve an auto margin into a flex
+  // line's free space, so the declaration did nothing and the bar's `space-between` spread the
+  // children evenly, leaving a control stranded mid-bar.
   flex-grow: 1;
 
   font-size: 13rem;
@@ -482,7 +489,7 @@
   color: rgba(255, 255, 255, 0.65);
 }
 
-.journeyToggle, .journeyLine {
+.journeyLine {
   border: 0;
   font-family: inherit;
 }
@@ -524,6 +531,15 @@
   flex-grow: 1;
   min-width: 96rem;
   white-space: nowrap;
+}
+
+// A first column that must never be squeezed: the education levels, whose names and colour
+// squares ran into the first number when the window ran out of width. Wide enough for "Highly
+// educated" and its square, with a gap before the numbers start.
+.tableLevelFixed {
+  flex-shrink: 0;
+  min-width: 124rem;
+  padding-right: 8rem;
 }
 
 .tableCell {
@@ -658,29 +674,47 @@
   padding-left: 6rem;
 }
 
-// A control in a window title bar, such as the notification-icon switch.
-// The optional control in a window's title bar - currently only "Hide icons", on active problems.
-//
-// It used to carry `margin-left: auto`, the usual way to push one flex child to the right. This
-// renderer does not resolve an auto margin into a flex line's free space, so the declaration did
-// nothing and the bar's `space-between` spread all three children evenly instead - leaving the
-// button stranded mid-bar, level with nothing. The title grows instead, which is plain flexbox
-// the game's own stylesheet uses, and the button lands beside the close.
-.windowAction {
-  margin-right: 8rem;
-  padding: 2rem 8rem;
+// A tab in a window's title bar: an icon, lit while its page is showing. See TrafficActions.
+.windowTab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26rem;
+  height: 22rem;
+  margin-right: 4rem;
+  padding: 0;
+  border: 0;
   border-radius: 3rem;
-
-  font-size: 11rem;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.75);
   background-color: rgba(255, 255, 255, 0.10);
   cursor: pointer;
 
   &:hover {
-    color: rgba(255, 255, 255, 0.95);
     background-color: rgba(255, 255, 255, 0.20);
   }
+}
+
+// The same light blue the bar's selected states use, so "you are here" reads the same everywhere.
+.windowTabActive {
+  background-color: rgba(130, 190, 255, 0.45);
+
+  &:hover {
+    background-color: rgba(130, 190, 255, 0.55);
+  }
+}
+
+.windowTabIcon {
+  width: 16rem;
+  height: 16rem;
+}
+
+// Media/Glyphs are flat shapes, not coloured icons; drawn white to sit on the dark title bar.
+.windowTabGlyph {
+  filter: brightness(0) invert(1);
+}
+
+// The street name switch changes the map, not the window: kept a step away from the page tabs.
+.windowTabApart {
+  margin-left: 8rem;
 }
 
 // The share of the population an age band holds, drawn under its name. A shape is faster to read

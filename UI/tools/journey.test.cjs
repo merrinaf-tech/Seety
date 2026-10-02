@@ -5,7 +5,7 @@ const { test } = require("node:test");
 const React = require("react");
 const { renderToStaticMarkup } = require("react-dom/server");
 
-test("built traffic panel toggles journeys, renders empty states and opens versioned lines", async () => {
+test("built traffic panel switches pages by tab, cycles street names, renders journeys and opens versioned lines", async () => {
   const calls = [];
   const bindings = {
     "seety.journeyOn": false,
@@ -45,29 +45,48 @@ test("built traffic panel toggles journeys, renders empty states and opens versi
     // The strip is the first registration; the stylesheet owner appended after it renders null.
     let Strip; bundle.default({ append: (_anchor, component) => { Strip ??= component; }, extend: () => {} });
     const panel = () => Strip().props.children.at(-1);
-    // The action slot holds two buttons now - the road/trains switch and the journey toggle -
-    // so they are picked out by the trigger each one sends rather than by position.
+    // The title bar: three page tabs, then the street name switch. Each sits in a Tooltip (the
+    // mock renders its child), so the buttons are its children; the tooltip text names them.
     const actions = () => {
-      const slot = panel().props.action;
-      const kids = slot.props.children;
-      return (Array.isArray(kids) ? kids : [kids]).filter(Boolean);
+      const el = panel().props.action;
+      const tree = el.type(el.props);
+      return tree.props.children.flat().filter(Boolean)
+        .map((tip) => ({ tip: tip.props.tooltip, button: tip.props.children }));
     };
-    const buttonFor = (name) => {
-      for (const node of actions()) {
-        calls.length = 0;
-        node.props.onClick();
-        const sent = calls.pop();
-        if (sent && sent[1] === name) return { node, sent };
-      }
-      throw new Error("no button sends " + name);
+    const click = (index) => {
+      calls.length = 0;
+      actions()[index].button.props.onClick();
+      return calls.splice(0);
     };
-    const transit = buttonFor("setTransitMode");
-    assert.equal(transit.node.props.children, "Public transport");
-    assert.deepEqual(transit.sent, ["seety", "setTransitMode", true]);
-    const journey = buttonFor("setJourneyOn");
-    assert.equal(journey.node.props.children, "Selected journey");
-    assert.deepEqual(journey.sent, ["seety", "setJourneyOn", true]);
-    bindings["seety.journeyOn"] = true;
+    const pressed = () => actions().slice(0, 3).map((a) => a.button.props["aria-pressed"]);
+    const icon = (index) => actions()[index].button.props.children.props.src;
+
+    assert.deepEqual(actions().map((a) => a.tip),
+      ["Road traffic", "Public transport", "Selected journey"], "street names hidden when unavailable");
+    bindings["seety.streetNamesAvailable"] = true;
+    assert.equal(actions().length, 4);
+    assert.deepEqual(pressed(), [true, false, false], "road traffic is the starting page");
+    assert.deepEqual(click(1), [["seety", "setTransitMode", true]]);
+    assert.deepEqual(click(2), [["seety", "setJourneyOn", true]]);
+    assert.deepEqual(click(0), [], "already on road traffic");
+
+    // From a journey on the transit list: back to roads leaves both, transit only the journey.
+    bindings["seety.journeyOn"] = true; bindings["seety.transitMode"] = true;
+    assert.deepEqual(pressed(), [false, false, true]);
+    assert.deepEqual(click(0), [["seety", "setJourneyOn", false], ["seety", "setTransitMode", false]]);
+    assert.deepEqual(click(1), [["seety", "setJourneyOn", false]]);
+    assert.deepEqual(click(2), [], "already on the journey");
+    bindings["seety.transitMode"] = false;
+
+    // The street name button steps through the three modes, its icon showing the current one.
+    for (const [mode, glyph, next] of [[0, "EyeOpen", 1], [1, "Pen", 2], [2, "EyeClosed", 0]]) {
+      bindings["seety.streetNames"] = mode;
+      assert.match(icon(3), new RegExp(glyph));
+      assert.match(actions()[3].tip, /Street names: .*Click to change/);
+      assert.deepEqual(click(3), [["seety", "setStreetNames", next]]);
+    }
+    bindings["seety.streetNames"] = 0;
+
     const journeyTree = () => {
       const child = panel().props.children.at(-1);
       return child.type(child.props);
@@ -114,11 +133,8 @@ test("built traffic panel toggles journeys, renders empty states and opens versi
     assert.ok(!partial.includes("Jane") && !partial.includes("School"));
     bindings["seety.journey"] = { hasSubject: false, subject: "", here: "", destination: "", legs: [], truncated: false };
     assert.match(renderToStaticMarkup(journeyTree()), /Select a citizen/);
-    // In journey mode the road/trains switch is not drawn: there is no list for it to switch.
-    assert.equal(actions().length, 1, "no list switch while a journey is showing");
-    const back = buttonFor("setJourneyOn");
-    assert.equal(back.node.props.children, "Show traffic jams");
-    assert.deepEqual(back.sent, ["seety", "setJourneyOn", false]);
+    // Every tab stays on screen in journey mode, so getting back is one click on the page wanted.
+    assert.equal(actions().length, 4, "tabs stay while a journey is showing");
   } finally {
     if (previousWindow === undefined) delete global.window; else global.window = previousWindow;
   }

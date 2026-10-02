@@ -58,6 +58,9 @@ namespace Seety.Systems
         /// <summary>Whether pressing on the bar can move it. See SeetySettings.LockPosition.</summary>
         private ValueBinding<bool> _positionLockedBinding;
 
+        /// <summary>Which street names the map draws, as an int. See SeetySettings.StreetNames.</summary>
+        private ValueBinding<int> _streetNamesBinding;
+
         /// <summary>Whether the game's floating buttons are drawn dark. See SeetySettings.DarkGameButtons.</summary>
         private ValueBinding<bool> _darkGameButtonsBinding;
         private ValueBinding<bool> _toolbarTrendsBinding;
@@ -371,6 +374,13 @@ namespace Seety.Systems
                 settings == null || settings.LockPosition);
             AddBinding(_positionLockedBinding);
 
+            _streetNamesBinding = new ValueBinding<int>(Group, "streetNames",
+                settings == null ? 0 : (int)settings.StreetNames);
+            AddBinding(_streetNamesBinding);
+            // Fixed for the session: the patch is applied once at load, before this system exists.
+            AddBinding(new ValueBinding<bool>(Group, "streetNamesAvailable", StreetNameLabels.Available));
+            AddBinding(new TriggerBinding<int>(Group, "setStreetNames", OnSetStreetNames));
+
             // The whole catalogue, not what is switched on: a column splits at half of this, so the
             // full set is two even columns and a short bar stays one.
             AddBinding(new ValueBinding<int>(Group, "catalogSize", Vitals.VitalCatalog.All().Count));
@@ -679,6 +689,32 @@ namespace Seety.Systems
             {
                 _verticalStripBinding.Update(vertical);
             }
+        }
+
+        /// <summary>Called by the settings when the street name mode changes, from either place.</summary>
+        public void SetStreetNames(Settings.StreetNameMode mode)
+        {
+            if (_streetNamesBinding != null)
+            {
+                _streetNamesBinding.Update((int)mode);
+            }
+        }
+
+        /// <summary>
+        /// The traffic window's street name button. Goes through the setting, so the options page
+        /// shows the same value, and saves at once: unlike the options page, nothing saves after a
+        /// click here.
+        /// </summary>
+        private void OnSetStreetNames(int mode)
+        {
+            var settings = Mod.Settings;
+            if (settings == null || !Enum.IsDefined(typeof(Settings.StreetNameMode), mode))
+            {
+                return;
+            }
+
+            settings.StreetNames = (Settings.StreetNameMode)mode;
+            settings.ApplyAndSave();
         }
 
         /// <summary>Called by the settings when the bar is locked in place or unlocked.</summary>

@@ -47,9 +47,15 @@ test("transport passenger switch shows line stops, excludes cargo and sends vers
       };
       walk(root); return result;
     };
-    assert.match(html(), /Busiest stops/);
+    // Two tabs, named by their tooltips: by mode (on) and busiest stops. No refresh off the stops page.
+    const tabs = () => nodes(tree(), (node) => node.props?.tooltip !== undefined && node.props.children?.type === "button")
+      .map((tip) => ({ tip: tip.props.tooltip, button: tip.props.children }));
+    assert.deepEqual(tabs().map((x) => x.tip), ["By transport mode", "Busiest stops"]);
+    assert.deepEqual(tabs().map((x) => x.button.props["aria-pressed"]), [true, false]);
     assert.match(html(), /Bus/);
-    nodes(tree(), (node) => node.type === "button")[0].props.onClick();
+    tabs()[0].button.props.onClick();
+    assert.equal(calls.length, 0, "the page already showing sends nothing");
+    tabs()[1].button.props.onClick();
     assert.deepEqual(calls.pop(), ["seety", "setTransportStopsMode", true]);
     bindings["seety.transportStopsMode"] = true;
     bindings["seety.waitingStops"] = [
@@ -59,7 +65,9 @@ test("transport passenger switch shows line stops, excludes cargo and sends vers
       { id: "15:2", name: null, lineName: null, colour: "", number: 0, count: 25 },
     ];
     const rendered = html();
-    for (const text of ["By transport mode", "Refresh", "Central Platform", "Bus 7", "180 waiting", "Unnamed stop"])
+    assert.deepEqual(tabs().map((x) => x.tip), ["By transport mode", "Busiest stops", "Refresh"]);
+    assert.deepEqual(tabs().slice(0, 2).map((x) => x.button.props["aria-pressed"]), [false, true]);
+    for (const text of ["Central Platform", "Bus 7", "180 waiting", "Unnamed stop"])
       assert.ok(rendered.includes(text), "missing " + text);
     const badges = nodes(tree(), (node) => node.props.style?.backgroundColor === "#ffcc00");
     assert.equal(badges.length, 1, "only a stop with a line colour has a badge");
@@ -72,16 +80,16 @@ test("transport passenger switch shows line stops, excludes cargo and sends vers
     assert.equal(clickable[0].props.title, "Open transport line");
     clickable[0].props.onClick();
     assert.deepEqual(calls.pop(), ["seety", "openWaitingStopLine", "12:3"]);
-    const buttons = nodes(tree(), (node) => node.type === "button");
-    buttons[1].props.onClick();
+    tabs()[2].button.props.onClick();
     assert.deepEqual(calls.pop(), ["seety", "refreshWaitingStops"]);
-    buttons[0].props.onClick();
+    assert.match(tabs()[2].button.props.children.props.src, /ArrowCircular/);
+    tabs()[0].button.props.onClick();
     assert.deepEqual(calls.pop(), ["seety", "setTransportStopsMode", false]);
     bindings["seety.waitingStops"] = [];
     bindings["seety.notifications"][0].rows = [];
     assert.match(html(), /No passengers waiting/);
-    assert.equal(nodes(tree(), (node) => node.type === "button").length, 2,
-      "the switch and refresh remain available even with no vehicles or waiting passengers");
+    assert.equal(nodes(tree(), (node) => node.type === "button").length, 3,
+      "both tabs and refresh remain available even with no vehicles or waiting passengers");
   } finally {
     if (previousWindow === undefined) delete global.window; else global.window = previousWindow;
   }

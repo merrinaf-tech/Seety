@@ -66,6 +66,8 @@ namespace Seety
                 Log.Warn("Reading '" + id + "' has no checkbox on the options page; it cannot be switched off.");
             }
 
+            Systems.StreetNameLabels.Apply(Settings.StreetNames);
+
             updateSystem.UpdateAt<SeetyUISystem>(SystemUpdatePhase.UIUpdate);
 
             // Follows the player's Tool / Cancel binding so the key that backs out of a tool also
@@ -89,6 +91,7 @@ namespace Seety
             _uiSystem = null;
             _zoneSystem = null;
 
+            Systems.StreetNameLabels.Remove();
             RemoveLocaleSources();
 
             if (Settings != null)
@@ -168,6 +171,17 @@ namespace Seety
         internal static void RegisterUISystem(SeetyUISystem system)
         {
             _uiSystem = system;
+        }
+
+        internal static void OnStreetNamesChanged(StreetNameMode mode)
+        {
+            // Not gated on _ready: loading the settings sets this before OnLoad applies the patch,
+            // and Apply takes the loaded value itself, so an early call only records it.
+            Systems.StreetNameLabels.SetMode(mode);
+            if (_uiSystem != null)
+            {
+                _uiSystem.SetStreetNames(mode);
+            }
         }
 
         internal static void OnShowStripChanged(bool visible)
