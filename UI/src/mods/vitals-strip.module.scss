@@ -420,6 +420,25 @@
   padding: 8rem;
 }
 
+// The corner a window is resized by: an L in the bottom-right, the shape most windows use for it.
+// Dragged, it sets both width and height; double-clicked, it hands the size back to the content.
+.windowGrip {
+  position: absolute;
+  right: 3rem;
+  bottom: 3rem;
+  width: 10rem;
+  height: 10rem;
+  border-right: 2rem solid rgba(255, 255, 255, 0.30);
+  border-bottom: 2rem solid rgba(255, 255, 255, 0.30);
+  border-bottom-right-radius: 3rem;
+  cursor: nwse-resize;
+
+  &:hover {
+    border-right-color: rgba(255, 255, 255, 0.70);
+    border-bottom-color: rgba(255, 255, 255, 0.70);
+  }
+}
+
 .journey {
   width: 400rem;
   max-width: 100%;

@@ -5,7 +5,7 @@ import { LocalizedEntityName, Name, useLocalization } from "cs2/l10n";
 import { gameButtonClasses } from "./game-button";
 import { EducationSwatch } from "./education-swatch";
 import styles from "./vitals-strip.module.scss";
-import { clampPosition } from "./position";
+import { clampPosition, clampSize } from "./position";
 import { DismissInput } from "./dismiss-input";
 import { DismissPriority, useDismissOnCancel } from "./use-dismiss";
 
@@ -1269,6 +1269,15 @@ const TrafficActions = ({ journeyOn, transitMode, streetNames, streetNamesAvaila
  * be put where there was room. A window is separate furniture: it has its own position, its own
  * close button, and it stays where you left it.
  */
+/**
+ * Sizes the player gave windows by dragging their corner, by window title, for this session. Each
+ * window keeps its own: a size chosen for a long school list would be wrong for the parking window.
+ */
+const windowSizes = new Map<string, { width: number; height: number }>();
+
+/** The smallest a window can be dragged to, in rem: its normal minimum width, and a few rows. */
+const MIN_WINDOW_SIZE = { width: 380, height: 80 };
+
 const FloatingWindow = ({
   title,
   onClose,
@@ -1284,6 +1293,19 @@ const FloatingWindow = ({
   const [pos, setPos] = useState({ x: 320, y: 160 });
   const [dragging, setDragging] = useState(false);
   const windowRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+
+  // Null until the corner is dragged: the window then sizes itself to its content, up to the
+  // stylesheet's limits, exactly as before. The same window instance shows every reading, so the
+  // size follows the title rather than the component.
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    windowSizes.get(title) ?? null);
+  const [resizing, setResizing] = useState(false);
+  const stretch = useRef({ pointerX: 0, pointerY: 0, width: 0, height: 0, barHeight: 0, scale: 1 });
+
+  useEffect(() => {
+    setSize(windowSizes.get(title) ?? null);
+  }, [title]);
   const grab = useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0, scale: 1 });
 
   const constrain = useCallback((position: { x: number; y: number }, scale: number) =>
@@ -1342,11 +1364,70 @@ const FloatingWindow = ({
     };
   }, [dragging, constrain]);
 
+  const onResizeDown = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (event.button !== 0) return;
+    const scale = pxPerRem();
+    const outer = windowRef.current;
+    const body = bodyRef.current;
+    if (!outer || !body) return;
+    stretch.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      // Measured, not taken from `size`: the first drag starts from whatever size the content gave.
+      width: outer.offsetWidth / scale,
+      height: body.offsetHeight / scale,
+      barHeight: (outer.offsetHeight - body.offsetHeight) / scale,
+      scale,
+    };
+    setResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!resizing) {
+      return;
+    }
+    const s = stretch.current;
+    const onMove = (event: MouseEvent) => {
+      const next = clampSize(
+        {
+          width: s.width + (event.clientX - s.pointerX) / s.scale,
+          height: s.height + (event.clientY - s.pointerY) / s.scale,
+        },
+        MIN_WINDOW_SIZE,
+        {
+          width: window.innerWidth / s.scale - pos.x,
+          height: window.innerHeight / s.scale - pos.y - s.barHeight,
+        });
+      windowSizes.set(title, next);
+      setSize(next);
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [resizing, pos.x, pos.y, title]);
+
+  // Double-clicking the corner gives the window back its own size.
+  const onResetSize = useCallback(() => {
+    windowSizes.delete(title);
+    setSize(null);
+  }, [title]);
+
   return (
     <div
       className={styles.window}
       ref={windowRef}
-      style={{ left: `${pos.x}rem`, top: `${pos.y}rem` }}
+      style={size
+        // The limits are set to the size itself rather than to "none": this renderer appears to
+        // ignore max-height: none, which left the body capped at the stylesheet's 520rem and the
+        // window growing only sideways. A number it certainly reads.
+        ? { left: `${pos.x}rem`, top: `${pos.y}rem`, width: `${size.width}rem`,
+          minWidth: `${size.width}rem`, maxWidth: `${size.width}rem` }
+        : { left: `${pos.x}rem`, top: `${pos.y}rem` }}
       // Nothing behind a window may see a press on it - the bar is draggable when unlocked.
       onMouseDown={(e) => e.stopPropagation()}
     >
@@ -1369,7 +1450,12 @@ const FloatingWindow = ({
           X
         </span>
       </div>
-      <div className={styles.windowBody}>{children}</div>
+      <div className={styles.windowBody} ref={bodyRef}
+        style={size ? { height: `${size.height}rem`, minHeight: `${size.height}rem`,
+          maxHeight: `${size.height}rem` } : undefined}>
+        {children}
+      </div>
+      <div className={styles.windowGrip} onMouseDown={onResizeDown} onDoubleClick={onResetSize} />
     </div>
   );
 };

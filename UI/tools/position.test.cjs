@@ -11,7 +11,20 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const context = { exports: {} };
 vm.runInNewContext(compiled, context);
-const { clampPosition } = context.exports;
+const { clampPosition, clampSize } = context.exports;
+
+test("a dragged window size stays between its minimum and the room on screen", () => {
+  // Copied out of the vm context: its objects have another Object prototype, which deepStrictEqual
+  // treats as a difference.
+  const fit = (...args) => ({ ...clampSize(...args) });
+  const minimum = { width: 380, height: 80 };
+  const room = { width: 1600, height: 900 };
+  assert.deepEqual(fit({ width: 700, height: 600 }, minimum, room), { width: 700, height: 600 });
+  assert.deepEqual(fit({ width: 100, height: 10 }, minimum, room), minimum, "never below the minimum");
+  assert.deepEqual(fit({ width: 5000, height: 5000 }, minimum, room), room, "never past the screen");
+  assert.deepEqual(fit({ width: 500, height: 500 }, minimum, { width: 200, height: 50 }), minimum,
+    "near the edge the minimum still wins");
+});
 
 test("panels remain within the viewport, including scaled and oversized layouts", () => {
   for (const scale of [0.5, 1, 2, 4]) {
