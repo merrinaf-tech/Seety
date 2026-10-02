@@ -75,11 +75,21 @@ test("transport passenger switch shows line stops, excludes cargo and sends vers
     assert.equal(badges[0].props.style.color, "rgb(0, 0, 0)", "light line colours use dark badge text");
     assert.ok(!rendered.includes(">Bus<"), "passenger modes are replaced by stops");
     assert.ok(!rendered.includes("Cargo train"), "cargo lines are hidden in the passenger stop view");
-    const clickable = nodes(tree(), (node) => node.type === "div" && node.props.onClick);
-    assert.equal(clickable.length, 2, "every passenger stop can open its line");
-    assert.equal(clickable[0].props.title, "Open transport line");
-    clickable[0].props.onClick();
-    assert.deepEqual(calls.pop(), ["seety", "openWaitingStopLine", "12:3"]);
+    // Rows are no longer one link: the dot and line name open the line, the stop name the stop.
+    assert.equal(nodes(tree(), (node) => node.type === "div" && node.props.onClick).length, 0,
+      "no whole-row click left");
+    const links = nodes(tree(), (node) => node.props?.tooltip !== undefined && node.props.children?.type === "span")
+      .map((tip) => ({ tip: tip.props.tooltip, span: tip.props.children }));
+    // First stop: dot, stop name, line name. Second, with no line colour or name: the stop only.
+    assert.deepEqual(links.map((l) => l.tip),
+      ["Open transport line", "Open stop", "Open transport line", "Open stop"]);
+    const sent = links.map((l) => { l.span.props.onClick(); return calls.pop(); });
+    assert.deepEqual(sent, [
+      ["seety", "openWaitingStopLine", "12:3"],
+      ["seety", "openWaitingStop", "12:3"],
+      ["seety", "openWaitingStopLine", "12:3"],
+      ["seety", "openWaitingStop", "15:2"],
+    ]);
     tabs()[2].button.props.onClick();
     assert.deepEqual(calls.pop(), ["seety", "refreshWaitingStops"]);
     assert.match(tabs()[2].button.props.children.props.src, /ArrowCircular/);

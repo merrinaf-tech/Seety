@@ -88,6 +88,7 @@ namespace Seety.Localization.Strings
                 { "Seety.SEC_PASSENGERS", "Passagers" },
                 { "Seety.STOPS_EMPTY", "Aucun passager en attente aux arrêts." },
                 { "Seety.STOPS_NOTE", "Les 10 premiers arrêts par passagers en attente. Les nombres sont actualisés en direct ; Actualiser reclasse la liste." },
+                { "Seety.STOPS_OPEN_STOP", "Ouvrir l'arrêt" },
                 { "Seety.STOPS_REFRESH", "Actualiser" },
                 { "Seety.STOPS_UNNAMED", "Arrêt sans nom" },
                 { "Seety.STOPS_WAITING", "en attente" },

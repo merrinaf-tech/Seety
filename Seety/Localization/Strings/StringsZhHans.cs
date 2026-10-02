@@ -88,6 +88,7 @@ namespace Seety.Localization.Strings
                 { "Seety.SEC_PASSENGERS", "客运" },
                 { "Seety.STOPS_EMPTY", "站点没有等候的乘客。" },
                 { "Seety.STOPS_NOTE", "按当前等候乘客数排列的前10个站点。人数实时更新；刷新可重新排序。" },
+                { "Seety.STOPS_OPEN_STOP", "打开站点" },
                 { "Seety.STOPS_REFRESH", "刷新" },
                 { "Seety.STOPS_UNNAMED", "未命名站点" },
                 { "Seety.STOPS_WAITING", "等候中" },

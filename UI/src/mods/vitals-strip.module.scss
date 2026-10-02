@@ -309,6 +309,16 @@
 
 .waitingStopLine { color: rgba(255, 255, 255, 0.55); }
 
+// Part of a row that is its own link, when the row holds more than one: brighter on hover, so it
+// is plain which part a click is about to open.
+.clickableText {
+  cursor: pointer;
+
+  &:hover {
+    color: rgb(150, 208, 255);
+  }
+}
+
 .waitingStopRow {
   .panelName { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .value { flex-shrink: 0; }

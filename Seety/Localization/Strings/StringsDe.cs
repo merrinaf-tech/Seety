@@ -88,6 +88,7 @@ namespace Seety.Localization.Strings
                 { "Seety.SEC_PASSENGERS", "Fahrgäste" },
                 { "Seety.STOPS_EMPTY", "Keine Fahrgäste warten an Haltestellen." },
                 { "Seety.STOPS_NOTE", "Die Top 10 nach aktuell wartenden Fahrgästen. Zahlen werden laufend aktualisiert; Aktualisieren sortiert die Liste neu." },
+                { "Seety.STOPS_OPEN_STOP", "Haltestelle öffnen" },
                 { "Seety.STOPS_REFRESH", "Aktualisieren" },
                 { "Seety.STOPS_UNNAMED", "Unbenannte Haltestelle" },
                 { "Seety.STOPS_WAITING", "warten" },

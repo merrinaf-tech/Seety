@@ -88,6 +88,7 @@ namespace Seety.Localization.Strings
                 { "Seety.SEC_PASSENGERS", "승객" },
                 { "Seety.STOPS_EMPTY", "정류장에서 기다리는 승객이 없습니다." },
                 { "Seety.STOPS_NOTE", "현재 대기 승객 수 상위 10개 정류장. 인원은 실시간으로 갱신되며 새로 고침으로 목록을 다시 정렬합니다." },
+                { "Seety.STOPS_OPEN_STOP", "정류장 열기" },
                 { "Seety.STOPS_REFRESH", "새로 고침" },
                 { "Seety.STOPS_UNNAMED", "이름 없는 정류장" },
                 { "Seety.STOPS_WAITING", "대기 중" },

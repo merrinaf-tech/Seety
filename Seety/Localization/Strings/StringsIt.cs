@@ -88,6 +88,7 @@ namespace Seety.Localization.Strings
                 { "Seety.SEC_PASSENGERS", "Passeggeri" },
                 { "Seety.STOPS_EMPTY", "Nessun passeggero in attesa alle fermate." },
                 { "Seety.STOPS_NOTE", "Le prime 10 fermate per passeggeri in attesa della singola linea. I conteggi si aggiornano in tempo reale; Aggiorna riordina la lista." },
+                { "Seety.STOPS_OPEN_STOP", "Apri fermata" },
                 { "Seety.STOPS_REFRESH", "Aggiorna" },
                 { "Seety.STOPS_UNNAMED", "Fermata senza nome" },
                 { "Seety.STOPS_WAITING", "in attesa" },

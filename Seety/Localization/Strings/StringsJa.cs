@@ -88,6 +88,7 @@ namespace Seety.Localization.Strings
                 { "Seety.SEC_PASSENGERS", "旅客" },
                 { "Seety.STOPS_EMPTY", "停留所で待っている乗客はいません。" },
                 { "Seety.STOPS_NOTE", "現在待っている乗客数の上位10停留所。人数は随時更新され、更新ボタンで一覧を並べ替えます。" },
+                { "Seety.STOPS_OPEN_STOP", "停留所を開く" },
                 { "Seety.STOPS_REFRESH", "更新" },
                 { "Seety.STOPS_UNNAMED", "名称未設定の停留所" },
                 { "Seety.STOPS_WAITING", "待機中" },

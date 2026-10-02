@@ -980,16 +980,33 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
         {stops.length === 0 ? <div className={styles.panelEmpty}>
           {t("Seety.STOPS_EMPTY", "No passengers waiting at stops.")}
         </div> : stops.map((stop) => <div key={stop.id}
-          className={`${styles.panelRow} ${styles.waitingStopRow} ${styles.clickable}`}
-          title={t("Seety.JOURNEY_OPEN_LINE", "Open transport line")}
-          onClick={() => trigger("seety", "openWaitingStopLine", stop.id)}>
-          {stop.colour ? <span className={styles.journeyDot}
-            style={{ backgroundColor: stop.colour, color: inkOn(stop.colour) }}>
-            {stop.number > 0 ? stop.number : ""}
-          </span> : null}
-          <span className={styles.panelName}>{stop.name ? <LocalizedEntityName value={stop.name} />
-            : t("Seety.STOPS_UNNAMED", "Unnamed stop")}
-            {stop.lineName ? <span className={styles.waitingStopLine}> · <LocalizedEntityName value={stop.lineName} /></span> : null}
+          className={`${styles.panelRow} ${styles.waitingStopRow}`}>
+          {/* Two targets in one row: the line's dot and name open the line, the stop's name opens
+              the stop. The line name opens it too because a stop without a line colour has no dot. */}
+          {stop.colour ? (
+            <Tooltip tooltip={t("Seety.JOURNEY_OPEN_LINE", "Open transport line")}>
+              <span className={`${styles.journeyDot} ${styles.clickableText}`}
+                style={{ backgroundColor: stop.colour, color: inkOn(stop.colour) }}
+                onClick={() => trigger("seety", "openWaitingStopLine", stop.id)}>
+                {stop.number > 0 ? stop.number : ""}
+              </span>
+            </Tooltip>
+          ) : null}
+          <span className={styles.panelName}>
+            <Tooltip tooltip={t("Seety.STOPS_OPEN_STOP", "Open stop")}>
+              <span className={styles.clickableText}
+                onClick={() => trigger("seety", "openWaitingStop", stop.id)}>
+                {stop.name ? <LocalizedEntityName value={stop.name} /> : t("Seety.STOPS_UNNAMED", "Unnamed stop")}
+              </span>
+            </Tooltip>
+            {stop.lineName ? (
+              <Tooltip tooltip={t("Seety.JOURNEY_OPEN_LINE", "Open transport line")}>
+                <span className={`${styles.waitingStopLine} ${styles.clickableText}`}
+                  onClick={() => trigger("seety", "openWaitingStopLine", stop.id)}>
+                  {" · "}<LocalizedEntityName value={stop.lineName} />
+                </span>
+              </Tooltip>
+            ) : null}
           </span>
           <span className={styles.value}>{stop.count.toLocaleString()} {t("Seety.STOPS_WAITING", "waiting")}</span>
         </div>)}

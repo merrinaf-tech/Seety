@@ -318,18 +318,14 @@ namespace Seety.Systems
                 None = new[] { ComponentType.ReadOnly<Game.Common.Deleted>(), ComponentType.ReadOnly<Game.Tools.Temp>() }
             });
 
-            // NotificationIconDisplayData, not NotificationIconData: the first is the enableable
-            // component the buffer system checks, the second is something else entirely. And
-            // IgnoreComponentEnabledState, or once hidden the prefabs drop out of the query and
-            // there is no way to bring them back.
+            // The prefabs to disable are found through the icons themselves (PrefabRef), not a
+            // query of every notification prefab: a query also caught the markers' prefabs. The
+            // component disabled is NotificationIconDisplayData, the enableable one the buffer
+            // system checks - not NotificationIconData, which is something else entirely.
             _iconVisibility = new Notifications.NotificationIconVisibility(
                 EntityManager,
-                GetEntityQuery(new EntityQueryDesc
-                {
-                    All = new[] { ComponentType.ReadOnly<NotificationIconDisplayData>() },
-                    Options = EntityQueryOptions.IgnoreComponentEnabledState
-                }),
                 // Only visible icons are ours to hide. Restoration uses the recorded entities.
+                // Which of them are problems is decided per icon - see NotificationIconVisibility.
                 GetEntityQuery(new EntityQueryDesc
                 {
                     All = new[] { ComponentType.ReadOnly<Game.Notifications.Icon>() },
@@ -412,6 +408,7 @@ namespace Seety.Systems
             AddBinding(new TriggerBinding<bool>(Group, "setTransportStopsMode", OnSetTransportStopsMode));
             AddBinding(new TriggerBinding(Group, "refreshWaitingStops", RefreshWaitingStops));
             AddBinding(new TriggerBinding<string>(Group, "openWaitingStopLine", OnOpenWaitingStopLine));
+            AddBinding(new TriggerBinding<string>(Group, "openWaitingStop", OnOpenWaitingStop));
 
             _resourcesBinding = new RawValueBinding(Group, "resources", WriteResources);
             AddBinding(_resourcesBinding);
@@ -1354,6 +1351,40 @@ namespace Seety.Systems
         }
 
         /// <summary>
+        /// The stop's own name in the busiest stops list: selects the stop, which opens the game's
+        /// panel for it, and brings the camera there, since a busy stop is rarely the one in view.
+        /// </summary>
+        private void OnOpenWaitingStop(string id)
+        {
+            if (_expandedId != TransportVitalId || !_transportStopsModeBinding.value) return;
+            try
+            {
+                Entity stop = _waitingStops.StopFor(id, EntityManager);
+                if (stop == Entity.Null || !EntityManager.Exists(stop)) return;
+                if (_tools == null) _tools = World.GetExistingSystemManaged<Game.Tools.ToolSystem>();
+                if (_tools != null) _tools.selected = stop;
+                PivotTo(stop);
+            }
+            catch (Exception e) { Mod.Log.Error(e, "Could not open a transport stop."); }
+        }
+
+        /// <summary>
+        /// Points the camera at an entity's position, if it has one. No fallback position: an entity
+        /// without a Transform leaves the camera where it is rather than at the world origin.
+        /// </summary>
+        private void PivotTo(Entity entity)
+        {
+            if (!EntityManager.HasComponent<Game.Objects.Transform>(entity)
+                || _camera == null || _camera.activeCameraController == null)
+            {
+                return;
+            }
+
+            var at = EntityManager.GetComponentData<Game.Objects.Transform>(entity).m_Position;
+            _camera.activeCameraController.pivot = new UnityEngine.Vector3(at.x, at.y, at.z);
+        }
+
+        /// <summary>
         /// Rereads both resource tables.
         ///
         /// Only while the demand window is open. Each read completes a simulation job handle, and
@@ -2056,19 +2087,12 @@ namespace Seety.Systems
             {
                 var place = Vitals.JourneyTrace.Resolve(reference);
 
-                if (place == Entity.Null || !EntityManager.Exists(place)
-                    || !EntityManager.HasComponent<Game.Objects.Transform>(place))
+                if (place == Entity.Null || !EntityManager.Exists(place))
                 {
                     return;
                 }
 
-                if (_camera == null || _camera.activeCameraController == null)
-                {
-                    return;
-                }
-
-                var at = EntityManager.GetComponentData<Game.Objects.Transform>(place).m_Position;
-                _camera.activeCameraController.pivot = new UnityEngine.Vector3(at.x, at.y, at.z);
+                PivotTo(place);
             }
             catch (Exception e)
             {

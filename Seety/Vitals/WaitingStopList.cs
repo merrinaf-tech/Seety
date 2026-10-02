@@ -138,11 +138,29 @@ namespace Seety.Vitals
 
         public Entity LineFor(string id, EntityManager entities)
         {
+            var entry = Current(id, entities);
+            return entry == null ? Entity.Null : entry.Route;
+        }
+
+        /// <summary>The stop a listed row stands for, under the same checks as its line.</summary>
+        public Entity StopFor(string id, EntityManager entities)
+        {
+            var entry = Current(id, entities);
+            return entry == null ? Entity.Null : entry.PhysicalStop;
+        }
+
+        /// <summary>
+        /// A listed row, only while it still describes the city: the line still carries
+        /// passengers, the waypoint is still on it and still connected to the same stop. A click on
+        /// a row the city has since changed under does nothing rather than open the wrong thing.
+        /// </summary>
+        private WaitingStop Current(string id, EntityManager entities)
+        {
             var entry = _entries.Find(row => row.Id == id);
             if (entry == null || !IsPassengerLine(entry.Route, entities)
                 || ConnectedStop(entry.Waypoint, entities) != entry.PhysicalStop
-                || !OnRoute(entry.Route, entry.Waypoint, entities)) return Entity.Null;
-            return entry.Route;
+                || !OnRoute(entry.Route, entry.Waypoint, entities)) return null;
+            return entry;
         }
     }
 }

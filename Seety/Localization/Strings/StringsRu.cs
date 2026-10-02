@@ -88,6 +88,7 @@ namespace Seety.Localization.Strings
                 { "Seety.SEC_PASSENGERS", "Пассажиры" },
                 { "Seety.STOPS_EMPTY", "На остановках нет ожидающих пассажиров." },
                 { "Seety.STOPS_NOTE", "10 остановок с наибольшим числом ожидающих сейчас. Числа обновляются в реальном времени; кнопка «Обновить» пересортирует список." },
+                { "Seety.STOPS_OPEN_STOP", "Открыть остановку" },
                 { "Seety.STOPS_REFRESH", "Обновить" },
                 { "Seety.STOPS_UNNAMED", "Остановка без названия" },
                 { "Seety.STOPS_WAITING", "ожидают" },
