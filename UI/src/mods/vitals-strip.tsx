@@ -3,6 +3,7 @@ import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
 import { LocalizedEntityName, Name, useLocalization } from "cs2/l10n";
 import { gameButtonClasses } from "./game-button";
+import { EducationSwatch } from "./education-swatch";
 import styles from "./vitals-strip.module.scss";
 import { clampPosition } from "./position";
 import { DismissInput } from "./dismiss-input";
@@ -1357,7 +1358,8 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
 
         return (
           <div key={row.level} className={styles.tableRow}>
-            <span className={styles.tableLevel}>{row.level}</span>
+            {/* Rows arrive from C# in education order, uneducated first, so the index is the level. */}
+            <span className={styles.tableLevel}><EducationSwatch level={i} />{row.level}</span>
             {columns.map(([name, get, divider, wide], c) => (
               <span
                 key={name}
@@ -1641,8 +1643,11 @@ const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
     <div className={styles.table}>
       <div className={`${styles.tableRow} ${styles.tableHead}`}>
         <span className={styles.tableLevel}>{t("Seety.DEMO_AGE", "Age")}</span>
-        {LEVEL_NAMES.map((level) => (
-          <span key={level.key} className={styles.tableCell}>
+        {/* Level columns at the wide width: at 58rem "Educated" alone filled the column, with no
+            room for the game's colour square beside it. */}
+        {LEVEL_NAMES.map((level, i) => (
+          <span key={level.key} className={`${styles.tableCell} ${styles.tableCellWide}`}>
+            <EducationSwatch level={i} />
             {t(level.key, level.english)}
           </span>
         ))}
@@ -1665,7 +1670,7 @@ const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
               />
             </span>
             {(row.levels ?? []).map((value, i) => (
-              <span key={i} className={styles.tableCell}>
+              <span key={i} className={`${styles.tableCell} ${styles.tableCellWide}`}>
                 {value.toLocaleString()}
               </span>
             ))}

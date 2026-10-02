@@ -6,7 +6,7 @@
   },
   "scripts": {
     "build": "webpack",
-    "test": "npm run build && node tools/unit-settings.test.cjs && node tools/position.test.cjs && node tools/drag-lock.test.cjs && node tools/journey.test.cjs && node tools/waiting-stops.test.cjs && node tools/toolbar-trends.test.cjs",
+    "test": "npm run build && node tools/unit-settings.test.cjs && node tools/position.test.cjs && node tools/drag-lock.test.cjs && node tools/education-swatch.test.cjs && node tools/journey.test.cjs && node tools/waiting-stops.test.cjs && node tools/toolbar-trends.test.cjs",
     "dev": "webpack --watch",
     "update": "npx create-csii-ui-mod update",
     "clean": "npx create-csii-ui-mod clean"

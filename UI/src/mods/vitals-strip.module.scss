@@ -637,6 +637,22 @@
   width: 78rem;
 }
 
+// The game's colour square beside an education level, as its own chart legends draw it. The size
+// and corners come from the game's legend class when it is found; this only sets it in the line.
+.levelSwatch {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+// The game's rule, copied from color-legend.module.scss in 1.6.2f1, for when its class is not found.
+.levelSwatchShape {
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 4rem;
+  margin-right: 0.5em;
+}
+
 .tableDivider {
   border-left: 1rem solid rgba(255, 255, 255, 0.22);
   padding-left: 6rem;
