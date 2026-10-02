@@ -56,6 +56,19 @@ The bar can also run vertically, from the same tab.
 Some readings also carry a chart of how they got here.
 
 Optionally, rest the cursor on a building to see what is holding it back, and by how much.
+
+## Credits
+
+Mods Seety is inspired by:
+
+- [City Stats](https://mods.paradoxplaza.com/mods/85284/Windows)
+- [City Watchdog](https://mods.paradoxplaza.com/mods/144908/Windows)
+- [InfoLoom](https://mods.paradoxplaza.com/mods/91433/Windows)
+- [Traffic Jam Monitor](https://mods.paradoxplaza.com/mods/103515/Windows)
+- [NavigationView](https://mods.paradoxplaza.com/mods/93523/Windows)
+- [Crowded Stops](https://mods.paradoxplaza.com/mods/102080/Windows)
+
+No code, interface or icons were taken from any of them: Seety reads the game directly and uses the game's own icons. It exists because I wanted one bar that fits the way I play. If you play differently, these mods are made with care and are well worth a look.
 	</LongDescription>
 
 	<Thumbnail Value="Properties/Thumbnail.png" />
