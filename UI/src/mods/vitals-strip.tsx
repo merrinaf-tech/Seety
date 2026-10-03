@@ -2250,25 +2250,43 @@ export const VitalsStrip = () => {
   }, [dragging, canDrag, visible]);
 
   // The grid is defined by where the first cell's centre lands, and that moves when the bar turns
-  // between row and column or changes style - so each of those snaps it again, as does the first
-  // render with something in it, which also lines up a position saved before the grid existed. It
-  // pulls back inside the screen a bar that its new shape would push off it, too.
+  // between row and column or changes style - so each of those snaps it again, and pulls back
+  // inside the screen a bar its new shape would push off it.
+  //
+  // Not on the first render. It used to, to line up positions saved before the grid existed, but
+  // at that point the game's UI has not finished laying out - the measurement came out a few
+  // pixels off and the bar was saved off the grid on every start, until it was next dragged. A
+  // position saved by a drag is on the grid already. After a change, it waits a beat for the new
+  // layout to settle before measuring it, for the same reason.
   const shown = visible && (vitals?.length ?? 0) > 0;
+  const shape = `${vertical}|${!!gameButton}`;
+  const lastShape = useRef<string | null>(null);
   useEffect(() => {
-    const element = elementRef.current;
-    if (!shown || !element) {
+    if (!shown) {
       return;
     }
-    const scale = pxPerRem();
-    const centre = firstCellCentre(element, scale);
-    const maxX = Math.max(0, window.innerWidth / scale - element.offsetWidth / scale);
-    const maxY = Math.max(0, window.innerHeight / scale - element.offsetHeight / scale);
-    const x = Math.round(snapToHud(savedX, centre.x, maxX));
-    const y = Math.round(snapToHud(savedY, centre.y, maxY));
-    if (x !== savedX || y !== savedY) {
-      trigger("seety", "setPosition", x, y);
+    const changed = lastShape.current !== null && lastShape.current !== shape;
+    lastShape.current = shape;
+    if (!changed) {
+      return;
     }
-  }, [vertical, !!gameButton, shown]);
+    const timer = setTimeout(() => {
+      const element = elementRef.current;
+      if (!element) {
+        return;
+      }
+      const scale = pxPerRem();
+      const centre = firstCellCentre(element, scale);
+      const maxX = Math.max(0, window.innerWidth / scale - element.offsetWidth / scale);
+      const maxY = Math.max(0, window.innerHeight / scale - element.offsetHeight / scale);
+      const x = Math.round(snapToHud(savedX, centre.x, maxX));
+      const y = Math.round(snapToHud(savedY, centre.y, maxY));
+      if (x !== savedX || y !== savedY) {
+        trigger("seety", "setPosition", x, y);
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [shape, shown]);
 
   if (!visible || !vitals || vitals.length === 0) {
     return null;

@@ -72,7 +72,7 @@ namespace Seety.Vitals
                 new Vital("unemployment", VitalSource.Unemployment, "Unemployment",       "Jobless",  "Media/Game/Notifications/Unemployed.svg", Names("Workplaces"),  VitalFormat.Percentage, HighUnemployment, null, true, Game.City.StatisticType.Unemployed,    "Unemployed citizens"),
                 new Vital("homelessness", VitalSource.Homelessness, "Homelessness",       "Homeless", "Media/Game/Icons/ConditionHomeless.svg",  Names("Residential"), VitalFormat.Percentage, HighHomelessness, null, true, Game.City.StatisticType.HomelessCount, "Homeless citizens"),
                 new Vital("workers",      VitalSource.Workers,      "Workers",            "Work",     "Media/Game/Icons/Workers.svg",            Names("Workplaces"),  VitalFormat.Number, null, null, true, Game.City.StatisticType.WorkerCount,   "Workers"),
-                new Vital("tourists",     VitalSource.Tourists,     "Tourists",           "Tourist",  "Media/Game/Icons/Tourist.svg",            Names("Tourism"),     VitalFormat.Number, null, null, true, Game.City.StatisticType.TouristCount,  "Tourists"),
+                new Vital("tourists",     VitalSource.Tourists,     "Tourists",           "Tourist",  "Media/Game/Icons/Tourism.svg",            Names("Tourism"),     VitalFormat.Number, null, null, true, Game.City.StatisticType.TouristCount,  "Tourists"),
 
                 // Services, read as coverage: how much of the demand is actually met. A city with
                 // no water pump reads 0%, not 100%.
