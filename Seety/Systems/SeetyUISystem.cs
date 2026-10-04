@@ -125,10 +125,12 @@ namespace Seety.Systems
         private readonly Vitals.WorkforceTable _workforce = new Vitals.WorkforceTable();
 
         private RawValueBinding _workforceBinding;
+        private RawValueBinding _educationBalanceBinding;
         private RawValueBinding _demographicsBinding;
 
         /// <summary>The citizen census, shared by the workforce table and the demographics view.</summary>
         private CitizenCensusSystem _census;
+        private EducationBalanceSystem _educationBalance;
         private RawValueBinding _historyBinding;
         private RawValueBinding _notificationsBinding;
 
@@ -288,6 +290,7 @@ namespace Seety.Systems
             _names = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
             _terrain = World.GetOrCreateSystemManaged<Game.Simulation.TerrainSystem>();
             _census = World.GetOrCreateSystemManaged<CitizenCensusSystem>();
+            _educationBalance = World.GetOrCreateSystemManaged<EducationBalanceSystem>();
 
             // Building required, matching Game.Buildings.InitializeSchoolSystem's own
             // m_CreatedSchoolQuery exactly - without it this query could also pick up a School
@@ -441,6 +444,9 @@ namespace Seety.Systems
 
             _workforceBinding = new RawValueBinding(Group, "workforce", WriteWorkforce);
             AddBinding(_workforceBinding);
+            _educationBalanceBinding = new RawValueBinding(Group, "educationBalance", WriteEducationBalance);
+            AddBinding(_educationBalanceBinding);
+            AddBinding(new TriggerBinding<bool>(Group, "setEducationBalanceTracking", OnSetEducationBalanceTracking));
 
             _demographicsBinding = new RawValueBinding(Group, "demographics", WriteDemographics);
             AddBinding(_demographicsBinding);
@@ -507,6 +513,15 @@ namespace Seety.Systems
                         _transportActive = true;
                     }
                 }
+            }
+
+            // The stop control lives in the Workers window. If that reading is removed from
+            // the strip, stop observing rather than leave an invisible population scan running.
+            if (_educationBalance != null && _educationBalance.Tracking
+                && settings != null && !settings.IsVitalEnabled(WorkforceVitalId))
+            {
+                _educationBalance.SetTracking(false);
+                if (_educationBalanceBinding != null) _educationBalanceBinding.Update();
             }
 
             SortByGameOrder();
@@ -798,6 +813,7 @@ namespace Seety.Systems
                 {
                     RefreshWorkforce();
                 }
+                if (_expandedId == WorkforceVitalId) _educationBalanceBinding.Update();
             }
         }
 
@@ -1583,6 +1599,7 @@ namespace Seety.Systems
             {
                 RefreshWorkforce();
             }
+            if (_expandedId == WorkforceVitalId) _educationBalanceBinding.Update();
 
             RefreshSchools();
             RefreshCemeteries();
@@ -1750,6 +1767,13 @@ namespace Seety.Systems
             _demographicsBinding.Update();
         }
 
+        private void OnSetEducationBalanceTracking(bool tracking)
+        {
+            if (_educationBalance == null) return;
+            _educationBalance.SetTracking(tracking);
+            _educationBalanceBinding.Update();
+        }
+
         /// <summary>
         /// Who actually lives here: age against education, from the same census the workforce
         /// table uses. Nothing new is counted - the pass already walks every citizen and records
@@ -1849,6 +1873,54 @@ namespace Seety.Systems
 
             writer.ArrayEnd();
             writer.TypeEnd();
+        }
+
+        /// <summary>Observed education changes. First/last seen are deliberately not causes.</summary>
+        private void WriteEducationBalance(IJsonWriter writer)
+        {
+            var tracking = _educationBalance != null && _educationBalance.Tracking;
+            var ledger = tracking ? _educationBalance.Ledger : null;
+            var days = ledger == null ? null : ledger.Days;
+            writer.TypeBegin("seety.EducationBalance");
+            writer.PropertyName("tracking");
+            writer.Write(tracking);
+            writer.PropertyName("baseline");
+            writer.Write(ledger != null && ledger.HasBaseline);
+            writer.PropertyName("days");
+            writer.ArrayBegin((uint)(days == null ? 0 : days.Count));
+            if (days != null)
+            {
+                foreach (var day in days)
+                {
+                    writer.TypeBegin("seety.EducationBalanceDay");
+                    writer.PropertyName("day");
+                    writer.Write(day.Day);
+                    writer.PropertyName("complete");
+                    writer.Write(day.Complete);
+                    writer.PropertyName("start");
+                    WriteEducationCounts(writer, day.Start);
+                    writer.PropertyName("end");
+                    WriteEducationCounts(writer, day.End);
+                    writer.PropertyName("firstSeen");
+                    WriteEducationCounts(writer, day.FirstSeen);
+                    writer.PropertyName("noLongerSeen");
+                    WriteEducationCounts(writer, day.NoLongerSeen);
+                    writer.PropertyName("changedIn");
+                    WriteEducationCounts(writer, day.ChangedIn);
+                    writer.PropertyName("changedOut");
+                    WriteEducationCounts(writer, day.ChangedOut);
+                    writer.TypeEnd();
+                }
+            }
+            writer.ArrayEnd();
+            writer.TypeEnd();
+        }
+
+        private static void WriteEducationCounts(IJsonWriter writer, int[] values)
+        {
+            writer.ArrayBegin(5u);
+            for (var level = 0; level < 5; level++) writer.Write(values[level]);
+            writer.ArrayEnd();
         }
 
         /// <summary>

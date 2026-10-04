@@ -191,6 +191,23 @@ interface Workforce {
   rows: WorkforceRow[];
 }
 
+interface EducationBalanceDay {
+  day: number;
+  complete: boolean;
+  start: number[];
+  end: number[];
+  firstSeen: number[];
+  noLongerSeen: number[];
+  changedIn: number[];
+  changedOut: number[];
+}
+
+interface EducationBalance {
+  tracking: boolean;
+  baseline: boolean;
+  days: EducationBalanceDay[];
+}
+
 
 
 /** The recorded series behind whichever row is open. Empty when that row has none. */
@@ -217,6 +234,8 @@ const vitals$ = bindValue<Vital[]>("seety", "vitals", []);
 const breakdowns$ = bindValue<Breakdown[]>("seety", "notifications", []);
 const history$ = bindValue<History>("seety", "history", { label: "", values: [] });
 const workforce$ = bindValue<Workforce>("seety", "workforce", { rows: [] });
+const educationBalance$ = bindValue<EducationBalance>("seety", "educationBalance",
+  { tracking: false, baseline: false, days: [] });
 const visible$ = bindValue<boolean>("seety", "visible", true);
 const posX$ = bindValue<number>("seety", "posX", 10);
 const posY$ = bindValue<number>("seety", "posY", 90);
@@ -1623,6 +1642,94 @@ const WorkforceTable = ({ data }: { data: Workforce }) => {
   );
 };
 
+/** A measured balance. Appearances and disappearances are deliberately not named as causes. */
+const EducationBalancePanel = ({ data, workforce }: {
+  data: EducationBalance; workforce: Workforce;
+}) => {
+  const t = useT();
+  const [level, setLevel] = useState(4);
+  const days = data.days ?? [];
+  const latest = days.length > 0 ? days[days.length - 1] : null;
+  const label = (n: number) => `${n > 0 ? "+" : ""}${n.toLocaleString()}`;
+
+  if (!data.tracking) {
+    return <div className={styles.balancePanel}>
+      <div className={styles.balanceTitle}>{t("Seety.EB_TITLE", "Education balance")}</div>
+      <p className={styles.balanceNote}>{t("Seety.EB_START_NOTE",
+        "Start observing to see which education levels grow. The first count is a baseline; no earlier causes can be recovered.")}</p>
+      <button type="button" className={styles.balanceButton}
+        onClick={() => trigger("seety", "setEducationBalanceTracking", true)}>
+        {t("Seety.EB_START", "Start observing")}
+      </button>
+    </div>;
+  }
+
+  const start = latest?.start[level] ?? 0;
+  const end = latest?.end[level] ?? 0;
+  const net = end - start;
+  const contributions: [string, number][] = latest ? [
+    [t("Seety.EB_FIRST", "First seen at this level"), latest.firstSeen[level]],
+    [t("Seety.EB_CHANGED_IN", "Changed into this level"), latest.changedIn[level]],
+    [t("Seety.EB_CHANGED_OUT", "Changed out of this level"), -latest.changedOut[level]],
+    [t("Seety.EB_GONE", "No longer observed"), -latest.noLongerSeen[level]],
+  ] : [];
+  const max = Math.max(1, ...contributions.map(([, value]) => Math.abs(value)));
+  const explained = contributions.reduce((sum, [, value]) => sum + value, 0);
+  const rate = start > 0 ? `${(100 * net / start).toLocaleString(undefined,
+    { maximumFractionDigits: 1 })}%` : "—";
+
+  return <div className={styles.balancePanel}>
+    <div className={styles.balanceTop}>
+      <span className={styles.balanceTitle}>{t("Seety.EB_TITLE", "Education balance")}</span>
+      <button type="button" className={styles.balanceButton}
+        onClick={() => trigger("seety", "setEducationBalanceTracking", false)}>
+        {t("Seety.EB_STOP", "Stop and clear")}
+      </button>
+    </div>
+    <div className={styles.balanceLevels}>
+      {(workforce.rows ?? []).map((row, index) => <button type="button" key={row.level}
+        aria-pressed={level === index}
+        className={`${styles.balanceLevel} ${level === index ? styles.balanceLevelActive : ""}`}
+        onClick={() => setLevel(index)}>
+        <EducationSwatch level={index} />{row.level}
+      </button>)}
+    </div>
+    {!latest ? <p className={styles.balanceNote}>{t("Seety.EB_WAIT",
+      "Baseline recorded. Waiting for the next simulation sample.")}</p> : <>
+      <div className={styles.balancePeriod}>{latest.complete
+        ? t("Seety.EB_COMPLETE", "Previous observed game day")
+        : t("Seety.EB_CURRENT", "Current observed game day")}</div>
+      <div className={styles.balanceSummary}>
+        <span>{start.toLocaleString()} → {end.toLocaleString()}</span>
+        <strong>{label(net)} ({rate})</strong>
+      </div>
+      {contributions.map(([name, value]) => <div className={styles.balanceRow} key={name}>
+        <span className={styles.balanceName}>{name}</span>
+        <span className={styles.balanceTrack}>
+          {value !== 0 ? <span
+            className={value > 0 ? styles.balancePositive : styles.balanceNegative}
+            style={{ width: `${50 * Math.abs(value) / max}%` }} /> : null}
+        </span>
+        <span className={styles.balanceNumber}>{label(value)}</span>
+      </div>)}
+      {explained !== net ? <p className={styles.balanceNote}>
+        {t("Seety.EB_GAP", "Unreconciled change")}: {label(net - explained)}
+      </p> : null}
+      <div className={styles.balanceRecent}>
+        {days.slice(-7).reverse().map((day) => <div key={day.day}
+          className={styles.balanceRecentRow}>
+          <span>{day.day === latest.day ? t("Seety.EB_CURRENT_SHORT", "Latest")
+            : `${latest.day - day.day} ${t("Seety.EB_DAYS_AGO", "game days ago")}`}</span>
+          <span>{day.start[level].toLocaleString()} → {day.end[level].toLocaleString()}</span>
+          <strong>{label(day.end[level] - day.start[level])}</strong>
+        </div>)}
+      </div>
+    </>}
+    <p className={styles.balanceNote}>{t("Seety.EB_LIMIT",
+      "First seen may include births or immigration; no longer observed may include deaths or departures. These causes are not separated yet. Observation runs while this window is closed, but resets when the game reloads or you stop it.")}</p>
+  </div>;
+};
+
 /**
  * Why a demand figure is where it is.
  *
@@ -2120,6 +2227,7 @@ export const VitalsStrip = () => {
   const breakdowns = useValue(breakdowns$);
   const history = useValue(history$);
   const workforce = useValue(workforce$);
+  const educationBalance = useValue(educationBalance$);
   const demographics = useValue(demographics$);
   const iconsHidden = useValue(iconsHidden$);
   const journeyOn = useValue(journeyOn$);
@@ -2140,6 +2248,7 @@ export const VitalsStrip = () => {
   const [dragging, setDragging] = useState(false);
   // Which row is expanded, or null. One at a time: two open panels would overlap.
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [workforcePage, setWorkforcePage] = useState<"table" | "balance">("table");
   const activeExpanded = visible && vitals?.some((v) => v.id === expanded && v.enabled)
     ? expanded : null;
 
@@ -2466,6 +2575,25 @@ export const VitalsStrip = () => {
                     src={iconsHidden ? "Media/Glyphs/EyeClosed.svg" : "Media/Glyphs/EyeOpen.svg"} />
                 </button>
               </Tooltip>
+            ) : openVital.id === WORKFORCE_ID ? (
+              <>
+                <Tooltip tooltip={t("Seety.EB_TABLE_TAB", "Workforce table")}>
+                  <button type="button" aria-pressed={workforcePage === "table"}
+                    className={`${styles.windowTab} ${workforcePage === "table" ? styles.windowTabActive : ""}`}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={() => setWorkforcePage("table")}>
+                    <img className={styles.windowTabIcon} src="Media/Game/Icons/Workers.svg" />
+                  </button>
+                </Tooltip>
+                <Tooltip tooltip={t("Seety.EB_BALANCE_TAB", "Education balance")}>
+                  <button type="button" aria-pressed={workforcePage === "balance"}
+                    className={`${styles.windowTab} ${workforcePage === "balance" ? styles.windowTabActive : ""}`}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={() => setWorkforcePage("balance")}>
+                    <img className={styles.windowTabIcon} src="Media/Game/Icons/Education.svg" />
+                  </button>
+                </Tooltip>
+              </>
             ) : openVital.id === TRAFFIC_ID ? (
               <TrafficActions journeyOn={journeyOn} transitMode={transitMode}
                 streetNames={streetNames} streetNamesAvailable={streetNamesAvailable} />
@@ -2479,9 +2607,13 @@ export const VitalsStrip = () => {
           {openVital.id === POLLUTION_ID ? <PollutionList /> : null}
           {openVital.bindKind === VanillaKind.DemandGroup ? <DemandList /> : null}
           {openVital.factors ? <FactorList binding={openVital.factors} /> : null}
-          {openVital.hasHistory && history ? <HistoryChart history={history} /> : null}
-          {openVital.id === WORKFORCE_ID && workforce ? (
+          {openVital.hasHistory && history && (openVital.id !== WORKFORCE_ID || workforcePage === "table")
+            ? <HistoryChart history={history} /> : null}
+          {openVital.id === WORKFORCE_ID && workforce && workforcePage === "table" ? (
             <WorkforceTable data={workforce} />
+          ) : null}
+          {openVital.id === WORKFORCE_ID && workforcePage === "balance" ? (
+            <EducationBalancePanel data={educationBalance} workforce={workforce} />
           ) : null}
           {openVital.companions.length > 0 ? (
             <MergedReadings vital={openVital} />

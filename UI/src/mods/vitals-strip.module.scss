@@ -682,6 +682,57 @@
   width: 78rem;
 }
 
+.balancePanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 480rem;
+  padding: 8rem;
+  font-size: 12rem;
+}
+
+.balanceTop, .balanceSummary, .balanceRecentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.balanceTitle { font-weight: 700; font-size: 14rem; }
+.balancePeriod { margin: 10rem 0 4rem; color: rgba(255, 255, 255, 0.65); }
+.balanceSummary { margin-bottom: 9rem; font-size: 14rem; }
+.balanceSummary strong { color: rgb(180, 221, 255); }
+
+.balanceButton, .balanceLevel {
+  border: 0;
+  border-radius: 3rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, 0.22); }
+}
+.balanceButton { padding: 5rem 8rem; }
+.balanceLevels { display: flex; flex-wrap: wrap; margin-top: 10rem; }
+.balanceLevel { display: flex; align-items: center; margin: 0 4rem 4rem 0; padding: 5rem; }
+.balanceLevelActive { background: rgba(130, 190, 255, 0.45); }
+
+.balanceRow { display: flex; align-items: center; margin: 3rem 0; }
+.balanceName { width: 190rem; flex-shrink: 0; }
+.balanceTrack {
+  position: relative;
+  width: 180rem;
+  height: 10rem;
+  flex-shrink: 0;
+  background: linear-gradient(to right, rgba(255,255,255,0.05) 49.5%,
+    rgba(255,255,255,0.45) 49.5%, rgba(255,255,255,0.45) 50.5%,
+    rgba(255,255,255,0.05) 50.5%);
+}
+.balancePositive, .balanceNegative { position: absolute; top: 1rem; height: 8rem; }
+.balancePositive { left: 50%; background: rgb(105, 193, 142); }
+.balanceNegative { right: 50%; background: rgb(225, 130, 122); }
+.balanceNumber { min-width: 75rem; padding-left: 8rem; text-align: right; }
+.balanceRecent { margin-top: 10rem; border-top: 1rem solid rgba(255, 255, 255, 0.16); }
+.balanceRecentRow { padding: 3rem 0; color: rgba(255, 255, 255, 0.75); }
+.balanceNote { max-width: 480rem; line-height: 1.4; color: rgba(255, 255, 255, 0.6); }
+
 // The game's colour square beside an education level, as its own chart legends draw it. The size
 // and corners come from the game's legend class when it is found; this only sets it in the line.
 .levelSwatch {

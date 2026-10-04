@@ -4,6 +4,7 @@ obj/
 *.user
 
 # Unity ILPP cache
+Library/
 Seety/Library/
 
 # UI build

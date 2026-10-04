@@ -68,6 +68,7 @@ namespace Seety
 
             Systems.StreetNameLabels.Apply(Settings.StreetNames);
 
+            updateSystem.UpdateAt<EducationBalanceSystem>(SystemUpdatePhase.GameSimulation);
             updateSystem.UpdateAt<SeetyUISystem>(SystemUpdatePhase.UIUpdate);
 
             // Follows the player's Tool / Cancel binding so the key that backs out of a tool also
