@@ -698,8 +698,14 @@
 
 .balanceTitle { font-weight: 700; font-size: 14rem; }
 .balancePeriod { margin: 10rem 0 4rem; color: rgba(255, 255, 255, 0.65); }
-.balanceSummary { margin-bottom: 9rem; font-size: 14rem; }
-.balanceSummary strong { color: rgb(180, 221, 255); }
+.balanceSummary { margin-bottom: 9rem; font-size: 14rem; flex-wrap: nowrap; }
+.balanceSummary > span { flex-shrink: 0; white-space: nowrap; }
+.balanceSummary strong {
+  flex-shrink: 0;
+  margin-left: 12rem;
+  color: rgb(180, 221, 255);
+  white-space: nowrap;
+}
 
 .balanceButton, .balanceLevel {
   border: 0;
