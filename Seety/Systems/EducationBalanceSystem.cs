@@ -19,7 +19,8 @@ namespace Seety.Systems
     /// </summary>
     public partial class EducationBalanceSystem : GameSystemBase, IDefaultSerializable
     {
-        private const int SaveSchema = 1;
+        private const int SaveSchema = 2;
+        private const int MaxUnemploymentSamples = 512;
         private EntityQuery _citizens;
         private SimulationSystem _simulation;
         private TimeSystem _timeSystem;
@@ -29,9 +30,19 @@ namespace Seety.Systems
         private bool _inGame;
         private readonly double[] _recentMilliseconds = new double[64];
         private int _sampleCount;
+        private readonly List<UnemploymentSample> _unemployment = new List<UnemploymentSample>();
+        private bool _unemploymentGap;
         public readonly EducationBalanceLedger Ledger = new EducationBalanceLedger();
 
+        public sealed class UnemploymentSample
+        {
+            public DateTime Time;
+            public bool GapBefore;
+            public readonly int[] Counts = new int[5];
+        }
+
         public bool Tracking { get { return _tracking; } }
+        public IReadOnlyList<UnemploymentSample> Unemployment { get { return _unemployment; } }
         public double MeanMilliseconds { get { return SampleMetric(0); } }
         public double P95Milliseconds { get { return SampleMetric(1); } }
         public double WorstMilliseconds { get { return SampleMetric(2); } }
@@ -53,6 +64,8 @@ namespace Seety.Systems
         {
             base.OnGamePreload(purpose, mode);
             Ledger.Clear();
+            _unemployment.Clear();
+            _unemploymentGap = false;
             _lastFrame = 0;
             _tracking = false;
             _inGame = false;
@@ -78,6 +91,7 @@ namespace Seety.Systems
             if (_tracking == tracking) return;
             _tracking = tracking;
             Ledger.BreakObservation();
+            _unemploymentGap = _unemployment.Count > 0;
             _lastFrame = 0;
             if (tracking && _inGame) Capture();
         }
@@ -86,7 +100,7 @@ namespace Seety.Systems
         {
             Ledger.Clear();
             _lastFrame = 0;
-            if (_tracking && _inGame) Capture();
+            if (_tracking && _inGame) Capture(false);
         }
 
         protected override void OnUpdate()
@@ -97,13 +111,14 @@ namespace Seety.Systems
             {
                 // A different city can start at a lower simulation frame after a load.
                 Ledger.BreakObservation();
+                _unemploymentGap = _unemployment.Count > 0;
                 _lastFrame = 0;
             }
             if (!Ledger.HasBaseline || frame - _lastFrame >= EducationBalanceLedger.FramesPerSample)
                 Capture();
         }
 
-        private void Capture()
+        private void Capture(bool recordUnemployment = true)
         {
             if (_simulation == null || !_residents.IsCreated) return;
             var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -117,17 +132,32 @@ namespace Seety.Systems
                 Citizens = GetComponentTypeHandle<Citizen>(true),
                 Members = GetComponentTypeHandle<HouseholdMember>(true),
                 Health = GetComponentTypeHandle<HealthProblem>(true),
+                Workers = GetComponentTypeHandle<Worker>(true),
+                OutsideConnections = GetComponentLookup<Game.Objects.OutsideConnection>(true),
                 CommuterHouseholds = GetComponentLookup<CommuterHousehold>(true),
                 Results = _residents
             };
             JobChunkExtensions.Run(job, _citizens);
-            Ledger.Begin(frame, _timeSystem.GetCurrentDateTime());
+            var gameTime = _timeSystem.GetCurrentDateTime();
+            Ledger.Begin(frame, gameTime);
+            var unemployed = new UnemploymentSample { Time = gameTime, GapBefore = _unemploymentGap };
             for (var i = 0; i < _residents.Length; i++)
             {
                 var entry = _residents[i];
                 Ledger.Observe(entry.Key, entry.Level);
+                if (entry.Unemployed != 0) unemployed.Counts[entry.Level]++;
             }
             Ledger.End();
+            if (recordUnemployment)
+            {
+                if (_unemployment.Count > 0 && gameTime < _unemployment[_unemployment.Count - 1].Time)
+                    _unemployment.Clear();
+                _unemployment.Add(unemployed);
+                _unemploymentGap = false;
+                var cutoff = gameTime.AddDays(-14);
+                while (_unemployment.Count > 0 && (_unemployment[0].Time < cutoff
+                    || _unemployment.Count > MaxUnemploymentSamples)) _unemployment.RemoveAt(0);
+            }
             _lastFrame = frame;
             clock.Stop();
             _recentMilliseconds[_sampleCount % _recentMilliseconds.Length] = clock.Elapsed.TotalMilliseconds;
@@ -161,6 +191,8 @@ namespace Seety.Systems
         public void SetDefaults(Context context)
         {
             Ledger.Clear();
+            _unemployment.Clear();
+            _unemploymentGap = false;
             _tracking = false;
         }
 
@@ -185,13 +217,20 @@ namespace Seety.Systems
                 WriteCounts(writer, day.ChangedOut);
                 WriteCounts(writer, day.Transitions);
             }
+            writer.Write(_unemployment.Count);
+            foreach (var sample in _unemployment)
+            {
+                writer.Write(sample.Time.Ticks);
+                writer.Write(sample.GapBefore);
+                WriteCounts(writer, sample.Counts);
+            }
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out int schema);
             reader.Read(out int count);
-            if (schema != SaveSchema || count < 0 || count > 64)
+            if ((schema != 1 && schema != SaveSchema) || count < 0 || count > 64)
                 throw new InvalidOperationException("Unsupported Seety education history schema.");
             var history = new List<EducationBalanceDay>(count);
             for (var i = 0; i < count; i++)
@@ -220,6 +259,26 @@ namespace Seety.Systems
                 history.Add(day);
             }
             Ledger.Restore(history);
+            _unemployment.Clear();
+            if (schema >= 2)
+            {
+                reader.Read(out int sampleCount);
+                if (sampleCount < 0 || sampleCount > MaxUnemploymentSamples)
+                    throw new InvalidOperationException("Unsupported Seety unemployment history length.");
+                for (var i = 0; i < sampleCount; i++)
+                {
+                    var sample = new UnemploymentSample();
+                    reader.Read(out long ticks);
+                    reader.Read(out sample.GapBefore);
+                    ReadCounts(reader, sample.Counts);
+                    if (ticks >= DateTime.MinValue.Ticks && ticks <= DateTime.MaxValue.Ticks)
+                    {
+                        sample.Time = new DateTime(ticks);
+                        _unemployment.Add(sample);
+                    }
+                }
+            }
+            _unemploymentGap = _unemployment.Count > 0;
             _tracking = false;
             _lastFrame = 0;
         }
@@ -238,6 +297,7 @@ namespace Seety.Systems
         {
             public ulong Key;
             public byte Level;
+            public byte Unemployed;
         }
 
         [BurstCompile]
@@ -247,6 +307,8 @@ namespace Seety.Systems
             [ReadOnly] public ComponentTypeHandle<Citizen> Citizens;
             [ReadOnly] public ComponentTypeHandle<HouseholdMember> Members;
             [ReadOnly] public ComponentTypeHandle<HealthProblem> Health;
+            [ReadOnly] public ComponentTypeHandle<Worker> Workers;
+            [ReadOnly] public ComponentLookup<Game.Objects.OutsideConnection> OutsideConnections;
             [ReadOnly] public ComponentLookup<CommuterHousehold> CommuterHouseholds;
             public NativeList<ResidentEducation> Results;
 
@@ -259,6 +321,9 @@ namespace Seety.Systems
                     ? chunk.GetNativeArray(ref Members) : default(NativeArray<HouseholdMember>);
                 var health = chunk.Has<HealthProblem>()
                     ? chunk.GetNativeArray(ref Health) : default(NativeArray<HealthProblem>);
+                var workers = chunk.Has<Worker>()
+                    ? chunk.GetNativeArray(ref Workers) : default(NativeArray<Worker>);
+                var isStudentChunk = chunk.Has<Student>();
 
                 for (var i = 0; i < citizens.Length; i++)
                 {
@@ -275,7 +340,10 @@ namespace Seety.Systems
                     Results.Add(new ResidentEducation
                     {
                         Key = ((ulong)(uint)entity.Index << 32) | (uint)entity.Version,
-                        Level = (byte)level
+                        Level = (byte)level,
+                        Unemployed = (byte)(CitizenUtils.IsWorkableCitizen(citizen, citizen.GetAge(),
+                            isStudentChunk, false) && (!workers.IsCreated
+                                || OutsideConnections.HasComponent(workers[i].m_Workplace)) ? 1 : 0)
                     });
                 }
             }

@@ -132,6 +132,7 @@ namespace Seety.Systems
         private CitizenCensusSystem _census;
         private EducationBalanceSystem _educationBalance;
         private RawValueBinding _historyBinding;
+        private RawValueBinding _unemploymentHistoryBinding;
         private RawValueBinding _notificationsBinding;
 
         /// <summary>The blue demand bars taken apart per resource. See ResourceBreakdown.</summary>
@@ -441,6 +442,8 @@ namespace Seety.Systems
 
             _historyBinding = new RawValueBinding(Group, "history", WriteHistory);
             AddBinding(_historyBinding);
+            _unemploymentHistoryBinding = new RawValueBinding(Group, "unemploymentHistory", WriteUnemploymentHistory);
+            AddBinding(_unemploymentHistoryBinding);
 
             _workforceBinding = new RawValueBinding(Group, "workforce", WriteWorkforce);
             AddBinding(_workforceBinding);
@@ -795,6 +798,7 @@ namespace Seety.Systems
             if (!string.IsNullOrEmpty(_expandedId))
             {
                 _historyBinding.Update();
+                if (_expandedId == UnemploymentVitalId) _unemploymentHistoryBinding.Update();
                 if (_expandedId == TransportVitalId && _transportStopsModeBinding.value)
                 {
                     _waitingStops.Refresh(_waitingStopQuery, EntityManager, _names, false);
@@ -1564,6 +1568,7 @@ namespace Seety.Systems
                 OnSetTransportStopsMode(false);
             if (_expandedId != TrafficVitalId && _journeyOnBinding.value) OnSetJourneyOn(false);
             _historyBinding.Update();
+            _unemploymentHistoryBinding.Update();
 
             if (_expandedId == DemandVitalId)
             {
@@ -1738,6 +1743,7 @@ namespace Seety.Systems
 
         /// <summary>The row whose window carries the workforce-against-workplaces table.</summary>
         private const string WorkforceVitalId = "workers";
+        private const string UnemploymentVitalId = "unemployment";
 
         /// <summary>The row whose window carries the age-and-education breakdown.</summary>
         private const string DemographicsVitalId = "happiness";
@@ -1745,7 +1751,8 @@ namespace Seety.Systems
         /// <summary>True while a row that needs the citizen census is open.</summary>
         private bool NeedsCensus
         {
-            get { return _expandedId == WorkforceVitalId || _expandedId == DemographicsVitalId; }
+            get { return _expandedId == WorkforceVitalId || _expandedId == DemographicsVitalId
+                || _expandedId == UnemploymentVitalId; }
         }
 
         /// <summary>How many problem types the list shows before it stops being actionable.</summary>
@@ -1838,7 +1845,8 @@ namespace Seety.Systems
         /// </summary>
         private void WriteWorkforce(IJsonWriter writer)
         {
-            var rows = _expandedId == WorkforceVitalId ? _workforce.Rows : new List<Vitals.WorkforceRow>();
+            var rows = _expandedId == WorkforceVitalId || _expandedId == UnemploymentVitalId
+                ? _workforce.Rows : new List<Vitals.WorkforceRow>();
 
             writer.TypeBegin("seety.Workforce");
             writer.PropertyName("rows");
@@ -1944,6 +1952,33 @@ namespace Seety.Systems
             writer.ArrayBegin(5u);
             for (var level = 0; level < 5; level++) writer.Write(values[level]);
             writer.ArrayEnd();
+        }
+
+        private void WriteUnemploymentHistory(IJsonWriter writer)
+        {
+            var visible = _expandedId == UnemploymentVitalId && _educationBalance != null;
+            var samples = visible ? _educationBalance.Unemployment : null;
+            writer.TypeBegin("seety.UnemploymentHistory");
+            writer.PropertyName("tracking");
+            writer.Write(visible && _educationBalance.Tracking);
+            writer.PropertyName("samples");
+            writer.ArrayBegin((uint)(samples == null ? 0 : samples.Count));
+            if (samples != null)
+            {
+                foreach (var sample in samples)
+                {
+                    writer.TypeBegin("seety.UnemploymentSample");
+                    writer.PropertyName("time");
+                    writer.Write(sample.Time.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture));
+                    writer.PropertyName("gapBefore");
+                    writer.Write(sample.GapBefore);
+                    writer.PropertyName("counts");
+                    WriteEducationCounts(writer, sample.Counts);
+                    writer.TypeEnd();
+                }
+            }
+            writer.ArrayEnd();
+            writer.TypeEnd();
         }
 
         /// <summary>

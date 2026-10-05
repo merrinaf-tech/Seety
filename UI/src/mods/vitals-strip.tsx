@@ -3,7 +3,7 @@ import { bindValue, trigger, useValue } from "cs2/api";
 import { Tooltip } from "cs2/ui";
 import { LocalizedEntityName, Name, useLocalization } from "cs2/l10n";
 import { gameButtonClasses } from "./game-button";
-import { EducationSwatch } from "./education-swatch";
+import { EducationSwatch, educationColour } from "./education-swatch";
 import styles from "./vitals-strip.module.scss";
 import { clampPosition, clampSize } from "./position";
 import { DismissInput } from "./dismiss-input";
@@ -215,6 +215,17 @@ interface EducationBalance {
   days: EducationBalanceDay[];
 }
 
+interface UnemploymentSample {
+  time: string;
+  gapBefore: boolean;
+  counts: number[];
+}
+
+interface UnemploymentHistory {
+  tracking: boolean;
+  samples: UnemploymentSample[];
+}
+
 
 
 /** The recorded series behind whichever row is open. Empty when that row has none. */
@@ -243,6 +254,8 @@ const history$ = bindValue<History>("seety", "history", { label: "", values: [] 
 const workforce$ = bindValue<Workforce>("seety", "workforce", { rows: [] });
 const educationBalance$ = bindValue<EducationBalance>("seety", "educationBalance",
   { tracking: false, baseline: false, meanMs: 0, p95Ms: 0, worstMs: 0, days: [] });
+const unemploymentHistory$ = bindValue<UnemploymentHistory>("seety", "unemploymentHistory",
+  { tracking: false, samples: [] });
 const visible$ = bindValue<boolean>("seety", "visible", true);
 const posX$ = bindValue<number>("seety", "posX", 10);
 const posY$ = bindValue<number>("seety", "posY", 90);
@@ -473,6 +486,7 @@ function pxPerRem(): number {
 
 /** The row whose window carries the workforce-against-workplaces table. Matches the C# side. */
 const WORKFORCE_ID = "workers";
+const UNEMPLOYMENT_ID = "unemployment";
 
 /**
  * The row whose window carries the stuck-vehicle list. Listed explicitly here rather than relying
@@ -1099,6 +1113,102 @@ const HistoryChart = ({ history }: { history: History }) => {
       </svg>
     </div>
   );
+};
+
+const UnemploymentEducationChart = ({ data, rows }: {
+  data: UnemploymentHistory; rows: WorkforceRow[];
+}) => {
+  const t = useT();
+  const samples = data.samples ?? [];
+  if (samples.length < 2) {
+    return <p className={styles.unemploymentNote}>{data.tracking
+      ? t("Seety.UNEMPLOYMENT_WAIT", "Waiting for a second observed sample. Education history is recorded every 8192 simulation frames.")
+      : t("Seety.UNEMPLOYMENT_PAUSED", "Education observation is paused. Resume it in Workers or Seety's settings to collect this chart.")}</p>;
+  }
+
+  const width = 200;
+  const height = 54;
+  // Treat the game's calendar as a timezone-free axis; local daylight saving must not bend it.
+  const times = samples.map(sample => Date.parse(`${sample.time.replace(" ", "T")}Z`));
+  const validTime = times.every(Number.isFinite) && times[times.length - 1] > times[0];
+  const left = validTime ? times[0] : 0;
+  const span = validTime ? times[times.length - 1] - left : samples.length - 1;
+  const x = (i: number) => ((validTime ? times[i] - left : i) / span) * width;
+  let max = 1;
+  for (const sample of samples) {
+    for (const count of sample.counts) max = Math.max(max, count);
+  }
+  const y = (value: number) => height - (value / max) * height;
+  const latest = samples[samples.length - 1];
+
+  return <div className={styles.chart}>
+    <div className={styles.chartLabel}>
+      <span>{samples[0].time} → {latest.time}</span>
+      <span>{t("Seety.UNEMPLOYMENT_SAMPLED", "Observed")}</span>
+    </div>
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={styles.chartSvg}>
+      {Array.from({ length: 5 }, (_, level) => {
+        const segments: string[][] = [];
+        samples.forEach((sample, index) => {
+          if (index === 0 || sample.gapBefore) segments.push([]);
+          segments[segments.length - 1].push(`${x(index).toFixed(1)},${y(sample.counts[level]).toFixed(1)}`);
+        });
+        return segments.map((points, index) => points.length > 1
+          ? <polyline key={`${level}-${index}`} points={points.join(" ")} fill="none"
+              stroke={educationColour(level)} strokeWidth="1.8" />
+          : <circle key={`${level}-${index}`} cx={Number(points[0].split(",")[0])}
+              cy={Number(points[0].split(",")[1])} r="1.4" fill={educationColour(level)} />);
+      })}
+    </svg>
+    <div className={styles.unemploymentLegend}>
+      {rows.map((row, level) => <span key={row.level}>
+        <EducationSwatch level={level} />{row.level}: {latest.counts[level].toLocaleString()}
+      </span>)}
+    </div>
+    <p className={styles.unemploymentNote}>{t("Seety.UNEMPLOYMENT_HISTORY_NOTE",
+      "Last 14 game days of observed samples. Lines stop at observation gaps; the legend shows the last sample, while the table below shows the current census.")}</p>
+  </div>;
+};
+
+const UnemploymentPanel = ({ history, breakdown, workforce }: {
+  history: History; breakdown: UnemploymentHistory; workforce: Workforce;
+}) => {
+  const t = useT();
+  const [byEducation, setByEducation] = useState(false);
+  const rows = workforce.rows ?? [];
+  const total = rows.reduce((sum, row) => sum + row.unemployed, 0);
+  return <>
+    <div className={styles.unemploymentToggle}>
+      <button type="button" aria-pressed={!byEducation} onClick={() => setByEducation(false)}
+        className={`${styles.balanceButton} ${!byEducation ? styles.balanceLevelActive : ""}`}>
+        {t("Seety.UNEMPLOYMENT_TOTAL", "Total")}
+      </button>
+      <button type="button" aria-pressed={byEducation} onClick={() => setByEducation(true)}
+        className={`${styles.balanceButton} ${byEducation ? styles.balanceLevelActive : ""}`}>
+        {t("Seety.UNEMPLOYMENT_BY_EDUCATION", "By education")}
+      </button>
+    </div>
+    {byEducation ? <UnemploymentEducationChart data={breakdown} rows={rows} />
+      : <HistoryChart history={history} />}
+    <div className={styles.unemploymentTable}>
+      <div className={styles.unemploymentTableHead}>
+        <span>{t("Seety.WF_EDUCATION", "Education")}</span>
+        <span>{t("Seety.WF_UNEMPLOYED", "Unemployed")}</span>
+        <span>{t("Seety.UNEMPLOYMENT_SHARE", "Share")}</span>
+      </div>
+      {rows.map((row, level) => <div className={styles.unemploymentTableRow} key={row.level}>
+        <span><EducationSwatch level={level} />{row.level}</span>
+        <span>{row.unemployed.toLocaleString()}</span>
+        <span>{total > 0 ? `${(100 * row.unemployed / total).toLocaleString(undefined,
+          { maximumFractionDigits: 1 })}%` : "—"}</span>
+      </div>)}
+      <div className={`${styles.unemploymentTableRow} ${styles.unemploymentTableTotal}`}>
+        <span>{t("Seety.WF_TOTAL", "Total")}</span><span>{total.toLocaleString()}</span><span>{total > 0 ? "100%" : "—"}</span>
+      </div>
+    </div>
+    <p className={styles.unemploymentNote}>{t("Seety.UNEMPLOYMENT_TABLE_NOTE",
+      "Current residents able to work but without a job in the city, counted by their completed education level. This follows the Workers table definition. The total chart uses the game's history; the education chart uses Seety's observed samples.")}</p>
+  </>;
 };
 
 /** Thresholds for vanilla-sourced rows are judged here, because their value never reaches C#. */
@@ -2266,6 +2376,7 @@ export const VitalsStrip = () => {
   const history = useValue(history$);
   const workforce = useValue(workforce$);
   const educationBalance = useValue(educationBalance$);
+  const unemploymentHistory = useValue(unemploymentHistory$);
   const demographics = useValue(demographics$);
   const iconsHidden = useValue(iconsHidden$);
   const journeyOn = useValue(journeyOn$);
@@ -2645,8 +2756,11 @@ export const VitalsStrip = () => {
           {openVital.id === POLLUTION_ID ? <PollutionList /> : null}
           {openVital.bindKind === VanillaKind.DemandGroup ? <DemandList /> : null}
           {openVital.factors ? <FactorList binding={openVital.factors} /> : null}
-          {openVital.hasHistory && history && (openVital.id !== WORKFORCE_ID || workforcePage === "table")
+          {openVital.hasHistory && history && openVital.id !== UNEMPLOYMENT_ID
+            && (openVital.id !== WORKFORCE_ID || workforcePage === "table")
             ? <HistoryChart history={history} /> : null}
+          {openVital.id === UNEMPLOYMENT_ID ? <UnemploymentPanel history={history}
+            breakdown={unemploymentHistory} workforce={workforce} /> : null}
           {openVital.id === WORKFORCE_ID && workforce && workforcePage === "table" ? (
             <WorkforceTable data={workforce} />
           ) : null}

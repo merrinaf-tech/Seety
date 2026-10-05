@@ -30,6 +30,9 @@ const educationColours = (): string[] => {
   return colours;
 };
 
+/** Shared by the education legend and charts so a level always has the same colour. */
+export const educationColour = (level: number): string => educationColours()[level] ?? FALLBACK_COLOURS[level];
+
 /**
  * The square the game draws beside each entry of a chart legend: the `symbol` class of its
  * color-legend stylesheet. Null if a game update renames it; .levelSwatchShape then draws the same
@@ -51,7 +54,7 @@ const legendSymbolClass = (): string | null => {
 
 /** The game's coloured square for one education level, 0 (uneducated) to 4 (highly educated). */
 export const EducationSwatch = ({ level }: { level: number }) => {
-  const colour = educationColours()[level];
+  const colour = educationColour(level);
   if (!colour) {
     return null;
   }

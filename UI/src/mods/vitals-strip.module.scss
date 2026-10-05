@@ -347,6 +347,30 @@
   height: 150rem;
 }
 
+.unemploymentToggle, .unemploymentLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.unemploymentToggle { padding: 8rem 6rem 0; }
+.unemploymentToggle button { margin-right: 6rem; }
+.unemploymentLegend { margin-top: 7rem; }
+.unemploymentLegend > span { display: flex; align-items: center; margin: 0 12rem 4rem 0; font-size: 10rem; }
+.unemploymentNote { margin: 7rem 6rem; font-size: 10rem; color: rgba(255, 255, 255, 0.62); }
+.unemploymentTable { margin: 10rem 6rem 3rem; }
+.unemploymentTableHead, .unemploymentTableRow {
+  display: grid;
+  grid-template-columns: minmax(180rem, 1fr) 100rem 70rem;
+  align-items: center;
+  padding: 4rem 6rem;
+}
+.unemploymentTableHead { color: rgba(255, 255, 255, 0.62); font-size: 10rem; border-bottom: 1rem solid rgba(255, 255, 255, 0.18); }
+.unemploymentTableRow { font-size: 11rem; }
+.unemploymentTableRow:nth-child(even) { background: rgba(255, 255, 255, 0.045); }
+.unemploymentTableRow > span:first-child { display: flex; align-items: center; }
+.unemploymentTableHead > span:not(:first-child), .unemploymentTableRow > span:not(:first-child) { text-align: right; }
+.unemploymentTableTotal { font-weight: 700; border-top: 1rem solid rgba(255, 255, 255, 0.18); }
+
 // A window: its own furniture, its own position, not tied to the strip that opened it.
 .window {
   position: fixed;
