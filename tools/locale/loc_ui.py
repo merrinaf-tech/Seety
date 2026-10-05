@@ -146,7 +146,6 @@ for key, en, it in [
 for key, en, it in [
     ("UNEMPLOYMENT_TOTAL", "Total", "Totale"),
     ("UNEMPLOYMENT_BY_EDUCATION", "By education", "Per istruzione"),
-    ("UNEMPLOYMENT_SHARE", "Share", "Quota"),
     ("UNEMPLOYMENT_SAMPLED", "Observed", "Osservati"),
     ("UNEMPLOYMENT_WAIT", "Waiting for a second observed sample. Education history is recorded every 8192 simulation frames.",
      "In attesa del secondo campione. Lo storico dell'istruzione viene registrato ogni 8192 frame di simulazione."),
@@ -154,8 +153,8 @@ for key, en, it in [
      "L'osservazione dell'istruzione è in pausa. Riprendila da Lavoratori o dalle impostazioni di Seety per raccogliere questo grafico."),
     ("UNEMPLOYMENT_HISTORY_NOTE", "Last 14 game days of observed samples. Lines stop at observation gaps; the legend shows the last sample, while the table below shows the current census.",
      "Ultimi 14 giorni di gioco osservati. Le linee si interrompono negli intervalli non osservati; la legenda mostra l'ultimo campione e la tabella sotto il conteggio attuale."),
-    ("UNEMPLOYMENT_TABLE_NOTE", "Current residents able to work but without a job in the city, counted by their completed education level. This follows the Workers table definition. The total chart uses the game's history; the education chart uses Seety's observed samples.",
-     "Residenti attualmente in grado di lavorare ma senza un impiego in città, divisi per livello di istruzione completato. È la stessa definizione della tabella Lavoratori. Il grafico totale usa lo storico del gioco; quello per istruzione usa i campioni osservati da Seety."),
+    ("UNEMPLOYMENT_TABLE_NOTE", "Current residents able to work but without a job in the city, counted by their completed education level. Percentages are shares of all unemployed residents. The total chart uses the game's history; the education chart uses Seety's observed samples.",
+     "Residenti attualmente in grado di lavorare ma senza un impiego in città, divisi per livello di istruzione completato. Le percentuali sono quote del totale dei disoccupati. Il grafico totale usa lo storico del gioco; quello per istruzione usa i campioni osservati da Seety."),
 ]:
     values = [en] * 12
     values[4] = it

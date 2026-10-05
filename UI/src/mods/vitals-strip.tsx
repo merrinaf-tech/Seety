@@ -1199,23 +1199,24 @@ const UnemploymentPanel = ({ history, breakdown, workforce }: {
     {byEducation ? <UnemploymentEducationChart data={breakdown} rows={rows} />
       : <HistoryChart history={history} />}
     <div className={styles.unemploymentTable}>
-      <div className={styles.unemploymentTableHead}>
-        <span>{t("Seety.WF_EDUCATION", "Education")}</span>
-        <span>{t("Seety.WF_UNEMPLOYED", "Unemployed")}</span>
-        <span>{t("Seety.UNEMPLOYMENT_SHARE", "Share")}</span>
+      <div className={styles.unemploymentTableTitle}>
+        {`${t("Seety.WF_UNEMPLOYED", "Unemployed")}: ${total.toLocaleString()}`}
       </div>
-      {rows.map((row, level) => <div className={styles.unemploymentTableRow} key={row.level}>
-        <span><EducationSwatch level={level} />{row.level}</span>
-        <span>{row.unemployed.toLocaleString()}</span>
-        <span>{total > 0 ? `${(100 * row.unemployed / total).toLocaleString(undefined,
-          { maximumFractionDigits: 1 })}%` : "—"}</span>
-      </div>)}
-      <div className={`${styles.unemploymentTableRow} ${styles.unemploymentTableTotal}`}>
-        <span>{t("Seety.WF_TOTAL", "Total")}</span><span>{total.toLocaleString()}</span><span>{total > 0 ? "100%" : "—"}</span>
+      <div className={styles.unemploymentColumns}>
+        {rows.map((row, level) => <div className={styles.unemploymentColumn} key={row.level}>
+          <div className={styles.unemploymentColumnTitle}>
+            <EducationSwatch level={level} /><span>{row.level}</span>
+          </div>
+          <strong className={styles.unemploymentColumnCount}>{row.unemployed.toLocaleString()}</strong>
+          <span className={styles.unemploymentColumnShare}>{total > 0
+            ? `${(100 * row.unemployed / total).toLocaleString(undefined,
+              { maximumFractionDigits: 1 })}%`
+            : "—"}</span>
+        </div>)}
       </div>
     </div>
     <p className={styles.unemploymentNote}>{t("Seety.UNEMPLOYMENT_TABLE_NOTE",
-      "Current residents able to work but without a job in the city, counted by their completed education level. This follows the Workers table definition. The total chart uses the game's history; the education chart uses Seety's observed samples.")}</p>
+      "Current residents able to work but without a job in the city, counted by their completed education level. Percentages are shares of all unemployed residents. The total chart uses the game's history; the education chart uses Seety's observed samples.")}</p>
   </>;
 };
 
@@ -1840,10 +1841,10 @@ const EducationBalancePanel = ({ data, workforce }: {
     {!first || !last ? <p className={styles.balanceNote}>{data.tracking
       ? t("Seety.EB_WAIT", "Baseline recorded. Waiting for the next simulation sample.")
       : t("Seety.EB_PAUSED", "Observation paused. Resume to collect new changes.")}</p> : <>
-      <div className={styles.balancePeriod}>{first.startTime} → {last.endTime}</div>
+      <div className={styles.balancePeriod}>{`${first.startTime} → ${last.endTime}`}</div>
       <div className={styles.balanceSummary}>
-        <span>{start.toLocaleString()} → {end.toLocaleString()}</span>
-        <strong>{label(net)} ({rate})</strong>
+        <span>{`${start.toLocaleString()} → ${end.toLocaleString()}`}</span>
+        <strong>{`${label(net)} (${rate})`}</strong>
       </div>
       {!hasGap && start > 0 ? <p className={styles.balanceNote}>
         {t("Seety.EB_DENOM", "Rate denominator: residents at interval start")}: {start.toLocaleString()}
