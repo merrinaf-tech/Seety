@@ -46,6 +46,7 @@ namespace Seety.Settings
         private bool _darkGameButtons;
         private bool _buildingReasons;
         private bool _toolbarTrends;
+        private bool _automaticEducationBalance = true;
         private bool _zoneTransparency;
         private StreetNameMode _streetNames = StreetNameMode.ShowAll;
 
@@ -170,6 +171,19 @@ namespace Seety.Settings
 
                 _toolbarTrends = value;
                 Mod.OnToolbarTrendsChanged(value);
+            }
+        }
+
+        /// <summary>Keep a bounded education history while a city is open.</summary>
+        [SettingsUISection(GameSection, GameGroup)]
+        public bool AutomaticEducationBalance
+        {
+            get { return _automaticEducationBalance; }
+            set
+            {
+                if (_automaticEducationBalance == value) return;
+                _automaticEducationBalance = value;
+                Mod.OnAutomaticEducationBalanceChanged(value);
             }
         }
 
@@ -711,6 +725,7 @@ namespace Seety.Settings
             _darkGameButtons = false;
             _buildingReasons = false;
             _toolbarTrends = false;
+            _automaticEducationBalance = true;
             _zoneTransparency = false;
             _streetNames = StreetNameMode.ShowAll;
             _seededDefaults = false;

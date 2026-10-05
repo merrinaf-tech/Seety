@@ -447,6 +447,7 @@ namespace Seety.Systems
             _educationBalanceBinding = new RawValueBinding(Group, "educationBalance", WriteEducationBalance);
             AddBinding(_educationBalanceBinding);
             AddBinding(new TriggerBinding<bool>(Group, "setEducationBalanceTracking", OnSetEducationBalanceTracking));
+            AddBinding(new TriggerBinding(Group, "clearEducationBalance", OnClearEducationBalance));
 
             _demographicsBinding = new RawValueBinding(Group, "demographics", WriteDemographics);
             AddBinding(_demographicsBinding);
@@ -513,15 +514,6 @@ namespace Seety.Systems
                         _transportActive = true;
                     }
                 }
-            }
-
-            // The stop control lives in the Workers window. If that reading is removed from
-            // the strip, stop observing rather than leave an invisible population scan running.
-            if (_educationBalance != null && _educationBalance.Tracking
-                && settings != null && !settings.IsVitalEnabled(WorkforceVitalId))
-            {
-                _educationBalance.SetTracking(false);
-                if (_educationBalanceBinding != null) _educationBalanceBinding.Update();
             }
 
             SortByGameOrder();
@@ -1770,7 +1762,22 @@ namespace Seety.Systems
         private void OnSetEducationBalanceTracking(bool tracking)
         {
             if (_educationBalance == null) return;
-            _educationBalance.SetTracking(tracking);
+            if (Mod.Settings != null && Mod.Settings.AutomaticEducationBalance != tracking)
+            {
+                Mod.Settings.AutomaticEducationBalance = tracking;
+                Mod.Settings.ApplyAndSave();
+            }
+            else
+            {
+                _educationBalance.SetTracking(tracking);
+            }
+            _educationBalanceBinding.Update();
+        }
+
+        private void OnClearEducationBalance()
+        {
+            if (_educationBalance == null) return;
+            _educationBalance.ClearHistory();
             _educationBalanceBinding.Update();
         }
 
@@ -1879,13 +1886,19 @@ namespace Seety.Systems
         private void WriteEducationBalance(IJsonWriter writer)
         {
             var tracking = _educationBalance != null && _educationBalance.Tracking;
-            var ledger = tracking ? _educationBalance.Ledger : null;
+            var ledger = _educationBalance == null ? null : _educationBalance.Ledger;
             var days = ledger == null ? null : ledger.Days;
             writer.TypeBegin("seety.EducationBalance");
             writer.PropertyName("tracking");
             writer.Write(tracking);
             writer.PropertyName("baseline");
             writer.Write(ledger != null && ledger.HasBaseline);
+            writer.PropertyName("meanMs");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.MeanMilliseconds);
+            writer.PropertyName("p95Ms");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.P95Milliseconds);
+            writer.PropertyName("worstMs");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.WorstMilliseconds);
             writer.PropertyName("days");
             writer.ArrayBegin((uint)(days == null ? 0 : days.Count));
             if (days != null)
@@ -1897,6 +1910,12 @@ namespace Seety.Systems
                     writer.Write(day.Day);
                     writer.PropertyName("complete");
                     writer.Write(day.Complete);
+                    writer.PropertyName("gapBefore");
+                    writer.Write(day.GapBefore);
+                    writer.PropertyName("startTime");
+                    writer.Write(day.StartTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture));
+                    writer.PropertyName("endTime");
+                    writer.Write(day.EndTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture));
                     writer.PropertyName("start");
                     WriteEducationCounts(writer, day.Start);
                     writer.PropertyName("end");
@@ -1909,6 +1928,10 @@ namespace Seety.Systems
                     WriteEducationCounts(writer, day.ChangedIn);
                     writer.PropertyName("changedOut");
                     WriteEducationCounts(writer, day.ChangedOut);
+                    writer.PropertyName("transitions");
+                    writer.ArrayBegin(25u);
+                    for (var transition = 0; transition < 25; transition++) writer.Write(day.Transitions[transition]);
+                    writer.ArrayEnd();
                     writer.TypeEnd();
                 }
             }

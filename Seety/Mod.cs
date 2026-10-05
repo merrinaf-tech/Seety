@@ -37,6 +37,7 @@ namespace Seety
         public static SeetySettings Settings { get; private set; }
 
         private static SeetyUISystem _uiSystem;
+        private static EducationBalanceSystem _educationSystem;
 
         /// <summary>Held so the options page can reach it. See OnZoneTransparencyChanged.</summary>
         private static ZoneTransparencySystem _zoneSystem;
@@ -69,6 +70,9 @@ namespace Seety
             Systems.StreetNameLabels.Apply(Settings.StreetNames);
 
             updateSystem.UpdateAt<EducationBalanceSystem>(SystemUpdatePhase.GameSimulation);
+            _educationSystem = updateSystem.World.GetOrCreateSystemManaged<EducationBalanceSystem>();
+            // The save serializer may have initialized before this mod registered its system.
+            updateSystem.World.GetOrCreateSystemManaged<Game.Serialization.SerializerSystem>().SetDirty();
             updateSystem.UpdateAt<SeetyUISystem>(SystemUpdatePhase.UIUpdate);
 
             // Follows the player's Tool / Cancel binding so the key that backs out of a tool also
@@ -90,6 +94,7 @@ namespace Seety
             Log.Info("Seety disposing.");
             _ready = false;
             _uiSystem = null;
+            _educationSystem = null;
             _zoneSystem = null;
 
             Systems.StreetNameLabels.Remove();
@@ -253,6 +258,11 @@ namespace Seety
             }
 
             _uiSystem.SetToolbarTrends(show);
+        }
+
+        internal static void OnAutomaticEducationBalanceChanged(bool enabled)
+        {
+            if (_ready && _educationSystem != null) _educationSystem.SetTracking(enabled);
         }
 
         internal static void OnZoneTransparencyChanged(bool transparent)

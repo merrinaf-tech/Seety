@@ -106,4 +106,41 @@ U = [
 for row in U:
     add("Seety." + row[0], *row[1:])
 
+# Education balance was first prototyped in English and Italian. Keep the shared keys in the
+# generator; the other locales use English until their translations are reviewed.
+for key, en, it in [
+    ("EB_TITLE", "Education balance", "Bilancio dell'istruzione"),
+    ("EB_RESUME", "Resume", "Riprendi"),
+    ("EB_PAUSE", "Pause", "Pausa"),
+    ("EB_CLEAR", "Clear history", "Cancella lo storico"),
+    ("EB_WAIT", "Baseline recorded. Waiting for the next simulation sample.",
+     "Punto di partenza registrato. In attesa del prossimo campione della simulazione."),
+    ("EB_PAUSED", "Observation paused. Resume to collect new changes.",
+     "Osservazione in pausa. Riprendi per registrare nuovi cambiamenti."),
+    ("EB_GAME_DAYS", "game days", "giorni di gioco"),
+    ("EB_GAME_DAY", "game day", "giorno di gioco"),
+    ("EB_DENOM", "Rate denominator: residents at interval start",
+     "Denominatore della percentuale: residenti all'inizio dell'intervallo"),
+    ("EB_FIRST", "First seen at this level", "Osservati per la prima volta a questo livello"),
+    ("EB_CHANGED_IN", "Changed into this level", "Passati a questo livello"),
+    ("EB_CHANGED_OUT", "Changed out of this level", "Passati a un altro livello"),
+    ("EB_GONE", "No longer observed", "Non più osservati"),
+    ("EB_FROM", "Observed transitions from", "Passaggi osservati da"),
+    ("EB_TO", "Observed transitions to", "Passaggi osservati a"),
+    ("EB_GAP", "Unreconciled change", "Variazione non riconciliata"),
+    ("EB_GAP_SHORT", "gap before", "intervallo non osservato prima"),
+    ("EB_COVERAGE_GAP", "Observation gap: changes while the city was unloaded or paused are excluded. Stock change across the gap",
+     "Intervallo non osservato: sono esclusi i cambiamenti avvenuti a città non caricata o durante la pausa. Variazione del totale nell'intervallo"),
+    ("EB_LIMIT", "First seen and no longer observed do not identify births, migration or deaths. A transition between levels does not by itself prove a diploma. Dates show the actual sampled interval; its first and last game days may be partial. Only totals are saved with the city; a load starts a new baseline.",
+     "Nuovi osservati e non più osservati non identificano nascite, migrazioni o decessi. Un passaggio tra livelli non dimostra da solo un diploma. Le date indicano l'intervallo realmente campionato; il primo e l'ultimo giorno possono essere parziali. Con la città si salvano solo i totali; al caricamento parte un nuovo conteggio iniziale."),
+    ("EB_COST", "Last samples, main thread", "Ultimi campioni, thread principale"),
+    ("EB_MEAN", "mean", "media"),
+    ("EB_WORST", "worst", "massimo"),
+    ("EB_TABLE_TAB", "Workforce table", "Tabella dei lavoratori"),
+    ("EB_BALANCE_TAB", "Education balance", "Bilancio dell'istruzione"),
+]:
+    values = [en] * 12
+    values[4] = it
+    add("Seety." + key, *values)
+
 print("ui:", len(U))

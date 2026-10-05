@@ -194,17 +194,24 @@ interface Workforce {
 interface EducationBalanceDay {
   day: number;
   complete: boolean;
+  gapBefore: boolean;
+  startTime: string;
+  endTime: string;
   start: number[];
   end: number[];
   firstSeen: number[];
   noLongerSeen: number[];
   changedIn: number[];
   changedOut: number[];
+  transitions: number[];
 }
 
 interface EducationBalance {
   tracking: boolean;
   baseline: boolean;
+  meanMs: number;
+  p95Ms: number;
+  worstMs: number;
   days: EducationBalanceDay[];
 }
 
@@ -235,7 +242,7 @@ const breakdowns$ = bindValue<Breakdown[]>("seety", "notifications", []);
 const history$ = bindValue<History>("seety", "history", { label: "", values: [] });
 const workforce$ = bindValue<Workforce>("seety", "workforce", { rows: [] });
 const educationBalance$ = bindValue<EducationBalance>("seety", "educationBalance",
-  { tracking: false, baseline: false, days: [] });
+  { tracking: false, baseline: false, meanMs: 0, p95Ms: 0, worstMs: 0, days: [] });
 const visible$ = bindValue<boolean>("seety", "visible", true);
 const posX$ = bindValue<number>("seety", "posX", 10);
 const posY$ = bindValue<number>("seety", "posY", 90);
@@ -1648,43 +1655,54 @@ const EducationBalancePanel = ({ data, workforce }: {
 }) => {
   const t = useT();
   const [level, setLevel] = useState(4);
+  const [windowDays, setWindowDays] = useState<1 | 7 | 14>(1);
   const days = data.days ?? [];
   const latest = days.length > 0 ? days[days.length - 1] : null;
+  const selected = latest ? days.filter(day => latest.day - day.day < windowDays) : [];
+  const first = selected.length > 0 ? selected[0] : null;
+  const last = selected.length > 0 ? selected[selected.length - 1] : null;
   const label = (n: number) => `${n > 0 ? "+" : ""}${n.toLocaleString()}`;
-
-  if (!data.tracking) {
-    return <div className={styles.balancePanel}>
-      <div className={styles.balanceTitle}>{t("Seety.EB_TITLE", "Education balance")}</div>
-      <p className={styles.balanceNote}>{t("Seety.EB_START_NOTE",
-        "Start observing to see which education levels grow. The first count is a baseline; no earlier causes can be recovered.")}</p>
-      <button type="button" className={styles.balanceButton}
-        onClick={() => trigger("seety", "setEducationBalanceTracking", true)}>
-        {t("Seety.EB_START", "Start observing")}
-      </button>
-    </div>;
+  const start = first?.start[level] ?? 0;
+  const end = last?.end[level] ?? 0;
+  const sum = (field: "firstSeen" | "changedIn" | "changedOut" | "noLongerSeen") =>
+    selected.reduce((total, day) => total + day[field][level], 0);
+  const transitions = Array<number>(25).fill(0);
+  for (const day of selected) {
+    for (let i = 0; i < 25; i++) transitions[i] += day.transitions[i] ?? 0;
   }
-
-  const start = latest?.start[level] ?? 0;
-  const end = latest?.end[level] ?? 0;
-  const net = end - start;
-  const contributions: [string, number][] = latest ? [
-    [t("Seety.EB_FIRST", "First seen at this level"), latest.firstSeen[level]],
-    [t("Seety.EB_CHANGED_IN", "Changed into this level"), latest.changedIn[level]],
-    [t("Seety.EB_CHANGED_OUT", "Changed out of this level"), -latest.changedOut[level]],
-    [t("Seety.EB_GONE", "No longer observed"), -latest.noLongerSeen[level]],
+  const net = selected.reduce((total, day) => total + day.end[level] - day.start[level], 0);
+  const hasGap = selected.some((day, index) => index > 0 && day.gapBefore);
+  const contributions: [string, number][] = first ? [
+    [t("Seety.EB_FIRST", "First seen at this level"), sum("firstSeen")],
+    [t("Seety.EB_CHANGED_IN", "Changed into this level"), sum("changedIn")],
+    [t("Seety.EB_CHANGED_OUT", "Changed out of this level"), -sum("changedOut")],
+    [t("Seety.EB_GONE", "No longer observed"), -sum("noLongerSeen")],
   ] : [];
   const max = Math.max(1, ...contributions.map(([, value]) => Math.abs(value)));
   const explained = contributions.reduce((sum, [, value]) => sum + value, 0);
-  const rate = start > 0 ? `${(100 * net / start).toLocaleString(undefined,
+  const rate = !hasGap && start > 0 ? `${(100 * net / start).toLocaleString(undefined,
     { maximumFractionDigits: 1 })}%` : "—";
+  const levelName = (index: number) => workforce.rows?.[index]?.level ?? String(index);
+  const incoming = Array.from({ length: 5 }, (_, from) => ({
+    name: levelName(from), count: transitions[from * 5 + level]
+  })).filter(row => row.count > 0);
+  const outgoing = Array.from({ length: 5 }, (_, to) => ({
+    name: levelName(to), count: transitions[level * 5 + to]
+  })).filter(row => row.count > 0);
 
   return <div className={styles.balancePanel}>
     <div className={styles.balanceTop}>
       <span className={styles.balanceTitle}>{t("Seety.EB_TITLE", "Education balance")}</span>
-      <button type="button" className={styles.balanceButton}
-        onClick={() => trigger("seety", "setEducationBalanceTracking", false)}>
-        {t("Seety.EB_STOP", "Stop and clear")}
-      </button>
+      <span className={styles.balanceActions}>
+        <button type="button" className={styles.balanceButton}
+          onClick={() => trigger("seety", "setEducationBalanceTracking", !data.tracking)}>
+          {data.tracking ? t("Seety.EB_PAUSE", "Pause") : t("Seety.EB_RESUME", "Resume")}
+        </button>
+        {days.length > 0 ? <button type="button" className={styles.balanceButton}
+          onClick={() => trigger("seety", "clearEducationBalance")}>
+          {t("Seety.EB_CLEAR", "Clear history")}
+        </button> : null}
+      </span>
     </div>
     <div className={styles.balanceLevels}>
       {(workforce.rows ?? []).map((row, index) => <button type="button" key={row.level}
@@ -1694,15 +1712,27 @@ const EducationBalancePanel = ({ data, workforce }: {
         <EducationSwatch level={index} />{row.level}
       </button>)}
     </div>
-    {!latest ? <p className={styles.balanceNote}>{t("Seety.EB_WAIT",
-      "Baseline recorded. Waiting for the next simulation sample.")}</p> : <>
-      <div className={styles.balancePeriod}>{latest.complete
-        ? t("Seety.EB_COMPLETE", "Previous observed game day")
-        : t("Seety.EB_CURRENT", "Current observed game day")}</div>
+    {latest ? <div className={styles.balanceWindows}>
+      {([1, 7, 14] as const).map(size => <button type="button" key={size}
+        aria-pressed={windowDays === size}
+        className={`${styles.balanceButton} ${windowDays === size ? styles.balanceLevelActive : ""}`}
+        onClick={() => setWindowDays(size)}>{size} {size === 1
+          ? t("Seety.EB_GAME_DAY", "game day") : t("Seety.EB_GAME_DAYS", "game days")}</button>)}
+    </div> : null}
+    {!first || !last ? <p className={styles.balanceNote}>{data.tracking
+      ? t("Seety.EB_WAIT", "Baseline recorded. Waiting for the next simulation sample.")
+      : t("Seety.EB_PAUSED", "Observation paused. Resume to collect new changes.")}</p> : <>
+      <div className={styles.balancePeriod}>{first.startTime} → {last.endTime}</div>
       <div className={styles.balanceSummary}>
         <span>{start.toLocaleString()} → {end.toLocaleString()}</span>
         <strong>{label(net)} ({rate})</strong>
       </div>
+      {!hasGap && start > 0 ? <p className={styles.balanceNote}>
+        {t("Seety.EB_DENOM", "Rate denominator: residents at interval start")}: {start.toLocaleString()}
+      </p> : null}
+      {hasGap ? <p className={styles.balanceNote}>
+        {t("Seety.EB_COVERAGE_GAP", "Observation gap: changes while the city was unloaded or paused are excluded. Stock change across the gap")}: {label(end - start - net)}
+      </p> : null}
       {contributions.map(([name, value]) => <div className={styles.balanceRow} key={name}>
         <span className={styles.balanceName}>{name}</span>
         <span className={styles.balanceTrack}>
@@ -1712,21 +1742,29 @@ const EducationBalancePanel = ({ data, workforce }: {
         </span>
         <span className={styles.balanceNumber}>{label(value)}</span>
       </div>)}
+      {incoming.length > 0 ? <div className={styles.balanceTransitions}>
+        <span>{t("Seety.EB_FROM", "Observed transitions from")}</span>
+        {incoming.map(row => <span key={row.name}>{row.name}: {label(row.count)}</span>)}
+      </div> : null}
+      {outgoing.length > 0 ? <div className={styles.balanceTransitions}>
+        <span>{t("Seety.EB_TO", "Observed transitions to")}</span>
+        {outgoing.map(row => <span key={row.name}>{row.name}: {label(-row.count)}</span>)}
+      </div> : null}
       {explained !== net ? <p className={styles.balanceNote}>
         {t("Seety.EB_GAP", "Unreconciled change")}: {label(net - explained)}
       </p> : null}
-      <div className={styles.balanceRecent}>
-        {days.slice(-7).reverse().map((day) => <div key={day.day}
+      {windowDays > 1 ? <div className={styles.balanceRecent}>
+        {selected.slice(-14).reverse().map((day, index) => <div key={`${day.day}-${index}`}
           className={styles.balanceRecentRow}>
-          <span>{day.day === latest.day ? t("Seety.EB_CURRENT_SHORT", "Latest")
-            : `${latest.day - day.day} ${t("Seety.EB_DAYS_AGO", "game days ago")}`}</span>
+          <span>{day.endTime.slice(0, 10)}{day.gapBefore ? ` · ${t("Seety.EB_GAP_SHORT", "gap before")}` : ""}</span>
           <span>{day.start[level].toLocaleString()} → {day.end[level].toLocaleString()}</span>
           <strong>{label(day.end[level] - day.start[level])}</strong>
         </div>)}
-      </div>
+      </div> : null}
     </>}
     <p className={styles.balanceNote}>{t("Seety.EB_LIMIT",
-      "First seen may include births or immigration; no longer observed may include deaths or departures. These causes are not separated yet. Observation runs while this window is closed, but resets when the game reloads or you stop it.")}</p>
+      "First seen and no longer observed do not identify births, migration or deaths. A transition between levels does not by itself prove a diploma. Dates show the actual sampled interval; its first and last game days may be partial. Only totals are saved with the city; a load starts a new baseline.")}</p>
+    {data.meanMs > 0 ? <p className={styles.balanceNote}>{t("Seety.EB_COST", "Last samples, main thread")}: {t("Seety.EB_MEAN", "mean")} {data.meanMs.toFixed(1)} ms · p95 {data.p95Ms.toFixed(1)} ms · {t("Seety.EB_WORST", "worst")} {data.worstMs.toFixed(1)} ms</p> : null}
   </div>;
 };
 

@@ -192,6 +192,18 @@ add("option.desc.ToolbarTrends",
     "Показывает изменение рядом с населением и деньгами на нижней панели игры, которая иначе выводит его только при наведении. Число берётся у самой игры, а не рассчитывается Seety. Это единственное, что Seety рисует за пределами своей панели, - отключите, если после обновления игры оно отображается неверно.",
     "在游戏底部栏的人口和资金旁显示变化，否则只有悬停时才看得到。该数字来自游戏本身，不是 Seety 计算的。这是 Seety 唯一画在自己栏之外的内容，若游戏更新后显示异常请关闭。",
     "在遊戲底部列的人口與資金旁顯示變化，否則只有停留游標時才看得到。該數字來自遊戲本身，不是 Seety 計算的。這是 Seety 唯一畫在自己列之外的內容，若遊戲更新後顯示異常請關閉。")
+add("option.label.AutomaticEducationBalance",
+    "Observe education automatically", "Bildungsveränderungen automatisch erfassen",
+    "Observar la educación automáticamente", "Suivre l'instruction automatiquement",
+    "Osserva automaticamente l'istruzione", "教育の変化を自動記録",
+    "교육 변화를 자동 기록", "Automatycznie śledź wykształcenie",
+    "Observar educação automaticamente", "Автоматически отслеживать образование",
+    "自动观察教育变化", "自動觀察教育變化")
+_education_desc = "Starts a bounded education balance when a city loads. One resident sample every 8192 simulation frames; turn this off to avoid background collection. The history stays in the city save."
+_education_desc_it = "Avvia il bilancio dell'istruzione al caricamento della città. Un campione dei residenti ogni 8192 frame di simulazione; disattiva per evitare la raccolta in background. Lo storico resta nel salvataggio della città."
+_education_desc_values = [_education_desc] * 12
+_education_desc_values[4] = _education_desc_it
+add("option.desc.AutomaticEducationBalance", *_education_desc_values)
 add("option.label.IconOutline",
     "White outline on icons", "Weißer Rand um Symbole", "Contorno blanco en los iconos",
     "Contour blanc sur les icônes", "Contorno bianco sulle icone", "アイコンの白フチ",

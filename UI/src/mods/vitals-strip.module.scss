@@ -695,6 +695,18 @@
   align-items: center;
   justify-content: space-between;
 }
+.balanceActions, .balanceWindows, .balanceTransitions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.balanceActions .balanceButton { margin-left: 5rem; }
+.balanceWindows { margin-top: 8rem; }
+.balanceWindows .balanceButton { margin: 0 5rem 3rem 0; }
+.balanceTransitions { margin: 3rem 0 8rem 190rem; color: rgba(255, 255, 255, 0.7); }
+.balanceTransitions > span { margin: 0 10rem 3rem 0; white-space: nowrap; }
+.balanceTransitions > span:first-child { width: 100%; color: rgba(255, 255, 255, 0.52); }
 
 .balanceTitle { font-weight: 700; font-size: 14rem; }
 .balancePeriod { margin: 10rem 0 4rem; color: rgba(255, 255, 255, 0.65); }
