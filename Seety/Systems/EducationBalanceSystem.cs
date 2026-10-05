@@ -29,6 +29,9 @@ namespace Seety.Systems
         private bool _tracking;
         private bool _inGame;
         private readonly double[] _recentMilliseconds = new double[64];
+        private readonly double[] _recentSnapshotMilliseconds = new double[64];
+        private readonly double[] _recentRecordMilliseconds = new double[64];
+        private readonly double[] _recentCompareMilliseconds = new double[64];
         private int _sampleCount;
         private readonly List<UnemploymentSample> _unemployment = new List<UnemploymentSample>();
         private bool _unemploymentGap;
@@ -43,9 +46,15 @@ namespace Seety.Systems
 
         public bool Tracking { get { return _tracking; } }
         public IReadOnlyList<UnemploymentSample> Unemployment { get { return _unemployment; } }
-        public double MeanMilliseconds { get { return SampleMetric(0); } }
-        public double P95Milliseconds { get { return SampleMetric(1); } }
-        public double WorstMilliseconds { get { return SampleMetric(2); } }
+        public double MeanMilliseconds { get { return SampleMetric(_recentMilliseconds, 0); } }
+        public double P95Milliseconds { get { return SampleMetric(_recentMilliseconds, 1); } }
+        public double WorstMilliseconds { get { return SampleMetric(_recentMilliseconds, 2); } }
+        public double SnapshotMeanMilliseconds { get { return SampleMetric(_recentSnapshotMilliseconds, 0); } }
+        public double SnapshotP95Milliseconds { get { return SampleMetric(_recentSnapshotMilliseconds, 1); } }
+        public double RecordMeanMilliseconds { get { return SampleMetric(_recentRecordMilliseconds, 0); } }
+        public double RecordP95Milliseconds { get { return SampleMetric(_recentRecordMilliseconds, 1); } }
+        public double CompareMeanMilliseconds { get { return SampleMetric(_recentCompareMilliseconds, 0); } }
+        public double CompareP95Milliseconds { get { return SampleMetric(_recentCompareMilliseconds, 1); } }
 
         protected override void OnCreate()
         {
@@ -138,6 +147,7 @@ namespace Seety.Systems
                 Results = _residents
             };
             JobChunkExtensions.Run(job, _citizens);
+            var snapshotMilliseconds = clock.Elapsed.TotalMilliseconds;
             var gameTime = _timeSystem.GetCurrentDateTime();
             Ledger.Begin(frame, gameTime);
             var unemployed = new UnemploymentSample { Time = gameTime, GapBefore = _unemploymentGap };
@@ -147,7 +157,10 @@ namespace Seety.Systems
                 Ledger.Observe(entry.Key, entry.Level);
                 if (entry.Unemployed != 0) unemployed.Counts[entry.Level]++;
             }
+            var recordDoneMilliseconds = clock.Elapsed.TotalMilliseconds;
+            var recordMilliseconds = recordDoneMilliseconds - snapshotMilliseconds;
             Ledger.End();
+            var compareMilliseconds = clock.Elapsed.TotalMilliseconds - recordDoneMilliseconds;
             if (recordUnemployment)
             {
                 if (_unemployment.Count > 0 && gameTime < _unemployment[_unemployment.Count - 1].Time)
@@ -160,24 +173,34 @@ namespace Seety.Systems
             }
             _lastFrame = frame;
             clock.Stop();
-            _recentMilliseconds[_sampleCount % _recentMilliseconds.Length] = clock.Elapsed.TotalMilliseconds;
+            var slot = _sampleCount % _recentMilliseconds.Length;
+            _recentMilliseconds[slot] = clock.Elapsed.TotalMilliseconds;
+            _recentSnapshotMilliseconds[slot] = snapshotMilliseconds;
+            _recentRecordMilliseconds[slot] = recordMilliseconds;
+            _recentCompareMilliseconds[slot] = compareMilliseconds;
             _sampleCount++;
-            if (_sampleCount % 32 == 0)
+            if (_sampleCount <= 2 || _sampleCount % 8 == 0)
             {
                 var culture = System.Globalization.CultureInfo.InvariantCulture;
-                Mod.Log.Info("Education balance: " + capacity + " citizens; last 64 samples mean "
-                    + MeanMilliseconds.ToString("F2", culture) + " ms, p95 "
-                    + P95Milliseconds.ToString("F2", culture) + " ms, worst "
-                    + WorstMilliseconds.ToString("F2", culture) + " ms.");
+                Mod.Log.Info("Education balance: " + capacity + " citizens, " + _sampleCount
+                    + " samples; last 64 mean/p95 ms: total "
+                    + MeanMilliseconds.ToString("F2", culture) + "/" + P95Milliseconds.ToString("F2", culture)
+                    + ", snapshot " + SnapshotMeanMilliseconds.ToString("F2", culture) + "/"
+                    + SnapshotP95Milliseconds.ToString("F2", culture)
+                    + ", record " + RecordMeanMilliseconds.ToString("F2", culture) + "/"
+                    + RecordP95Milliseconds.ToString("F2", culture)
+                    + ", compare " + CompareMeanMilliseconds.ToString("F2", culture) + "/"
+                    + CompareP95Milliseconds.ToString("F2", culture)
+                    + "; total worst " + WorstMilliseconds.ToString("F2", culture) + " ms.");
             }
         }
 
-        private double SampleMetric(int kind)
+        private double SampleMetric(double[] samples, int kind)
         {
-            var length = System.Math.Min(_sampleCount, _recentMilliseconds.Length);
+            var length = System.Math.Min(_sampleCount, samples.Length);
             if (length == 0) return 0;
             var values = new double[length];
-            Array.Copy(_recentMilliseconds, values, length);
+            Array.Copy(samples, values, length);
             if (kind == 0)
             {
                 double sum = 0;

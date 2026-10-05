@@ -212,6 +212,12 @@ interface EducationBalance {
   meanMs: number;
   p95Ms: number;
   worstMs: number;
+  snapshotMeanMs: number;
+  snapshotP95Ms: number;
+  recordMeanMs: number;
+  recordP95Ms: number;
+  compareMeanMs: number;
+  compareP95Ms: number;
   days: EducationBalanceDay[];
 }
 
@@ -253,7 +259,9 @@ const breakdowns$ = bindValue<Breakdown[]>("seety", "notifications", []);
 const history$ = bindValue<History>("seety", "history", { label: "", values: [] });
 const workforce$ = bindValue<Workforce>("seety", "workforce", { rows: [] });
 const educationBalance$ = bindValue<EducationBalance>("seety", "educationBalance",
-  { tracking: false, baseline: false, meanMs: 0, p95Ms: 0, worstMs: 0, days: [] });
+  { tracking: false, baseline: false, meanMs: 0, p95Ms: 0, worstMs: 0,
+    snapshotMeanMs: 0, snapshotP95Ms: 0, recordMeanMs: 0, recordP95Ms: 0,
+    compareMeanMs: 0, compareP95Ms: 0, days: [] });
 const unemploymentHistory$ = bindValue<UnemploymentHistory>("seety", "unemploymentHistory",
   { tracking: false, samples: [] });
 const visible$ = bindValue<boolean>("seety", "visible", true);
@@ -1883,7 +1891,13 @@ const EducationBalancePanel = ({ data, workforce }: {
     </>}
     <p className={styles.balanceNote}>{t("Seety.EB_LIMIT",
       "First seen and no longer observed do not identify births, migration or deaths. A transition between levels does not by itself prove a diploma. Dates show the actual sampled interval; its first and last game days may be partial. Only totals are saved with the city; a load starts a new baseline.")}</p>
-    {data.meanMs > 0 ? <p className={styles.balanceNote}>{t("Seety.EB_COST", "Last samples, main thread")}: {t("Seety.EB_MEAN", "mean")} {data.meanMs.toFixed(1)} ms · p95 {data.p95Ms.toFixed(1)} ms · {t("Seety.EB_WORST", "worst")} {data.worstMs.toFixed(1)} ms</p> : null}
+    {data.meanMs > 0 ? <div className={styles.balanceCost}>
+      <div>{t("Seety.EB_COST", "Last samples, main thread")}: {t("Seety.EB_MEAN", "mean")} {data.meanMs.toFixed(1)} ms · p95 {data.p95Ms.toFixed(1)} ms · {t("Seety.EB_WORST", "worst")} {data.worstMs.toFixed(1)} ms</div>
+      <div>{t("Seety.EB_SNAPSHOT", "Read residents")}: {data.snapshotMeanMs.toFixed(1)} / {data.snapshotP95Ms.toFixed(1)} ms</div>
+      <div>{t("Seety.EB_RECORD", "Record sample")}: {data.recordMeanMs.toFixed(1)} / {data.recordP95Ms.toFixed(1)} ms</div>
+      <div>{t("Seety.EB_COMPARE", "Compare samples")}: {data.compareMeanMs.toFixed(1)} / {data.compareP95Ms.toFixed(1)} ms</div>
+      <div>{t("Seety.EB_PHASE_NOTE", "Phase values are mean / p95 in ms; small remaining time covers history storage.")}</div>
+    </div> : null}
   </div>;
 };
 

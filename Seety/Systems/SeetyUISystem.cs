@@ -1907,6 +1907,18 @@ namespace Seety.Systems
             writer.Write(_educationBalance == null ? 0.0 : _educationBalance.P95Milliseconds);
             writer.PropertyName("worstMs");
             writer.Write(_educationBalance == null ? 0.0 : _educationBalance.WorstMilliseconds);
+            writer.PropertyName("snapshotMeanMs");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.SnapshotMeanMilliseconds);
+            writer.PropertyName("snapshotP95Ms");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.SnapshotP95Milliseconds);
+            writer.PropertyName("recordMeanMs");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.RecordMeanMilliseconds);
+            writer.PropertyName("recordP95Ms");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.RecordP95Milliseconds);
+            writer.PropertyName("compareMeanMs");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.CompareMeanMilliseconds);
+            writer.PropertyName("compareP95Ms");
+            writer.Write(_educationBalance == null ? 0.0 : _educationBalance.CompareP95Milliseconds);
             writer.PropertyName("days");
             writer.ArrayBegin((uint)(days == null ? 0 : days.Count));
             if (days != null)

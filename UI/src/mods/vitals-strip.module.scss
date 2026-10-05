@@ -793,6 +793,8 @@
 .balanceRecent { margin-top: 10rem; border-top: 1rem solid rgba(255, 255, 255, 0.16); }
 .balanceRecentRow { padding: 3rem 0; color: rgba(255, 255, 255, 0.75); }
 .balanceNote { line-height: 1.4; color: rgba(255, 255, 255, 0.6); }
+.balanceCost { margin-top: 8rem; padding-top: 6rem; border-top: 1rem solid rgba(255, 255, 255, 0.16); line-height: 1.4; color: rgba(255, 255, 255, 0.6); }
+.balanceCost > div { margin: 2rem 0; }
 
 // The game's colour square beside an education level, as its own chart legends draw it. The size
 // and corners come from the game's legend class when it is found; this only sets it in the line.
