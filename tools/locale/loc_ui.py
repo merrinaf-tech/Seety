@@ -161,4 +161,10 @@ for key, en, it in [
     values[4] = it
     add("Seety." + key, *values)
 
+_transport_note = "Aboard now / capacity of running vehicles. Passenger percentages show occupancy; these are live counts, not rolling totals."
+_transport_note_values = [_transport_note] * 12
+_transport_note_values[4] = ("A bordo ora / capienza dei veicoli in servizio. Le percentuali dei passeggeri "
+                             "indicano l'occupazione dei posti; sono conteggi attuali, non cumulativi.")
+add("Seety.TRANSPORT_MODE_NOTE", *_transport_note_values)
+
 print("ui:", len(U))

@@ -307,6 +307,11 @@
   flex: 1;
 }
 
+.transportPercentage {
+  margin-left: 5rem;
+  color: rgba(255, 255, 255, 0.62);
+}
+
 .waitingStopLine { color: rgba(255, 255, 255, 0.55); }
 
 // Part of a row that is its own link, when the row holds more than one: brighter on hover, so it

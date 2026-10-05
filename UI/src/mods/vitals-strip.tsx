@@ -773,7 +773,9 @@ function fillStyle(row: BreakdownRow): React.CSSProperties | undefined {
 }
 
 /** One row inside any breakdown panel: icon, name, number, click if applicable. */
-const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
+const BreakdownRowItem = ({ row, percentDenominator }: {
+  row: BreakdownRow; percentDenominator?: number;
+}) => {
   const t = useT();
   const { unitSettings } = useLocalization();
   const metric = unitSettings.unitSystem === METRIC_UNIT_SYSTEM;
@@ -828,6 +830,12 @@ const BreakdownRowItem = ({ row }: { row: BreakdownRow }) => {
             : (row.unit
                 ? formatUnit(row.count, row.unit, metric)
                 : row.count.toLocaleString()) + row.suffix}
+          {percentDenominator !== undefined && percentDenominator > 0 ? (
+            <span className={styles.transportPercentage}>
+              ({(100 * row.count / percentDenominator).toLocaleString(undefined,
+                { maximumFractionDigits: 1 })}%)
+            </span>
+          ) : null}
         </span>
       </div>
     </Tooltip>
@@ -1054,7 +1062,7 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
           {t("Seety.STOPS_NOTE", "Top 10 stops by passengers waiting for each line. Counts update live; Refresh reorders the list.")}
         </div>
       </> : passengers.length > 0 ? passengers.map((row) => (
-        <BreakdownRowItem key={row.id} row={row} />
+        <BreakdownRowItem key={row.id} row={row} percentDenominator={row.total} />
       )) : <div className={styles.panelEmpty}>{t("Seety.EMPTY_NOTHING", "Nothing to report")}</div>}
 
       {!stopsMode && cargo.length > 0 ? (
@@ -1065,8 +1073,8 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
       )) : null}
 
       {!stopsMode ? <div className={styles.tableNote}>
-        Aboard right now, counted vehicle by vehicle, against what the vehicles currently running
-        that mode could hold between them. Not a rolling total: an empty line reads empty.
+        {t("Seety.TRANSPORT_MODE_NOTE",
+          "Aboard now / capacity of running vehicles. Passenger percentages show occupancy; these are live counts, not rolling totals.")}
       </div> : null}
     </>
   );

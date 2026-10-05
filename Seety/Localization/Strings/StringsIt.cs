@@ -127,6 +127,7 @@ namespace Seety.Localization.Strings
                 { "Seety.TRAFFIC_ROAD", "Traffico stradale" },
                 { "Seety.TRAFFIC_TRANSIT", "Trasporto pubblico" },
                 { "Seety.TRANSPORT_MODES", "Per mezzo di trasporto" },
+                { "Seety.TRANSPORT_MODE_NOTE", "A bordo ora / capienza dei veicoli in servizio. Le percentuali dei passeggeri indicano l'occupazione dei posti; sono conteggi attuali, non cumulativi." },
                 { "Seety.TRANSPORT_STOPS", "Fermate più frequentate" },
                 { "Seety.UNEMPLOYMENT_BY_EDUCATION", "Per istruzione" },
                 { "Seety.UNEMPLOYMENT_HISTORY_NOTE", "Ultimi 14 giorni di gioco osservati. Le linee si interrompono negli intervalli non osservati; la legenda mostra l'ultimo campione e la tabella sotto il conteggio attuale." },

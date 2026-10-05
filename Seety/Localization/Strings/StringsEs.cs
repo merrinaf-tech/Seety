@@ -127,6 +127,7 @@ namespace Seety.Localization.Strings
                 { "Seety.TRAFFIC_ROAD", "Tráfico rodado" },
                 { "Seety.TRAFFIC_TRANSIT", "Transporte público" },
                 { "Seety.TRANSPORT_MODES", "Por medio de transporte" },
+                { "Seety.TRANSPORT_MODE_NOTE", "Aboard now / capacity of running vehicles. Passenger percentages show occupancy; these are live counts, not rolling totals." },
                 { "Seety.TRANSPORT_STOPS", "Paradas más concurridas" },
                 { "Seety.UNEMPLOYMENT_BY_EDUCATION", "By education" },
                 { "Seety.UNEMPLOYMENT_HISTORY_NOTE", "Last 14 game days of observed samples. Lines stop at observation gaps; the legend shows the last sample, while the table below shows the current census." },

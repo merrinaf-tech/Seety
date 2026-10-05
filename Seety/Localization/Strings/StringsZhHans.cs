@@ -127,6 +127,7 @@ namespace Seety.Localization.Strings
                 { "Seety.TRAFFIC_ROAD", "道路交通" },
                 { "Seety.TRAFFIC_TRANSIT", "公共交通" },
                 { "Seety.TRANSPORT_MODES", "按交通方式" },
+                { "Seety.TRANSPORT_MODE_NOTE", "Aboard now / capacity of running vehicles. Passenger percentages show occupancy; these are live counts, not rolling totals." },
                 { "Seety.TRANSPORT_STOPS", "最繁忙的站点" },
                 { "Seety.UNEMPLOYMENT_BY_EDUCATION", "By education" },
                 { "Seety.UNEMPLOYMENT_HISTORY_NOTE", "Last 14 game days of observed samples. Lines stop at observation gaps; the legend shows the last sample, while the table below shows the current census." },
