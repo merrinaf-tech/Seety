@@ -189,7 +189,7 @@ namespace Seety.Vitals
 
             var seen = new HashSet<(long Cell, Entity Street)>();
             var found = new List<TrafficJamGroup>();
-            var pending = new Stack<(long Cell, Entity Street)>();
+            var pending = new List<(long Cell, Entity Street)>();
 
             foreach (var start in cells.Keys)
             {
@@ -201,11 +201,12 @@ namespace Seety.Vitals
                 var members = new List<int>();
                 long busiestCell = start.Cell;
                 int busiestCount = -1;
-                pending.Push(start);
+                pending.Add(start);
 
                 while (pending.Count > 0)
                 {
-                    var node = pending.Pop();
+                    var node = pending[pending.Count - 1];
+                    pending.RemoveAt(pending.Count - 1);
                     var bucket = cells[node];
                     members.AddRange(bucket);
 
@@ -224,7 +225,7 @@ namespace Seety.Vitals
                         var next = (neighbour, node.Street);
                         if (cells.ContainsKey(next) && seen.Add(next))
                         {
-                            pending.Push(next);
+                            pending.Add(next);
                         }
                     }
                 }
