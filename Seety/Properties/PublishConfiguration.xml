@@ -91,7 +91,7 @@ No code, interface or icons were taken from any of them: Seety reads the game di
 	<ExternalLink Type="github" Url="https://github.com/merrinaf-tech/Seety" />
 	<ExternalLink Type="kofi" Url="https://ko-fi.com/fabiozsche" />
 
-	<ModVersion Value="1.3.0" />
+	<ModVersion Value="1.4.0" />
 	<GameVersion Value="1.6.*" />
 	<AccessLevel Value="Public" />
 
@@ -101,10 +101,16 @@ No code, interface or icons were taken from any of them: Seety reads the game di
 	  only what changed since the version now live.
 	-->
 	<ChangeLog>
-Readings are chosen in the options, on their own tab.
-Option for a vertical bar.
-The bar is locked in place; unlock it in the options to move it.
-The bar snaps into line with the game's buttons.
-Info view panels draw over the bar.
+Education balance in the workers window, with its history saved in the city.
+Unemployment chart by education level.
+Transport window shows how full your lines are, by mode.
+Option to hide street names, or show only the ones you renamed.
+Windows can be resized from their corner.
+Window pages are icon tabs.
+Education levels carry the game's colour squares.
+In the busiest stops, the line and the stop open separately.
+The problems eye hides only problem icons.
+The bar keeps its saved position on start.
+Windows no longer carry explanatory notes.
 	</ChangeLog>
 </Publish>
