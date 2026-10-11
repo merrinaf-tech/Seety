@@ -231,8 +231,23 @@ namespace Seety.Vitals
             }
         }
 
+        /// <remarks>
+        /// A train, tram or metro is one entity per carriage, and only the lead one carries the
+        /// route; each carriage points at it through Controller. Asking the carriage itself kept
+        /// only lead cars, so the train row read 250 / 1,250 while the lines carried over 2,000.
+        /// Each carriage still counts its own seats and riders.
+        /// </remarks>
         private static bool OnCityLine(Entity vehicle, EntityManager entities)
         {
+            if (entities.HasComponent<Game.Vehicles.Controller>(vehicle))
+            {
+                var controller = entities.GetComponentData<Game.Vehicles.Controller>(vehicle).m_Controller;
+                if (controller != Entity.Null && entities.Exists(controller))
+                {
+                    vehicle = controller;
+                }
+            }
+
             if (!entities.HasComponent<Game.Routes.CurrentRoute>(vehicle))
             {
                 return false;
