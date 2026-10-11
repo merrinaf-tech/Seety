@@ -954,16 +954,7 @@ const JourneyPanel = () => {
   </div>;
 };
 
-const JamRows = ({ rows }: { rows: BreakdownRow[] }) => (
-  <>
-    <BreakdownRows rows={rows} />
-    {rows.length > 0 ? (
-      <div className={styles.tableNote}>
-        Vehicles stopped close together, worst spot first. Queues outside the city do not count.
-      </div>
-    ) : null}
-  </>
-);
+const JamRows = ({ rows }: { rows: BreakdownRow[] }) => <BreakdownRows rows={rows} />;
 
 const BreakdownRows = ({ rows }: { rows: BreakdownRow[] }) => {
   const t = useT();
@@ -1066,9 +1057,6 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
           </span>
           <span className={styles.value}>{stop.count.toLocaleString()} {t("Seety.STOPS_WAITING", "waiting")}</span>
         </div>)}
-        <div className={styles.tableNote}>
-          {t("Seety.STOPS_NOTE", "Top 10 stops by passengers waiting for each line. Counts update live; Refresh reorders the list.")}
-        </div>
       </> : passengers.length > 0 ? passengers.map((row) => (
         <BreakdownRowItem key={row.id} row={row} percentDenominator={row.total} />
       )) : <div className={styles.panelEmpty}>{t("Seety.EMPTY_NOTHING", "Nothing to report")}</div>}
@@ -1079,11 +1067,6 @@ const TransportRows = ({ rows }: { rows: BreakdownRow[] }) => {
       {!stopsMode ? cargo.map((row) => (
         <BreakdownRowItem key={row.id} row={row} />
       )) : null}
-
-      {!stopsMode ? <div className={styles.tableNote}>
-        {t("Seety.TRANSPORT_MODE_NOTE",
-          "Aboard now / capacity of running vehicles. Passenger percentages show occupancy; these are live counts, not rolling totals.")}
-      </div> : null}
     </>
   );
 };
@@ -1138,12 +1121,15 @@ const UnemploymentEducationChart = ({ data, rows }: {
   const samples = data.samples ?? [];
   if (samples.length < 2) {
     return <p className={styles.unemploymentNote}>{data.tracking
-      ? t("Seety.UNEMPLOYMENT_WAIT", "Waiting for a second observed sample. Education history is recorded every 8192 simulation frames.")
-      : t("Seety.UNEMPLOYMENT_PAUSED", "Education observation is paused. Resume it in Workers or Seety's settings to collect this chart.")}</p>;
+      ? t("Seety.UNEMPLOYMENT_WAIT", "Waiting for the second sample.")
+      : t("Seety.UNEMPLOYMENT_PAUSED", "Observation paused.")}</p>;
   }
 
-  const width = 200;
-  const height = 54;
+  // Close to the box's real proportions (about 6:1 on screen). With preserveAspectRatio="none" a
+  // 200x54 box stretched x far more than y, so steep stretches of a line drew thinner than flat
+  // ones and the lines looked broken.
+  const width = 600;
+  const height = 100;
   // Treat the game's calendar as a timezone-free axis; local daylight saving must not bend it.
   const times = samples.map(sample => Date.parse(`${sample.time.replace(" ", "T")}Z`));
   const validTime = times.every(Number.isFinite) && times[times.length - 1] > times[0];
@@ -1171,9 +1157,10 @@ const UnemploymentEducationChart = ({ data, rows }: {
         });
         return segments.map((points, index) => points.length > 1
           ? <polyline key={`${level}-${index}`} points={points.join(" ")} fill="none"
-              stroke={educationColour(level)} strokeWidth="1.8" />
+              stroke={educationColour(level)} strokeWidth="1"
+              strokeLinejoin="round" strokeLinecap="round" />
           : <circle key={`${level}-${index}`} cx={Number(points[0].split(",")[0])}
-              cy={Number(points[0].split(",")[1])} r="1.4" fill={educationColour(level)} />);
+              cy={Number(points[0].split(",")[1])} r="1" fill={educationColour(level)} />);
       })}
     </svg>
     <div className={styles.unemploymentLegend}>
@@ -1181,8 +1168,6 @@ const UnemploymentEducationChart = ({ data, rows }: {
         <EducationSwatch level={level} />{row.level}: {latest.counts[level].toLocaleString()}
       </span>)}
     </div>
-    <p className={styles.unemploymentNote}>{t("Seety.UNEMPLOYMENT_HISTORY_NOTE",
-      "Last 14 game days of observed samples. Lines stop at observation gaps; the legend shows the last sample, while the table below shows the current census.")}</p>
   </div>;
 };
 
@@ -1223,8 +1208,6 @@ const UnemploymentPanel = ({ history, breakdown, workforce }: {
         </div>)}
       </div>
     </div>
-    <p className={styles.unemploymentNote}>{t("Seety.UNEMPLOYMENT_TABLE_NOTE",
-      "Current residents able to work but without a job in the city, counted by their completed education level. Percentages are shares of all unemployed residents. The total chart uses the game's history; the education chart uses Seety's observed samples.")}</p>
   </>;
 };
 
@@ -1799,11 +1782,15 @@ const EducationBalancePanel = ({ data, workforce }: {
   }
   const net = selected.reduce((total, day) => total + day.end[level] - day.start[level], 0);
   const hasGap = selected.some((day, index) => index > 0 && day.gapBefore);
-  const contributions: [string, number][] = first ? [
-    [t("Seety.EB_FIRST", "First seen at this level"), sum("firstSeen")],
+  // The two tooltips are the one caveat a player would otherwise get wrong: these are not births,
+  // arrivals, deaths or departures, only citizens appearing in or leaving the observed census.
+  const contributions: [string, number, string?][] = first ? [
+    [t("Seety.EB_FIRST", "First seen at this level"), sum("firstSeen"),
+      t("Seety.EB_TIP_FIRST", "Not necessarily births or arrivals.")],
     [t("Seety.EB_CHANGED_IN", "Changed into this level"), sum("changedIn")],
     [t("Seety.EB_CHANGED_OUT", "Changed out of this level"), -sum("changedOut")],
-    [t("Seety.EB_GONE", "No longer observed"), -sum("noLongerSeen")],
+    [t("Seety.EB_GONE", "No longer observed"), -sum("noLongerSeen"),
+      t("Seety.EB_TIP_GONE", "Not necessarily deaths or departures.")],
   ] : [];
   const max = Math.max(1, ...contributions.map(([, value]) => Math.abs(value)));
   const explained = contributions.reduce((sum, [, value]) => sum + value, 0);
@@ -1847,21 +1834,19 @@ const EducationBalancePanel = ({ data, workforce }: {
           ? t("Seety.EB_GAME_DAY", "game day") : t("Seety.EB_GAME_DAYS", "game days")}</button>)}
     </div> : null}
     {!first || !last ? <p className={styles.balanceNote}>{data.tracking
-      ? t("Seety.EB_WAIT", "Baseline recorded. Waiting for the next simulation sample.")
-      : t("Seety.EB_PAUSED", "Observation paused. Resume to collect new changes.")}</p> : <>
+      ? t("Seety.EB_WAIT", "Waiting for the next sample.")
+      : t("Seety.EB_PAUSED", "Observation paused.")}</p> : <>
       <div className={styles.balancePeriod}>{`${first.startTime} → ${last.endTime}`}</div>
       <div className={styles.balanceSummary}>
         <span>{`${start.toLocaleString()} → ${end.toLocaleString()}`}</span>
         <strong>{`${label(net)} (${rate})`}</strong>
       </div>
-      {!hasGap && start > 0 ? <p className={styles.balanceNote}>
-        {t("Seety.EB_DENOM", "Rate denominator: residents at interval start")}: {start.toLocaleString()}
-      </p> : null}
       {hasGap ? <p className={styles.balanceNote}>
-        {t("Seety.EB_COVERAGE_GAP", "Observation gap: changes while the city was unloaded or paused are excluded. Stock change across the gap")}: {label(end - start - net)}
+        {`${t("Seety.EB_COVERAGE_GAP", "Change across observation gaps")}: ${label(end - start - net)}`}
       </p> : null}
-      {contributions.map(([name, value]) => <div className={styles.balanceRow} key={name}>
-        <span className={styles.balanceName}>{name}</span>
+      {contributions.map(([name, value, tip]) => <div className={styles.balanceRow} key={name}>
+        {tip ? <Tooltip tooltip={tip}><span className={styles.balanceName}>{name}</span></Tooltip>
+          : <span className={styles.balanceName}>{name}</span>}
         <span className={styles.balanceTrack}>
           {value !== 0 ? <span
             className={value > 0 ? styles.balancePositive : styles.balanceNegative}
@@ -1889,15 +1874,6 @@ const EducationBalancePanel = ({ data, workforce }: {
         </div>)}
       </div> : null}
     </>}
-    <p className={styles.balanceNote}>{t("Seety.EB_LIMIT",
-      "First seen and no longer observed do not identify births, migration or deaths. A transition between levels does not by itself prove a diploma. Dates show the actual sampled interval; its first and last game days may be partial. Only totals are saved with the city; a load starts a new baseline.")}</p>
-    {data.meanMs > 0 ? <div className={styles.balanceCost}>
-      <div>{t("Seety.EB_COST", "Last samples, main thread")}: {t("Seety.EB_MEAN", "mean")} {data.meanMs.toFixed(1)} ms · p95 {data.p95Ms.toFixed(1)} ms · {t("Seety.EB_WORST", "worst")} {data.worstMs.toFixed(1)} ms</div>
-      <div>{t("Seety.EB_SNAPSHOT", "Read residents")}: {data.snapshotMeanMs.toFixed(1)} / {data.snapshotP95Ms.toFixed(1)} ms</div>
-      <div>{t("Seety.EB_RECORD", "Record sample")}: {data.recordMeanMs.toFixed(1)} / {data.recordP95Ms.toFixed(1)} ms</div>
-      <div>{t("Seety.EB_COMPARE", "Compare samples")}: {data.compareMeanMs.toFixed(1)} / {data.compareP95Ms.toFixed(1)} ms</div>
-      <div>{t("Seety.EB_PHASE_NOTE", "Phase values are mean / p95 in ms; small remaining time covers history storage.")}</div>
-    </div> : null}
   </div>;
 };
 
@@ -1938,10 +1914,6 @@ const FactorList = ({ binding }: { binding: string }) => {
           </span>
         </div>
       ))}
-      <div className={styles.tableNote}>
-        The five biggest influences on this demand right now, as the game reports them. A negative
-        weight is what is holding it back.
-      </div>
     </div>
   );
 };
@@ -1976,28 +1948,25 @@ type ResourceKind = "commercial" | "industrial" | "office";
  */
 const RESOURCE_TABLE_TEXT: Record<
   ResourceKind,
-  { companyKey: string; companyHead: string; stockKey: string; stockHead: string; note: string }
+  { companyKey: string; companyHead: string; stockKey: string; stockHead: string }
 > = {
   commercial: {
     companyKey: "Seety.RES_SHOPS",
     companyHead: "Shops",
     stockKey: "Seety.RES_STOCK",
     stockHead: "Stock",
-    note: 'Wanted is demand relative to the good the city wants most - 100% is the top of the list, not "fully satisfied". Amber stock means the shops are there but the shelves are empty - that is a supply problem, not a zoning one. Homeless companies want premises.',
   },
   industrial: {
     companyKey: "Seety.RES_PLANTS",
     companyHead: "Plants",
     stockKey: "Seety.RES_MADE",
     stockHead: "Made",
-    note: "Wanted is demand relative to the good the city wants most; Made is production against that demand. Amber means the city is asking for more than anyone is producing.",
   },
   office: {
     companyKey: "Seety.RES_OFFICES",
     companyHead: "Offices",
     stockKey: "Seety.RES_MADE",
     stockHead: "Made",
-    note: "The same reading as industrial, for the four resources - software, telecom, financial services, media - the game itself counts as office work rather than manufacturing.",
   },
 };
 
@@ -2020,7 +1989,10 @@ const ResourceTable = ({ kind }: { kind: ResourceKind }) => {
     <div className={styles.table}>
       <div className={`${styles.tableRow} ${styles.tableHead}`}>
         <span className={styles.tableLevel}>{t("Seety.RES_RESOURCE", "Resource")}</span>
-        <span className={styles.tableCell}>{t("Seety.RES_WANTED", "Wanted")}</span>
+        {/* 100% is the most wanted good, not "fully satisfied" - easy to misread without this. */}
+        <Tooltip tooltip={t("Seety.RES_TIP_WANTED", "Compared with the most wanted good.")}>
+          <span className={styles.tableCell}>{t("Seety.RES_WANTED", "Wanted")}</span>
+        </Tooltip>
         <span className={styles.tableCell}>{t(text.companyKey, text.companyHead)}</span>
         <span className={styles.tableCell}>{t(text.stockKey, text.stockHead)}</span>
         <span className={styles.tableCell}>{t("Seety.RES_STAFF", "Staff")}</span>
@@ -2089,8 +2061,6 @@ const ResourceTable = ({ kind }: { kind: ResourceKind }) => {
           </Tooltip>
         );
       })}
-
-      <div className={styles.tableNote}>{text.note}</div>
     </div>
   );
 };
@@ -2126,10 +2096,6 @@ const DemandList = () => {
           ) : null}
         </div>
       ))}
-      <div className={styles.tableNote}>
-        How much appetite the city has for each kind of zone, from the same readings that drive the
-        game&apos;s own demand bars. Click one for the five biggest influences on it.
-      </div>
     </div>
   );
 };
@@ -2193,11 +2159,6 @@ const DemographicsTable = ({ rows }: { rows: AgeRow[] }) => {
         );
       })}
 
-      <div className={styles.tableNote}>
-        Every citizen counted once, tourists excluded. The bar under each age is its share of the
-        population. Education for a child is the level they have finished, not the one they are
-        attending.
-      </div>
     </div>
   );
 };
@@ -2286,10 +2247,6 @@ const PollutionList = () => {
           </Tooltip>
         );
       })}
-      <div className={styles.tableNote}>
-        Quality, not pollution: a higher number is a cleaner city, the same direction as every
-        other reading on the strip. Click one to open its map view.
-      </div>
     </div>
   );
 };

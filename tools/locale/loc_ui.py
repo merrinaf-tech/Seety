@@ -53,7 +53,6 @@ U = [
  ("STOPS_EMPTY", "No passengers waiting at stops.", "Keine Fahrgäste warten an Haltestellen.", "No hay pasajeros esperando en las paradas.", "Aucun passager en attente aux arrêts.", "Nessun passeggero in attesa alle fermate.", "停留所で待っている乗客はいません。", "정류장에서 기다리는 승객이 없습니다.", "Na przystankach nie czekają pasażerowie.", "Nenhum passageiro esperando nas paradas.", "На остановках нет ожидающих пассажиров.", "站点没有等候的乘客。", "站點沒有等候的乘客。"),
  ("STOPS_UNNAMED", "Unnamed stop", "Unbenannte Haltestelle", "Parada sin nombre", "Arrêt sans nom", "Fermata senza nome", "名称未設定の停留所", "이름 없는 정류장", "Przystanek bez nazwy", "Parada sem nome", "Остановка без названия", "未命名站点", "未命名站點"),
  ("STOPS_WAITING", "waiting", "warten", "en espera", "en attente", "in attesa", "待機中", "대기 중", "czeka", "em espera", "ожидают", "等候中", "等候中"),
- ("STOPS_NOTE", "Top 10 stops by passengers waiting for each line. Counts update live; Refresh reorders the list.", "Die Top 10 nach aktuell wartenden Fahrgästen. Zahlen werden laufend aktualisiert; Aktualisieren sortiert die Liste neu.", "Las 10 primeras por pasajeros esperando ahora. Los recuentos se actualizan en directo; Actualizar reordena la lista.", "Les 10 premiers arrêts par passagers en attente. Les nombres sont actualisés en direct ; Actualiser reclasse la liste.", "Le prime 10 fermate per passeggeri in attesa della singola linea. I conteggi si aggiornano in tempo reale; Aggiorna riordina la lista.", "現在待っている乗客数の上位10停留所。人数は随時更新され、更新ボタンで一覧を並べ替えます。", "현재 대기 승객 수 상위 10개 정류장. 인원은 실시간으로 갱신되며 새로 고침으로 목록을 다시 정렬합니다.", "10 przystanków z największą liczbą oczekujących. Liczby aktualizują się na bieżąco; Odśwież zmienia kolejność listy.", "As 10 primeiras por passageiros esperando agora. Os números são atualizados ao vivo; Atualizar reordena a lista.", "10 остановок с наибольшим числом ожидающих сейчас. Числа обновляются в реальном времени; кнопка «Обновить» пересортирует список.", "按当前等候乘客数排列的前10个站点。人数实时更新；刷新可重新排序。", "依目前等候乘客數排列的前10個站點。人數即時更新；重新整理可重新排序。"),
  ("SEC_PASSENGERS", "Passengers","Fahrgäste","Pasajeros","Passagers","Passeggeri","旅客","승객","Pasażerowie","Passageiros","Пассажиры","客运","客運"),
  ("SEC_CARGO", "Cargo","Fracht","Carga","Fret","Merci","貨物","화물","Ładunek","Carga","Грузы","货运","貨運"),
  # --- workforce table
@@ -113,34 +112,22 @@ for key, en, it in [
     ("EB_RESUME", "Resume", "Riprendi"),
     ("EB_PAUSE", "Pause", "Pausa"),
     ("EB_CLEAR", "Clear history", "Cancella lo storico"),
-    ("EB_WAIT", "Baseline recorded. Waiting for the next simulation sample.",
-     "Punto di partenza registrato. In attesa del prossimo campione della simulazione."),
-    ("EB_PAUSED", "Observation paused. Resume to collect new changes.",
-     "Osservazione in pausa. Riprendi per registrare nuovi cambiamenti."),
+    ("EB_WAIT", "Waiting for the next sample.", "In attesa del prossimo campione."),
+    ("EB_PAUSED", "Observation paused.", "Osservazione in pausa."),
     ("EB_GAME_DAYS", "game days", "giorni di gioco"),
     ("EB_GAME_DAY", "game day", "giorno di gioco"),
-    ("EB_DENOM", "Rate denominator: residents at interval start",
-     "Denominatore della percentuale: residenti all'inizio dell'intervallo"),
     ("EB_FIRST", "First seen at this level", "Osservati per la prima volta a questo livello"),
     ("EB_CHANGED_IN", "Changed into this level", "Passati a questo livello"),
     ("EB_CHANGED_OUT", "Changed out of this level", "Passati a un altro livello"),
     ("EB_GONE", "No longer observed", "Non più osservati"),
+    ("EB_TIP_FIRST", "Not necessarily births or arrivals.", "Non necessariamente nascite o arrivi."),
+    ("EB_TIP_GONE", "Not necessarily deaths or departures.", "Non necessariamente decessi o partenze."),
+    ("RES_TIP_WANTED", "Compared with the most wanted good.", "Rispetto al bene più richiesto."),
     ("EB_FROM", "Observed transitions from", "Passaggi osservati da"),
     ("EB_TO", "Observed transitions to", "Passaggi osservati a"),
     ("EB_GAP", "Unreconciled change", "Variazione non riconciliata"),
     ("EB_GAP_SHORT", "gap before", "intervallo non osservato prima"),
-    ("EB_COVERAGE_GAP", "Observation gap: changes while the city was unloaded or paused are excluded. Stock change across the gap",
-     "Intervallo non osservato: sono esclusi i cambiamenti avvenuti a città non caricata o durante la pausa. Variazione del totale nell'intervallo"),
-    ("EB_LIMIT", "First seen and no longer observed do not identify births, migration or deaths. A transition between levels does not by itself prove a diploma. Dates show the actual sampled interval; its first and last game days may be partial. Only totals are saved with the city; a load starts a new baseline.",
-     "Nuovi osservati e non più osservati non identificano nascite, migrazioni o decessi. Un passaggio tra livelli non dimostra da solo un diploma. Le date indicano l'intervallo realmente campionato; il primo e l'ultimo giorno possono essere parziali. Con la città si salvano solo i totali; al caricamento parte un nuovo conteggio iniziale."),
-    ("EB_COST", "Last samples, main thread", "Ultimi campioni, thread principale"),
-    ("EB_SNAPSHOT", "Read residents", "Lettura residenti"),
-    ("EB_RECORD", "Record sample", "Registrazione campione"),
-    ("EB_COMPARE", "Compare samples", "Confronto campioni"),
-    ("EB_PHASE_NOTE", "Phase values are mean / p95 in ms; small remaining time covers history storage.",
-     "I valori delle fasi sono media / p95 in ms; il tempo residuo comprende il salvataggio dello storico."),
-    ("EB_MEAN", "mean", "media"),
-    ("EB_WORST", "worst", "massimo"),
+    ("EB_COVERAGE_GAP", "Change across observation gaps", "Variazione negli intervalli non osservati"),
     ("EB_TABLE_TAB", "Workforce table", "Tabella dei lavoratori"),
     ("EB_BALANCE_TAB", "Education balance", "Bilancio dell'istruzione"),
 ]:
@@ -152,23 +139,12 @@ for key, en, it in [
     ("UNEMPLOYMENT_TOTAL", "Total", "Totale"),
     ("UNEMPLOYMENT_BY_EDUCATION", "By education", "Per istruzione"),
     ("UNEMPLOYMENT_SAMPLED", "Observed", "Osservati"),
-    ("UNEMPLOYMENT_WAIT", "Waiting for a second observed sample. Education history is recorded every 8192 simulation frames.",
-     "In attesa del secondo campione. Lo storico dell'istruzione viene registrato ogni 8192 frame di simulazione."),
-    ("UNEMPLOYMENT_PAUSED", "Education observation is paused. Resume it in Workers or Seety's settings to collect this chart.",
-     "L'osservazione dell'istruzione è in pausa. Riprendila da Lavoratori o dalle impostazioni di Seety per raccogliere questo grafico."),
-    ("UNEMPLOYMENT_HISTORY_NOTE", "Last 14 game days of observed samples. Lines stop at observation gaps; the legend shows the last sample, while the table below shows the current census.",
-     "Ultimi 14 giorni di gioco osservati. Le linee si interrompono negli intervalli non osservati; la legenda mostra l'ultimo campione e la tabella sotto il conteggio attuale."),
-    ("UNEMPLOYMENT_TABLE_NOTE", "Current residents able to work but without a job in the city, counted by their completed education level. Percentages are shares of all unemployed residents. The total chart uses the game's history; the education chart uses Seety's observed samples.",
-     "Residenti attualmente in grado di lavorare ma senza un impiego in città, divisi per livello di istruzione completato. Le percentuali sono quote del totale dei disoccupati. Il grafico totale usa lo storico del gioco; quello per istruzione usa i campioni osservati da Seety."),
+    ("UNEMPLOYMENT_WAIT", "Waiting for the second sample.", "In attesa del secondo campione."),
+    ("UNEMPLOYMENT_PAUSED", "Observation paused.", "Osservazione in pausa."),
 ]:
     values = [en] * 12
     values[4] = it
     add("Seety." + key, *values)
 
-_transport_note = "Aboard now / capacity of running vehicles. Passenger percentages show occupancy; these are live counts, not rolling totals."
-_transport_note_values = [_transport_note] * 12
-_transport_note_values[4] = ("A bordo ora / capienza dei veicoli in servizio. Le percentuali dei passeggeri "
-                             "indicano l'occupazione dei posti; sono conteggi attuali, non cumulativi.")
-add("Seety.TRANSPORT_MODE_NOTE", *_transport_note_values)
 
 print("ui:", len(U))
