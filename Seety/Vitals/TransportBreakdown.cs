@@ -200,6 +200,15 @@ namespace Seety.Vitals
                         continue;
                     }
 
+                    // Only vehicles running one of the city's own lines, as the transportation
+                    // overview lists them. PublicTransport is also on intercity buses, trains and
+                    // planes from outside connections, evacuation buses and prison vans; counting
+                    // those made the bus row read 46 / 2,694 in a city whose lines had 23 buses.
+                    if (!OnCityLine(vehicle, entities))
+                    {
+                        continue;
+                    }
+
                     var data = entities.GetComponentData<PublicTransportVehicleData>(prefab);
 
                     foreach (var mode in _passengers)
@@ -220,6 +229,18 @@ namespace Seety.Vitals
                     }
                 }
             }
+        }
+
+        private static bool OnCityLine(Entity vehicle, EntityManager entities)
+        {
+            if (!entities.HasComponent<Game.Routes.CurrentRoute>(vehicle))
+            {
+                return false;
+            }
+
+            var route = entities.GetComponentData<Game.Routes.CurrentRoute>(vehicle).m_Route;
+            return route != Entity.Null && entities.Exists(route)
+                && entities.HasComponent<Game.Routes.TransportLine>(route);
         }
 
         /// <summary>
