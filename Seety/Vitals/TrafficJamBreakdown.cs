@@ -58,21 +58,21 @@ namespace Seety.Vitals
         private const int MaxGroups = 10;
 
         /// <summary>
-        /// The grid the city is divided into, in metres, before crowds are looked for. Small
-        /// enough that two unrelated queues either side of a junction stay distinct.
+        /// The grid stopped vehicles are sorted into, in metres. Two occupied cells next to each
+        /// other on the same street are one queue; an empty cell between them - a stretch of road
+        /// with nothing stopped on it - ends the queue.
         /// </summary>
         private const float CellSize = 32f;
 
         /// <summary>
-        /// Metres per second under which a car is part of a queue: standing, or crawling at walking
-        /// pace. Moving traffic, however dense, is not a jam.
+        /// Metres per second under which a car is part of a queue: about 11 km/h. A long queue
+        /// moves in waves, and at 1 m/s most of a stop-and-go queue of trucks was read as moving
+        /// at any given instant, so a jam visible on screen went unreported.
         /// </summary>
-        private const float QueueSpeed = 1f;
+        private const float QueueSpeed = 3f;
 
         /// <summary>
-        /// Minimum blocked vehicles in a cell and its neighbours (a 96 m square). Five vehicles
-        /// included too many ordinary junction queues; use fifteen to surface larger pile-ups.
-        /// This is an absolute floor, even when no location qualifies for a row.
+        /// Minimum vehicles in one queue. Below this, a queue is a red light or a give-way.
         /// </summary>
         private const int MinJamSize = 15;
 
@@ -102,6 +102,7 @@ namespace Seety.Vitals
 
             var positions = new List<float3>();
             var roads = new List<Entity>();
+            var streets = new List<Entity>();
 
             // Many cars share a lane, and resolving one means several component lookups, so the
             // answer is remembered for the length of this refresh.
@@ -146,35 +147,35 @@ namespace Seety.Vitals
 
                     positions.Add(position);
                     roads.Add(road);
+                    streets.Add(StreetOf(road, entities));
                 }
             }
 
-            FindJams(positions, roads, entities, names);
+            FindJams(positions, roads, streets, entities, names);
         }
 
         /// <summary>
-        /// Picks the crowds out of a scatter of stopped vehicles.
+        /// Picks the queues out of a scatter of stopped vehicles.
         ///
-        /// Repeatedly takes the busiest cell together with its eight neighbours, calls that a jam,
-        /// and removes those cells from consideration before looking for the next one. Taking the
-        /// neighbours in means a queue straddling a cell boundary counts once rather than twice;
-        /// removing them afterwards means the second row is a different jam rather than the same
-        /// one shifted by thirty metres.
+        /// Each stopped vehicle goes into a 32 m cell, kept apart by street. Occupied cells that
+        /// touch and belong to the same street are one queue, however long: a jam is a line of
+        /// vehicles along a road, and the old test - fifteen inside one 96 m square - missed a
+        /// queue of spaced-out trucks stretching for hundreds of metres.
         ///
-        /// Deliberately not a flood fill over adjacent cells. That is the obvious way to grow a
-        /// jam to its true extent, and in a busy city centre it grows through every junction on
-        /// every connecting street until one "jam" covers downtown and reports eight hundred
-        /// vehicles - a number that names nowhere. A jam bounded to roughly ninety metres is a
-        /// junction and its approaches, which is a place you can be sent to.
+        /// Joining only along the same street is what keeps this from the flood fill that once
+        /// grew through every junction downtown into one 800-vehicle "jam": a queue stops where
+        /// its street meets another, and where the road ahead of it is clear. Roads belonging to
+        /// no named street (slip roads, pieces of interchange) count as one street together, so a
+        /// queue running down a ramp of several pieces stays whole.
         /// </summary>
-        private void FindJams(List<float3> positions, List<Entity> roads,
+        private void FindJams(List<float3> positions, List<Entity> roads, List<Entity> streets,
             EntityManager entities, NameSystem names)
         {
-            var cells = new Dictionary<long, List<int>>();
+            var cells = new Dictionary<(long Cell, Entity Street), List<int>>();
 
             for (var i = 0; i < positions.Count; i++)
             {
-                long key = CellKey(positions[i]);
+                var key = (CellKey(positions[i]), streets[i]);
 
                 List<int> bucket;
                 if (!cells.TryGetValue(key, out bucket))
@@ -186,70 +187,76 @@ namespace Seety.Vitals
                 bucket.Add(i);
             }
 
-            var claimed = new HashSet<long>();
+            var seen = new HashSet<(long Cell, Entity Street)>();
+            var found = new List<TrafficJamGroup>();
+            var pending = new Stack<(long Cell, Entity Street)>();
 
-            while (_groups.Count < MaxGroups)
+            foreach (var start in cells.Keys)
             {
-                // Scored by count alone, and only the winner's members are gathered. Building a
-                // list for every candidate cell instead allocated one per cell per round - tens
-                // of thousands of short-lived lists on the UI thread every time this refreshed,
-                // for nine of every ten of which nothing was ever read.
-                long bestKey = 0;
-                int bestCount = 0;
-
-                foreach (var cell in cells)
+                if (!seen.Add(start))
                 {
-                    if (claimed.Contains(cell.Key))
+                    continue;
+                }
+
+                var members = new List<int>();
+                long busiestCell = start.Cell;
+                int busiestCount = -1;
+                pending.Push(start);
+
+                while (pending.Count > 0)
+                {
+                    var node = pending.Pop();
+                    var bucket = cells[node];
+                    members.AddRange(bucket);
+
+                    // The busiest cell names the queue's location, so its identity survives the
+                    // queue growing or shrinking at either end. Ties go to the lower key, so the
+                    // order the query returned cars in decides nothing.
+                    if (bucket.Count > busiestCount
+                        || (bucket.Count == busiestCount && node.Cell < busiestCell))
                     {
-                        continue;
+                        busiestCell = node.Cell;
+                        busiestCount = bucket.Count;
                     }
 
-                    int count = NeighbourCount(cells, claimed, cell.Key);
-                    // A tie must not depend on the order the ECS query returned the cars in.
-                    if (count > bestCount || (count == bestCount && cell.Key < bestKey))
+                    foreach (long neighbour in NeighbourKeys(node.Cell))
                     {
-                        bestKey = cell.Key;
-                        bestCount = count;
+                        var next = (neighbour, node.Street);
+                        if (cells.ContainsKey(next) && seen.Add(next))
+                        {
+                            pending.Push(next);
+                        }
                     }
                 }
 
-                if (bestCount < MinJamSize)
+                if (members.Count < MinJamSize)
                 {
-                    break;
+                    continue;
                 }
 
-                List<int> bestMembers = Neighbourhood(cells, claimed, bestKey);
-
-                foreach (long key in NeighbourKeys(bestKey))
+                found.Add(new TrafficJamGroup
                 {
-                    claimed.Add(key);
-                }
-
-                // The centre of what was found, rather than the centre of the cell that won: a jam
-                // sitting in the corner of its cell should put the camera on the cars, not on the
-                // empty ground beside them.
-                float3 centre = float3.zero;
-                foreach (int index in bestMembers)
-                {
-                    centre += positions[index];
-                }
-
-                centre /= bestMembers.Count;
-
-                _groups.Add(new TrafficJamGroup
-                {
-                    Id = bestKey.ToString(CultureInfo.InvariantCulture),
-                    Cell = bestKey,
-                    Name = StreetName(roads[bestMembers[0]], entities, names),
-                    Count = bestMembers.Count,
-                    Position = centre
+                    Id = busiestCell.ToString(CultureInfo.InvariantCulture) + ":"
+                        + start.Street.Index.ToString(CultureInfo.InvariantCulture),
+                    Cell = busiestCell,
+                    Name = StreetName(roads[members[0]], entities, names),
+                    Count = members.Count,
+                    Position = Centre(positions, members)
                 });
+            }
+
+            found.Sort((x, y) => x.Count != y.Count
+                ? y.Count.CompareTo(x.Count)
+                : string.CompareOrdinal(x.Id, y.Id));
+            for (int i = 0; i < found.Count && i < MaxGroups; i++)
+            {
+                _groups.Add(found[i]);
             }
 
             // Number duplicate labels by location, not by congestion ranking. Keep the displayed
             // list worst-first, but changing counts must not exchange two streets' suffixes.
             var byLocation = new List<TrafficJamGroup>(_groups);
-            byLocation.Sort((a, b) => a.Cell.CompareTo(b.Cell));
+            byLocation.Sort((x, y) => string.CompareOrdinal(x.Id, y.Id));
             var used = new HashSet<string>();
             foreach (var group in byLocation)
             {
@@ -258,50 +265,33 @@ namespace Seety.Vitals
             }
         }
 
-        /// <summary>How many vehicles a cell and its eight neighbours hold, ignoring claimed cells.</summary>
-        private static int NeighbourCount(Dictionary<long, List<int>> cells,
-            HashSet<long> claimed, long key)
+        /// <summary>
+        /// Where the camera goes: the queued vehicle nearest the queue's middle. The plain average
+        /// of a queue that bends round a corner lies off the road, on whatever is inside the bend.
+        /// </summary>
+        private static float3 Centre(List<float3> positions, List<int> members)
         {
-            int total = 0;
-
-            foreach (long neighbour in NeighbourKeys(key))
+            float3 mean = float3.zero;
+            foreach (int index in members)
             {
-                if (claimed.Contains(neighbour))
-                {
-                    continue;
-                }
+                mean += positions[index];
+            }
 
-                List<int> bucket;
-                if (cells.TryGetValue(neighbour, out bucket))
+            mean /= members.Count;
+
+            float3 best = positions[members[0]];
+            float bestDistance = float.MaxValue;
+            foreach (int index in members)
+            {
+                float distance = math.lengthsq(positions[index] - mean);
+                if (distance < bestDistance)
                 {
-                    total += bucket.Count;
+                    best = positions[index];
+                    bestDistance = distance;
                 }
             }
 
-            return total;
-        }
-
-        /// <summary>Every vehicle in a cell and its eight neighbours, skipping claimed cells.</summary>
-        private static List<int> Neighbourhood(Dictionary<long, List<int>> cells,
-            HashSet<long> claimed, long key)
-        {
-            var members = new List<int>();
-
-            foreach (long neighbour in NeighbourKeys(key))
-            {
-                if (claimed.Contains(neighbour))
-                {
-                    continue;
-                }
-
-                List<int> bucket;
-                if (cells.TryGetValue(neighbour, out bucket))
-                {
-                    members.AddRange(bucket);
-                }
-            }
-
-            return members;
+            return best;
         }
 
         private static IEnumerable<long> NeighbourKeys(long key)
@@ -414,6 +404,16 @@ namespace Seety.Vitals
 
             cache[lane] = found;
             return found;
+        }
+
+        /// <summary>
+        /// The street a road belongs to, or Entity.Null for a road that belongs to none.
+        /// </summary>
+        private static Entity StreetOf(Entity road, EntityManager entities)
+        {
+            return entities.HasComponent<Game.Net.Aggregated>(road)
+                ? entities.GetComponentData<Game.Net.Aggregated>(road).m_Aggregate
+                : Entity.Null;
         }
 
         /// <summary>
