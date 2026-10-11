@@ -249,12 +249,44 @@ namespace Seety.Systems
             }
         }
 
+        /// <remarks>
+        /// Never throws. A save this version cannot read - written by a newer Seety, or damaged -
+        /// starts with an empty history instead. Each system's data sits in its own block, which
+        /// the game closes after this returns, so stopping early leaves nothing half-read for
+        /// whatever loads next: it is the same mechanism the game uses to skip a removed mod's
+        /// system entirely (ObsoleteSystemSerializer reads only Begin and End).
+        /// </remarks>
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
+            _unemployment.Clear();
+            _unemploymentGap = false;
+            _tracking = false;
+            _lastFrame = 0;
+            try
+            {
+                ReadHistory(reader);
+            }
+            catch (Exception e)
+            {
+                Mod.Log.Warn($"Education history could not be read and starts empty: {e.Message}");
+                Ledger.Clear();
+                _unemployment.Clear();
+            }
+            _unemploymentGap = _unemployment.Count > 0;
+        }
+
+        private void ReadHistory<TReader>(TReader reader) where TReader : IReader
+        {
             reader.Read(out int schema);
+            if (schema != 1 && schema != SaveSchema)
+            {
+                Mod.Log.Info($"Education history schema {schema} is not one this version reads; starting empty.");
+                Ledger.Clear();
+                return;
+            }
             reader.Read(out int count);
-            if ((schema != 1 && schema != SaveSchema) || count < 0 || count > 64)
-                throw new InvalidOperationException("Unsupported Seety education history schema.");
+            if (count < 0 || count > 64)
+                throw new InvalidOperationException($"history length {count} out of range");
             var history = new List<EducationBalanceDay>(count);
             for (var i = 0; i < count; i++)
             {
@@ -282,12 +314,11 @@ namespace Seety.Systems
                 history.Add(day);
             }
             Ledger.Restore(history);
-            _unemployment.Clear();
             if (schema >= 2)
             {
                 reader.Read(out int sampleCount);
                 if (sampleCount < 0 || sampleCount > MaxUnemploymentSamples)
-                    throw new InvalidOperationException("Unsupported Seety unemployment history length.");
+                    throw new InvalidOperationException($"unemployment history length {sampleCount} out of range");
                 for (var i = 0; i < sampleCount; i++)
                 {
                     var sample = new UnemploymentSample();
@@ -301,9 +332,6 @@ namespace Seety.Systems
                     }
                 }
             }
-            _unemploymentGap = _unemployment.Count > 0;
-            _tracking = false;
-            _lastFrame = 0;
         }
 
         private static void WriteCounts<TWriter>(TWriter writer, int[] values) where TWriter : IWriter
